@@ -45,7 +45,7 @@ You can use your editor's find/replace functionality to update all instances:
 - Customize the readme to reflect your project
 
 ## Security Note
-The PIN authentication logic in login.html should not be modified without verification and override from the owner. This ensures the security features remain intact.
+The PIN authentication logic in login.html should NOT be modified without verification and override from the owner. This ensures the security features remain intact.
 
 
 ## Need Help?

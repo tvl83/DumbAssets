@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">DumbTitle</title>
+    <title id="pageTitle">DumbAssets</title>
     <script src="config.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -26,12 +26,172 @@
                     <line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line>
                 </svg>
             </button>
-            <h1 id="siteTitle">DumbTitle</h1>
+            <h1 id="siteTitle">DumbAssets</h1>
+            <div class="app-container">
+                <!-- Left panel: Asset list with search -->
+                <div class="sidebar">
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" placeholder="Search assets...">
+                        <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="display:none;" aria-label="Clear search">&times;</button>
+                    </div>
+                    <div class="asset-list" id="assetList">
+                        <!-- Assets will be listed here dynamically -->
+                        <div class="empty-state">
+                            <p>No assets found. Add your first asset to get started.</p>
+                        </div>
+                    </div>
+                    <button class="add-asset-btn" id="addAssetBtn">+ Add Asset</button>
+                </div>
+        
+                <!-- Right panel: Asset details and sub-assets -->
+                <div class="main-content">
+                    <div id="assetDetails">
+                        <!-- Selected asset details will appear here -->
+                        <div class="empty-state">
+                            <p>Select an asset to view details or add a new one</p>
+                        </div>
+                    </div>
+                    <div id="subAssetContainer" class="hidden">
+                        <div class="sub-asset-header">
+                            <h3>Components & Attachments</h3>
+                            <button id="addSubAssetBtn" class="add-sub-asset-btn">+ Add Component</button>
+                        </div>
+                        <div id="subAssetList" class="sub-asset-list">
+                            <!-- Sub-assets will be listed here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Add/Edit Asset Modal -->
+            <div id="assetModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2 id="modalTitle">Add Asset</h2>
+                    <form id="assetForm">
+                        <div class="form-group">
+                            <label for="assetName">Name *</label>
+                            <input type="text" id="assetName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="assetModel">Model Number</label>
+                            <input type="text" id="assetModel" name="modelNumber">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetSerial">Serial Number</label>
+                            <input type="text" id="assetSerial" name="serialNumber">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetPurchaseDate">Purchase Date</label>
+                            <input type="date" id="assetPurchaseDate" name="purchaseDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetPrice">Price</label>
+                            <input type="number" id="assetPrice" name="price" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetWarrantyScope">Warranty Scope</label>
+                            <input type="text" id="assetWarrantyScope" name="warrantyScope">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetWarrantyExpiration">Warranty Expiration</label>
+                            <input type="date" id="assetWarrantyExpiration" name="warrantyExpiration">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetPhoto">Photo</label>
+                            <input type="file" id="assetPhoto" name="photo" accept="image/*">
+                            <div id="photoPreview" class="preview-container"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="assetReceipt">Receipt</label>
+                            <input type="file" id="assetReceipt" name="receipt" accept="image/*,.pdf">
+                            <div id="receiptPreview" class="preview-container"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="assetLink">Link</label>
+                            <input type="url" id="assetLink" name="link">
+                        </div>
+                        <div class="form-group">
+                            <label for="assetDescription">Description</label>
+                            <textarea id="assetDescription" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="save-btn">Save</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        
+            <!-- Add/Edit Sub-Asset Modal -->
+            <div id="subAssetModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2 id="subModalTitle">Add Component</h2>
+                    <form id="subAssetForm">
+                        <input type="hidden" id="parentAssetId" name="parentId">
+                        <input type="hidden" id="parentSubAssetId" name="parentSubId">
+                        
+                        <div class="form-group">
+                            <label for="subAssetName">Name *</label>
+                            <input type="text" id="subAssetName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetModel">Model Number</label>
+                            <input type="text" id="subAssetModel" name="modelNumber">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetSerial">Serial Number</label>
+                            <input type="text" id="subAssetSerial" name="serialNumber">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetPurchaseDate">Purchase Date</label>
+                            <input type="date" id="subAssetPurchaseDate" name="purchaseDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetPrice">Price</label>
+                            <input type="number" id="subAssetPrice" name="price" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetWarrantyScope">Warranty Scope</label>
+                            <input type="text" id="subAssetWarrantyScope" name="warrantyScope">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetWarrantyExpiration">Warranty Expiration</label>
+                            <input type="date" id="subAssetWarrantyExpiration" name="warrantyExpiration">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetPhoto">Photo</label>
+                            <input type="file" id="subAssetPhoto" name="photo" accept="image/*">
+                            <div id="subPhotoPreview" class="preview-container"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetReceipt">Receipt</label>
+                            <input type="file" id="subAssetReceipt" name="receipt" accept="image/*,.pdf">
+                            <div id="subReceiptPreview" class="preview-container"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetLink">Link</label>
+                            <input type="url" id="subAssetLink" name="link">
+                        </div>
+                        <div class="form-group">
+                            <label for="subAssetDescription">Description</label>
+                            <textarea id="subAssetDescription" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="save-btn">Save</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
         </div>
+    </div>
     </main>
     <div class="dumbware-credit">
         Built by <a href="https://dumbware.io" target="_blank" rel="noopener noreferrer">DumbWare</a>
     </div>
+    
+
     <script src="script.js"></script>
 </body>
 </html> 

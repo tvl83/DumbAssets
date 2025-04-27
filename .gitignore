@@ -133,3 +133,6 @@ dist
 .cursor
 .cursor/
 
+# Ignore asset and receipt data
+/data/
+

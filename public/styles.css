@@ -8,6 +8,16 @@
     --border: #ccc;
     --shadow: 0 2px 4px rgba(0,0,0,0.1);
     --transition: 0.2s ease;
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+    --background-color: #ffffff;
+    --text-color: #1a1a1a;
+    --border-color: #e2e8f0;
+    --hover-color: #f8fafc;
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --warning-color: #f59e0b;
 }
 
 [data-theme="dark"] {
@@ -16,6 +26,12 @@
     --text: white;
     --border: #404040;
     --shadow: 0 2px 4px rgba(0,0,0,0.2);
+    --primary-color: #3b82f6;
+    --secondary-color: #94a3b8;
+    --background-color: #1a1a1a;
+    --text-color: #ffffff;
+    --border-color: #334155;
+    --hover-color: #1e293b;
 }
 
 /* Base styles */
@@ -50,29 +66,29 @@ main {
 .container {
     position: relative;
     background: var(--container);
-    padding: 3rem 1.5rem 2rem;
+    padding: 1.5rem 1rem 1rem;
     border-radius: 12px;
     box-shadow: var(--shadow);
-    width: calc(100% - 2rem);
-    max-width: 800px;
-    min-height: calc(100vh - 4rem);
+    width: 98%;
+    max-width: 1200px;
+    min-height: unset;
     transition: background var(--transition), box-shadow var(--transition);
-    margin: 1rem auto;
+    margin: 0 auto;
 }
 
 /* Form styling */
 form {
     position: relative;
     background: var(--container);
-    padding: 3rem 1.5rem 2rem;
+    padding: 1.5rem 1rem 1rem;
     border-radius: 12px;
     box-shadow: var(--shadow);
     width: calc(100% - 2rem);
     max-width: 400px;
     transition: background var(--transition), box-shadow var(--transition);
     text-align: center;
-    margin: 1rem auto;
-    transform: translateY(-10%);
+    margin: 0.5rem auto;
+    transform: none;
 }
 
 /* Theme toggle */
@@ -128,7 +144,7 @@ form {
 h1 {
     font-size: 2rem;
     font-weight: 500;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     color: var(--text);
     text-align: center;
 }
@@ -136,7 +152,7 @@ h1 {
 h2 {
     font-size: 0.875rem;
     font-weight: 400;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     color: var(--text);
     opacity: 0.7;
     text-align: center;
@@ -229,26 +245,11 @@ h2 {
 
 /* Responsive adjustments */
 @media (max-width: 400px) {
-    form, .container {
-        padding: 3rem 0.75rem 1.5rem;
-        width: calc(100% - 1rem);
-        margin: 0.5rem auto;
+    .container, form {
+        padding: 1rem 0.5rem 0.5rem;
     }
-
-    .pin-input-container {
-        gap: 0.4rem;
-        padding: 0;
-    }
-
-    .pin-input-container input.pin-input {
-        width: 36px;
-        height: 36px;
-        font-size: 1rem;
-        border-radius: 8px;
-    }
-
     h1 {
-        font-size: 1.75rem;
+        font-size: 1.25rem;
     }
 }
 
@@ -257,4 +258,570 @@ h2 {
         width: 32px;
         height: 32px;
     }
+}
+
+/* App container layout */
+.app-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: var(--background-color);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#searchInput {
+    width: 100%;
+    padding: 0.75rem 2.2rem 0.75rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--secondary-color);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    top: 0;
+}
+
+.clear-search-btn:hover {
+    color: var(--error-color);
+}
+
+.asset-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.asset-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.asset-item:hover {
+    background-color: var(--hover-color);
+}
+
+.asset-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.add-asset-btn {
+    margin: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.add-asset-btn:hover {
+    opacity: 0.9;
+}
+
+/* Main content styles */
+.main-content {
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+#assetDetails {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.asset-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.asset-title h2 {
+    text-align: left;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+
+.asset-meta {
+    color: var(--secondary-color);
+    font-size: 0.875rem;
+}
+
+.asset-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Edit and Delete Icon Buttons */
+.asset-actions button {
+    padding: 0.3rem 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background 0.2s, color 0.2s;
+}
+
+.asset-actions .edit-asset-btn svg {
+    stroke: var(--primary-color);
+    width: 20px;
+    height: 20px;
+}
+
+.asset-actions .delete-asset-btn svg {
+    stroke: var(--error-color);
+    width: 20px;
+    height: 20px;
+}
+
+.asset-actions .edit-asset-btn:hover {
+    background-color: var(--primary-color);
+}
+
+.asset-actions .edit-asset-btn:hover svg {
+    stroke: #fff;
+}
+
+.asset-actions .delete-asset-btn:hover {
+    background-color: var(--error-color);
+}
+
+.asset-actions .delete-asset-btn:hover svg {
+    stroke: #fff;
+}
+
+.asset-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.info-item {
+    margin-bottom: 0.25rem;
+}
+
+.info-label {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.asset-description {
+    margin-top: 0.75rem;
+    white-space: pre-line;
+}
+
+.asset-media {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.asset-image {
+    max-width: 300px;
+    max-height: 200px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.receipt-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    width: fit-content;
+}
+
+.receipt-preview a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.receipt-preview a:hover {
+    text-decoration: underline;
+}
+
+/* Sub-asset container */
+#subAssetContainer {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+.sub-asset-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.add-sub-asset-btn {
+    padding: 0.5rem 0.75rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-sub-asset-btn:hover {
+    opacity: 0.9;
+}
+
+.sub-asset-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.sub-asset-item {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.sub-asset-item:hover {
+    background-color: var(--hover-color);
+}
+
+.sub-asset-children {
+    margin-left: 0.75rem;
+    margin-top: 0.4rem;
+    padding-left: 0.4rem;
+    border-left: 2px solid var(--border-color);
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-content {
+    background-color: var(--background-color);
+    margin: 2rem auto;
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+}
+
+.close-btn {
+    position: absolute;
+    right: 1.5rem;
+    top: 1.5rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--secondary-color);
+}
+
+.close-btn:hover {
+    color: var(--text-color);
+}
+
+#modalTitle, #subModalTitle {
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 0.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.preview-container {
+    margin-top: 0.5rem;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+}
+
+.preview-container img {
+    max-width: 200px;
+    max-height: 100px;
+    border-radius: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.save-btn, .cancel-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.save-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.save-btn:hover {
+    opacity: 0.9;
+}
+
+.cancel-btn {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.cancel-btn:hover {
+    background-color: var(--hover-color);
+}
+
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--secondary-color);
+}
+
+.dumbware-credit {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    font-size: 0.75rem;
+    color: var(--secondary-color);
+}
+
+.dumbware-credit a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.dumbware-credit a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .app-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        height: 200px;
+    }
+    
+    .asset-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .save-btn, .cancel-btn {
+        width: 100%;
+    }
+}
+
+/* Sub-asset action icon buttons - match main asset actions exactly */
+.sub-asset-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.sub-asset-actions button {
+    padding: 0.3rem 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background 0.2s, color 0.2s;
+    margin-left: 0;
+}
+
+.sub-asset-actions .edit-sub-btn svg {
+    stroke: var(--primary-color);
+    width: 20px;
+    height: 20px;
+}
+
+.sub-asset-actions .delete-sub-btn svg {
+    stroke: var(--error-color);
+    width: 20px;
+    height: 20px;
+}
+
+.sub-asset-actions .edit-sub-btn:hover {
+    background-color: var(--primary-color);
+}
+
+.sub-asset-actions .edit-sub-btn:hover svg {
+    stroke: #fff;
+}
+
+.sub-asset-actions .delete-sub-btn:hover {
+    background-color: var(--error-color);
+}
+
+.sub-asset-actions .delete-sub-btn:hover svg {
+    stroke: #fff;
+}
+
+.sub-asset-actions .add-child-btn {
+    background-color: var(--primary-color);
+    color: #fff;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+    margin-left: 0.2rem;
+}
+
+.sub-asset-actions .add-child-btn:hover {
+    background-color: var(--primary-color);
+    opacity: 0.85;
+}
+
+.back-to-parent-btn {
+    display: inline-flex;
+    align-items: center;
+    background: var(--hover-color);
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.back-to-parent-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--primary-color);
+    margin-right: 0.2rem;
+}
+
+.back-to-parent-btn:hover {
+    background: var(--primary-color);
+}
+
+.back-to-parent-btn:hover svg {
+    stroke: #fff;
+}
+
+.type-pill {
+    display: inline-block;
+    min-width: 70px;
+    padding: 0.15em 0.7em;
+    border-radius: 999px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-right: 0.5em;
+    text-align: center;
+    vertical-align: middle;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+.type-pill.asset {
+    background: var(--primary-color);
+}
+.type-pill.component {
+    background: #10b981;
+}
+.type-pill.subcomponent {
+    background: #8b5cf6;
 }
