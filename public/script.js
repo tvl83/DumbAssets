@@ -29,6 +29,10 @@ const subAssetModal = document.getElementById('subAssetModal');
 const assetForm = document.getElementById('assetForm');
 const subAssetForm = document.getElementById('subAssetForm');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
+const sidebar = document.querySelector('.sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const mainContent = document.querySelector('.main-content');
+const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
 
 // Utility Functions
 function generateId() {
@@ -474,6 +478,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             assetDetails.appendChild(section);
         }
     }
+    handleSidebarNav();
 }
 
 function renderSubAssets(parentAssetId) {
@@ -1014,4 +1019,42 @@ document.addEventListener('DOMContentLoaded', () => {
             closeSubAssetModal();
         }
     });
-}); 
+});
+
+function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'none';
+    if (sidebarToggle) sidebarToggle.style.display = 'block';
+}
+function openSidebar() {
+    if (sidebar) sidebar.classList.add('open');
+    if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'block';
+    if (sidebarToggle) sidebarToggle.style.display = 'none';
+}
+
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        if (sidebar.classList.contains('open')) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+}
+if (sidebarCloseBtn) {
+    sidebarCloseBtn.addEventListener('click', () => {
+        closeSidebar();
+    });
+}
+// Close sidebar when clicking outside (on main content) on mobile
+if (mainContent) {
+    mainContent.addEventListener('click', () => {
+        if (window.innerWidth <= 768) closeSidebar();
+    });
+}
+// Optionally close sidebar on navigation
+function handleSidebarNav() {
+    if (window.innerWidth <= 768) closeSidebar();
+}
+// Call handleSidebarNav after asset/sub-asset click
+// In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav(); 
