@@ -712,6 +712,7 @@ input, select, textarea {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .sidebar-toggle {
+        display: block !important;
         position: static !important;
         top: unset !important;
         left: unset !important;
@@ -1073,4 +1074,8 @@ input, select, textarea {
     .header-row h1#siteTitle {
         font-size: 1.25rem;
     }
+}
+
+.sidebar-toggle {
+    display: none;
 }

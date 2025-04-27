@@ -12,7 +12,7 @@ This guide will help you customize the boilerplate for your project. Follow thes
 The PIN environment variable is derived from your package.json name. 
 
 1. Open `.env` and `.env.example`
-2. Replace `DUMB_BOILERPLATE_PIN` with your project's PIN variable:
+2. Replace `DUMBASSETS_PIN` with your project's PIN variable:
    - Convert package name to SCREAMING_SNAKE_CASE
    - Example: "my-secure-dashboard" becomes `MY_SECURE_DASHBOARD_PIN`
 
@@ -26,7 +26,7 @@ You can use your editor's find/replace functionality to update all instances:
 | Find | Replace With | Description |
 |------|-------------|-------------|
 | `dumb-boilerplate` | `your-project-name` | Package name (kebab-case) |
-| `DUMB_BOILERPLATE_PIN` | `YOUR_PROJECT_PIN` | ENV variable (SCREAMING_SNAKE_CASE) |
+| `DUMBASSETS_PIN` | `YOUR_PROJECT_PIN` | ENV variable (SCREAMING_SNAKE_CASE) |
 | `DumbTitle` | `Your Site Title` | Default site title |
 
 ## 5. Optional Customization
