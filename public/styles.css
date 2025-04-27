@@ -1,0 +1,260 @@
+:root {
+    /* Light theme variables */
+    --primary: #2196F3;
+    --primary-hover: #1976D2;
+    --background: #f5f5f5;
+    --container: white;
+    --text: #333;
+    --border: #ccc;
+    --shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --transition: 0.2s ease;
+}
+
+[data-theme="dark"] {
+    --background: #1a1a1a;
+    --container: #2d2d2d;
+    --text: white;
+    --border: #404040;
+    --shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    transition: background var(--transition), color var(--transition);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main content */
+main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+/* Container styling */
+.container {
+    position: relative;
+    background: var(--container);
+    padding: 3rem 1.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    width: calc(100% - 2rem);
+    max-width: 800px;
+    min-height: calc(100vh - 4rem);
+    transition: background var(--transition), box-shadow var(--transition);
+    margin: 1rem auto;
+}
+
+/* Form styling */
+form {
+    position: relative;
+    background: var(--container);
+    padding: 3rem 1.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    width: calc(100% - 2rem);
+    max-width: 400px;
+    transition: background var(--transition), box-shadow var(--transition);
+    text-align: center;
+    margin: 1rem auto;
+    transform: translateY(-10%);
+}
+
+/* Theme toggle */
+#themeToggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color var(--transition);
+}
+
+#themeToggle:hover {
+    background: rgba(128, 128, 128, 0.1);
+}
+
+#themeToggle svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--text);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke var(--transition);
+}
+
+[data-theme="light"] .moon {
+    display: block;
+}
+
+[data-theme="light"] .sun {
+    display: none;
+}
+
+[data-theme="dark"] .moon {
+    display: none;
+}
+
+[data-theme="dark"] .sun {
+    display: block;
+}
+
+/* Headings */
+h1 {
+    font-size: 2rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+    text-align: center;
+}
+
+h2 {
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin-bottom: 2rem;
+    color: var(--text);
+    opacity: 0.7;
+    text-align: center;
+}
+
+/* PIN input styling */
+.pin-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin: 2rem 0;
+    padding: 0 0.5rem;
+}
+
+.pin-input-container input.pin-input {
+    width: 44px;
+    height: 44px;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 500;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--container);
+    color: var(--text);
+    transition: all var(--transition);
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.pin-input-container input.pin-input::-webkit-outer-spin-button,
+.pin-input-container input.pin-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.pin-input-container input.pin-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+}
+
+.pin-input-container input.pin-input.has-value {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    color: white;
+}
+
+.pin-error {
+    color: #ff4444;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    display: none;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity var(--transition), transform var(--transition);
+}
+
+.pin-error[aria-hidden="false"] {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Credit styling */
+.dumbware-credit {
+    position: fixed;
+    bottom: 4px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75em;
+    opacity: 0.5;
+    padding: 8px;
+    z-index: 100;
+    pointer-events: none;
+    margin: 0;
+}
+
+.dumbware-credit a {
+    color: inherit;
+    text-decoration: none;
+    pointer-events: auto;
+}
+
+.dumbware-credit a:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+    form, .container {
+        padding: 3rem 0.75rem 1.5rem;
+        width: calc(100% - 1rem);
+        margin: 0.5rem auto;
+    }
+
+    .pin-input-container {
+        gap: 0.4rem;
+        padding: 0;
+    }
+
+    .pin-input-container input.pin-input {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 320px) {
+    .pin-input-container input.pin-input {
+        width: 32px;
+        height: 32px;
+    }
+}
