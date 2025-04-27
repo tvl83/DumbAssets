@@ -861,8 +861,70 @@ input, select, textarea {
     }
 }
 
+.header-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.header-row h1#siteTitle {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 500;
+    color: var(--text);
+    text-align: center;
+    justify-self: center;
+    grid-column: 2;
+}
+
+.header-row > #themeToggle {
+    justify-self: end;
+    grid-column: 3;
+}
+
 .header-row > #sidebarToggle {
-    margin-right: 0.5rem;
+    justify-self: start;
+    grid-column: 1;
+}
+
+.header-row > .header-spacer {
+    grid-column: 1;
+    display: block;
+}
+
+.sidebar-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .header-row {
+        grid-template-columns: auto 1fr auto;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .header-row h1#siteTitle {
+        font-size: 1.25rem;
+        grid-column: 2;
+    }
+    .sidebar-toggle {
+        display: block !important;
+        grid-column: 1;
+    }
+    .header-row > .header-spacer {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .sidebar-toggle {
+        display: none !important;
+    }
+    .header-row > .header-spacer {
+        display: block;
+    }
 }
 
 .header-row > #themeToggle {
@@ -899,7 +961,6 @@ input, select, textarea {
         display: inline;
     }
     .add-sub-asset-btn {
-        /* Hide text, show only + */
         text-indent: -9999px;
         overflow: hidden;
         width: 44px;
@@ -1045,37 +1106,4 @@ input, select, textarea {
 }
 .type-pill.subcomponent {
     background: #8b5cf6;
-}
-
-/* Header row for site title and theme toggle */
-.header-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 1rem;
-    gap: 1rem;
-}
-
-.header-row h1#siteTitle {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 500;
-    color: var(--text);
-    text-align: center;
-}
-
-@media (max-width: 768px) {
-    .header-row {
-        grid-template-columns: auto 1fr auto;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-    .header-row h1#siteTitle {
-        font-size: 1.25rem;
-    }
-}
-
-.sidebar-toggle {
-    display: none;
 }
