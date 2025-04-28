@@ -5,6 +5,7 @@
 
 // --- SECURITY & CONFIG IMPORTS ---
 require('dotenv').config();
+console.log('process.env:', process.env);
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
