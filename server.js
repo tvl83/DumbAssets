@@ -87,7 +87,7 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "blob:"],
         },
     },
 }));
