@@ -62,6 +62,12 @@ main {
     padding: 1rem;
 }
 
+/* Login page specific styles */
+#pinForm {
+    margin-top: 20vh;  /* Push the form down by 20% of viewport height */
+    margin-bottom: auto;
+}
+
 /* Container styling */
 .container {
     position: relative;
