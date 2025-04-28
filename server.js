@@ -234,8 +234,8 @@ app.use((req, res, next) => {
 });
 
 // Protected static file serving (only accessible after authentication)
-app.use('/Images', express.static(path.join(__dirname, 'data', 'Images')));
-app.use('/Receipts', express.static(path.join(__dirname, 'data', 'Receipts')));
+app.use('/Images', authMiddleware, express.static(path.join(__dirname, 'data', 'Images')));
+app.use('/Receipts', authMiddleware, express.static(path.join(__dirname, 'data', 'Receipts')));
 
 // --- ASSET MANAGEMENT (existing code preserved) ---
 // File paths
