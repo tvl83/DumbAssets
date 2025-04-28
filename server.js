@@ -136,11 +136,79 @@ app.get(BASE_PATH + '/config.js', (req, res) => {
         };
     `);
 });
+
+// Unprotected routes and files (accessible without login)
+app.get(BASE_PATH + '/login', (req, res) => {
+    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
+    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get(BASE_PATH + '/pin-length', (req, res) => {
+    if (!PIN || PIN.trim() === '') return res.json({ length: 0 });
+    res.json({ length: PIN.length });
+});
+
+app.post(BASE_PATH + '/verify-pin', (req, res) => {
+    debugLog('PIN verification attempt from IP:', req.ip);
+    if (!PIN || PIN.trim() === '') {
+        req.session.authenticated = true;
+        return res.status(200).json({ success: true });
+    }
+    const ip = req.ip;
+    if (isLockedOut(ip)) {
+        const attempts = loginAttempts.get(ip);
+        const timeLeft = Math.ceil((LOCKOUT_TIME - (Date.now() - attempts.lastAttempt)) / 1000 / 60);
+        return res.status(429).json({ error: `Too many attempts. Please try again in ${timeLeft} minutes.` });
+    }
+    const { pin } = req.body;
+    if (!pin || typeof pin !== 'string') {
+        return res.status(400).json({ error: 'Invalid PIN format' });
+    }
+    const delay = crypto.randomInt(50, 150);
+    setTimeout(() => {
+        if (verifyPin(PIN, pin)) {
+            resetAttempts(ip);
+            req.session.authenticated = true;
+            res.cookie(`${projectName}_PIN`, pin, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 24 * 60 * 60 * 1000
+            });
+            res.status(200).json({ success: true });
+        } else {
+            recordAttempt(ip);
+            const attempts = loginAttempts.get(ip);
+            const attemptsLeft = MAX_ATTEMPTS - attempts.count;
+            res.status(401).json({ error: 'Invalid PIN', attemptsLeft: Math.max(0, attemptsLeft) });
+        }
+    }, delay);
+});
+
+// Login page static assets (need to be accessible without authentication)
 app.use(BASE_PATH + '/styles.css', express.static('public/styles.css'));
 app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
+
+// --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
+app.use((req, res, next) => {
+    // Skip auth for login page and login-related resources
+    if (req.path === BASE_PATH + '/login' || 
+        req.path === BASE_PATH + '/pin-length' || 
+        req.path === BASE_PATH + '/verify-pin' ||
+        req.path === BASE_PATH + '/styles.css' ||
+        req.path === BASE_PATH + '/script.js' ||
+        req.path === BASE_PATH + '/config.js') {
+        return next();
+    }
+    
+    // Apply authentication middleware
+    authMiddleware(req, res, next);
+});
+
+// Protected static file serving (only accessible after authentication)
 app.use('/Images', express.static(path.join(__dirname, 'data', 'Images')));
 app.use('/Receipts', express.static(path.join(__dirname, 'data', 'Receipts')));
-app.use(express.static('public'));
 
 // --- ASSET MANAGEMENT (existing code preserved) ---
 // File paths
@@ -489,57 +557,6 @@ app.post('/api/delete-file', (req, res) => {
     });
 });
 
-// --- LOGIN & PIN ROUTES ---
-app.get(BASE_PATH + '/login', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
-    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-app.get(BASE_PATH + '/pin-length', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.json({ length: 0 });
-    res.json({ length: PIN.length });
-});
-app.post(BASE_PATH + '/verify-pin', (req, res) => {
-    debugLog('PIN verification attempt from IP:', req.ip);
-    if (!PIN || PIN.trim() === '') {
-        req.session.authenticated = true;
-        return res.status(200).json({ success: true });
-    }
-    const ip = req.ip;
-    if (isLockedOut(ip)) {
-        const attempts = loginAttempts.get(ip);
-        const timeLeft = Math.ceil((LOCKOUT_TIME - (Date.now() - attempts.lastAttempt)) / 1000 / 60);
-        return res.status(429).json({ error: `Too many attempts. Please try again in ${timeLeft} minutes.` });
-    }
-    const { pin } = req.body;
-    if (!pin || typeof pin !== 'string') {
-        return res.status(400).json({ error: 'Invalid PIN format' });
-    }
-    const delay = crypto.randomInt(50, 150);
-    setTimeout(() => {
-        if (verifyPin(PIN, pin)) {
-            resetAttempts(ip);
-            req.session.authenticated = true;
-            res.cookie(`${projectName}_PIN`, pin, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 24 * 60 * 60 * 1000
-            });
-            res.status(200).json({ success: true });
-        } else {
-            recordAttempt(ip);
-            const attempts = loginAttempts.get(ip);
-            const attemptsLeft = MAX_ATTEMPTS - attempts.count;
-            res.status(401).json({ error: 'Invalid PIN', attemptsLeft: Math.max(0, attemptsLeft) });
-        }
-    }, delay);
-});
-
-// --- PROTECT API & APP ROUTES ---
-app.use(BASE_PATH + '/api', authMiddleware);
-app.use(BASE_PATH + '/', authMiddleware);
-
 // --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
 app.get('*', (req, res) => {
     if (!PIN || PIN.trim() === '' || req.session.authenticated) {
@@ -569,5 +586,5 @@ app.listen(PORT, () => {
         debug: DEBUG
     });
     console.log(`Server running on port ${PORT}`);
-});
+}); 
 // --- END --- 
