@@ -118,8 +118,19 @@ const authMiddleware = (req, res, next) => {
     debugLog('Auth check for path:', req.path, 'Method:', req.method);
     if (!PIN || PIN.trim() === '') return next();
     if (!req.session.authenticated) {
-        debugLog('Auth failed - No valid session, redirecting to login');
-        return res.redirect(BASE_PATH + '/login');
+        debugLog('Auth failed - No valid session');
+        
+        // Check if this is an API request
+        if (req.path.startsWith('/api/') || req.xhr) {
+            // Return JSON error for API requests
+            return res.status(401).json({ 
+                error: 'Authentication required', 
+                redirectTo: BASE_PATH + '/login'
+            });
+        } else {
+            // Redirect to login for page requests
+            return res.redirect(BASE_PATH + '/login');
+        }
     }
     debugLog('Auth successful - Valid session found');
     next();

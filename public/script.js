@@ -58,7 +58,15 @@ function formatCurrency(amount) {
 async function loadAssets() {
     try {
         const response = await fetch('/api/assets');
-        if (!response.ok) throw new Error('Failed to load assets');
+        if (!response.ok) {
+            // If unauthorized, redirect to login
+            if (response.status === 401) {
+                const data = await response.json();
+                window.location.href = data.redirectTo || '/login';
+                return;
+            }
+            throw new Error('Failed to load assets');
+        }
         assets = await response.json();
         renderAssetList();
     } catch (error) {
@@ -72,7 +80,15 @@ async function loadAssets() {
 async function loadSubAssets() {
     try {
         const response = await fetch('/api/subassets');
-        if (!response.ok) throw new Error('Failed to load sub-assets');
+        if (!response.ok) {
+            // If unauthorized, redirect to login
+            if (response.status === 401) {
+                const data = await response.json();
+                window.location.href = data.redirectTo || '/login';
+                return;
+            }
+            throw new Error('Failed to load sub-assets');
+        }
         subAssets = await response.json();
     } catch (error) {
         console.error('Error loading sub-assets:', error);

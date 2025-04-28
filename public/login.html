@@ -35,6 +35,148 @@
     <div class="dumbware-credit">
         Built by <a href="https://dumbware.io" target="_blank" rel="noopener noreferrer">DumbWare</a>
     </div>
-    <script src="script.js"></script>
+    
+    <script>
+        // PIN input functionality
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('themeToggle');
+            const htmlElement = document.documentElement;
+            
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = htmlElement.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                htmlElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+            
+            // Set saved theme if available
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                htmlElement.setAttribute('data-theme', savedTheme);
+            }
+            
+            // Set site title from config.js if available
+            if (window.appConfig && window.appConfig.siteTitle) {
+                document.getElementById('siteTitle').textContent = window.appConfig.siteTitle;
+                document.getElementById('pageTitle').textContent = window.appConfig.siteTitle;
+            }
+            
+            // Get PIN length from server
+            const pinContainer = document.querySelector('.pin-input-container');
+            const pinForm = document.getElementById('pinForm');
+            const errorDisplay = document.querySelector('.pin-error');
+            let pinLength = 4; // Default
+            
+            try {
+                // Get actual pin length from server
+                const response = await fetch('pin-length');
+                if (response.ok) {
+                    const data = await response.json();
+                    pinLength = data.length || 4;
+                }
+            } catch (error) {
+                console.error('Error fetching PIN length:', error);
+            }
+            
+            // Create PIN inputs
+            for (let i = 0; i < pinLength; i++) {
+                const input = document.createElement('input');
+                input.type = 'password';
+                input.maxLength = 1;
+                input.className = 'pin-input';
+                input.name = `pin${i}`;
+                input.setAttribute('inputmode', 'numeric');
+                input.setAttribute('pattern', '[0-9]*');
+                input.required = true;
+                
+                input.addEventListener('input', function(e) {
+                    // Handle input changes
+                    if (this.value) {
+                        this.classList.add('has-value');
+                        // Auto-advance to next input
+                        const nextInput = this.nextElementSibling;
+                        if (nextInput && nextInput.classList.contains('pin-input')) {
+                            nextInput.focus();
+                        }
+                    } else {
+                        this.classList.remove('has-value');
+                    }
+                    
+                    // Hide error when user starts typing again
+                    errorDisplay.setAttribute('aria-hidden', 'true');
+                });
+                
+                input.addEventListener('keydown', function(e) {
+                    // Handle backspace navigation
+                    if (e.key === 'Backspace' && !this.value) {
+                        const prevInput = this.previousElementSibling;
+                        if (prevInput && prevInput.classList.contains('pin-input')) {
+                            prevInput.focus();
+                            prevInput.value = '';
+                            prevInput.classList.remove('has-value');
+                            e.preventDefault();
+                        }
+                    }
+                });
+                
+                pinContainer.appendChild(input);
+            }
+            
+            // Focus first input on page load
+            setTimeout(() => {
+                const firstInput = pinContainer.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+            
+            // Handle form submission
+            pinForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Collect PIN from inputs
+                const inputs = Array.from(pinContainer.querySelectorAll('input'));
+                const pin = inputs.map(input => input.value).join('');
+                
+                try {
+                    const response = await fetch('verify-pin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ pin })
+                    });
+                    
+                    if (response.ok) {
+                        // Successful login, redirect to main app
+                        window.location.href = '/';
+                    } else {
+                        // Show error
+                        errorDisplay.setAttribute('aria-hidden', 'false');
+                        
+                        // Clear inputs and focus first one
+                        inputs.forEach(input => {
+                            input.value = '';
+                            input.classList.remove('has-value');
+                        });
+                        inputs[0].focus();
+                        
+                        // If we have more info about the error, show it
+                        try {
+                            const errorData = await response.json();
+                            if (errorData.error) {
+                                errorDisplay.textContent = errorData.error;
+                            }
+                        } catch (e) {
+                            // Ignore parsing error
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error verifying PIN:', error);
+                    errorDisplay.textContent = 'Error connecting to server. Please try again.';
+                    errorDisplay.setAttribute('aria-hidden', 'false');
+                }
+            });
+        });
+    </script>
 </body>
 </html> 
