@@ -49,7 +49,7 @@ const BASE_PATH = (() => {
     }
 })();
 const projectName = require('./package.json').name.toUpperCase().replace(/-/g, '_');
-const PIN = process.env[`${projectName}_PIN`];
+const PIN = process.env.DUMBASSETS_PIN;
 console.log('PIN:', PIN);
 if (!PIN || PIN.trim() === '') {
     debugLog('PIN protection is disabled');
