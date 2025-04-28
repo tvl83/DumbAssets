@@ -39,28 +39,7 @@
     <script>
         // PIN input functionality
         document.addEventListener('DOMContentLoaded', async function() {
-            // Theme toggle functionality
-            const themeToggle = document.getElementById('themeToggle');
-            const htmlElement = document.documentElement;
-            
-            themeToggle.addEventListener('click', function() {
-                const currentTheme = htmlElement.getAttribute('data-theme') || 'light';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                htmlElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-            });
-            
-            // Set saved theme if available
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                htmlElement.setAttribute('data-theme', savedTheme);
-            }
-            
-            // Set site title from config.js if available
-            if (window.appConfig && window.appConfig.siteTitle) {
-                document.getElementById('siteTitle').textContent = window.appConfig.siteTitle;
-                document.getElementById('pageTitle').textContent = window.appConfig.siteTitle;
-            }
+            // Theme handled by config.js
             
             // Get PIN length from server
             const pinContainer = document.querySelector('.pin-input-container');

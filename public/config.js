@@ -6,6 +6,26 @@
 // Site title configuration from environment variable or default
 const SITE_TITLE = 'DumbAssets';
 
+// Cookie helper functions
+function setCookie(name, value, days = 365) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+  const expires = "expires=" + d.toUTCString();
+  document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict";
+}
+
+function getCookie(name) {
+  const cookieName = name + "=";
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    let cookie = cookies[i].trim();
+    if (cookie.indexOf(cookieName) === 0) {
+      return cookie.substring(cookieName.length, cookie.length);
+    }
+  }
+  return "";
+}
+
 // Update page title and site title elements
 document.addEventListener('DOMContentLoaded', () => {
   const pageTitle = document.getElementById('pageTitle');
@@ -18,16 +38,29 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
 });
 
-// Initialize theme based on localStorage or system preference
+// Initialize theme based on cookie or system preference
 function initTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const savedTheme = getCookie('theme');
+  const prefersDarkMedia = window.matchMedia('(prefers-color-scheme: dark)');
+  const prefersDark = prefersDarkMedia.matches;
   
+  // Set initial theme
   if (savedTheme) {
+    // User has explicitly chosen a theme
     document.documentElement.setAttribute('data-theme', savedTheme);
-  } else if (prefersDark) {
-    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    // Use system preference
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
   }
+  
+  // Listen for system preference changes
+  prefersDarkMedia.addEventListener('change', (e) => {
+    // Only update theme automatically if user hasn't set a preference
+    if (!getCookie('theme')) {
+      const newTheme = e.matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+  });
   
   // Set up theme toggle button event listener
   const themeToggle = document.getElementById('themeToggle');
@@ -42,5 +75,5 @@ function toggleTheme() {
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   
   document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
+  setCookie('theme', newTheme);
 } 
