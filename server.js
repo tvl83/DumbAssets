@@ -85,6 +85,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'"],
         },
@@ -137,15 +138,30 @@ const authMiddleware = (req, res, next) => {
 };
 
 // --- STATIC FILES & CONFIG ---
-app.get(BASE_PATH + '/config.js', (req, res) => {
+app.get(BASE_PATH + '/config.js', async (req, res) => {
     debugLog('Serving config.js with basePath:', BASE_PATH);
-    res.type('application/javascript').send(`
+    
+    // Set proper MIME type
+    res.setHeader('Content-Type', 'application/javascript');
+    
+    // First send the dynamic config
+    res.write(`
         window.appConfig = {
             basePath: '${BASE_PATH}',
             debug: ${DEBUG},
             siteTitle: '${process.env.SITE_TITLE || 'DumbTitle'}'
         };
     `);
+    
+    // Then append the static config.js content
+    try {
+        const staticConfig = await fs.promises.readFile(path.join(__dirname, 'public', 'config.js'), 'utf8');
+        res.write('\n\n' + staticConfig);
+    } catch (error) {
+        console.error('Error reading static config.js:', error);
+    }
+    
+    res.end();
 });
 
 // Unprotected routes and files (accessible without login)
