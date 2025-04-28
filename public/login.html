@@ -94,10 +94,21 @@
                     // Handle input changes
                     if (this.value) {
                         this.classList.add('has-value');
+                        
                         // Auto-advance to next input
                         const nextInput = this.nextElementSibling;
                         if (nextInput && nextInput.classList.contains('pin-input')) {
                             nextInput.focus();
+                        } else {
+                            // If this is the last input and it has a value, submit the form
+                            const allInputs = Array.from(pinContainer.querySelectorAll('input'));
+                            const allFilled = allInputs.every(input => input.value.trim() !== '');
+                            if (allFilled) {
+                                // Short delay to show the filled input before submitting
+                                setTimeout(() => {
+                                    pinForm.dispatchEvent(new Event('submit'));
+                                }, 300);
+                            }
                         }
                     } else {
                         this.classList.remove('has-value');
