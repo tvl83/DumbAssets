@@ -17,10 +17,14 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const XLSX = require('xlsx');
 const { sendNotification } = require('./src/services/notifications/appriseNotifier');
+const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DEBUG = process.env.DEBUG === 'TRUE';
+
+// Set timezone from environment variable or default to America/Chicago
+process.env.TZ = process.env.TZ || 'America/Chicago';
 
 function debugLog(...args) {
     if (DEBUG) {
@@ -856,6 +860,9 @@ setInterval(() => {
         }
     }
 }, 60000);
+
+// Warranty expiration notification cron
+startWarrantyCron();
 
 // --- START SERVER ---
 app.listen(PORT, () => {

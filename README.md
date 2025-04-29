@@ -1,80 +1,151 @@
 # DumbAssets
 
-A simple, powerful asset tracker for keeping track of your physical assets and their components.
+a stupid simple asset tracker for keeping track of your physical assets and their components.
 
-## Features
+---
 
-- Track assets with detailed information (model numbers, serial numbers, warranty info)
-- Add components to assets with up to two levels of sub-components
-- Upload and store photos of assets and receipts
-- Search for assets by name, model number, serial number, or description
-- Hierarchical organization of components
+## Table of Contents
 
-## Getting Started
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Configuration](#configuration)
+- [Security](#security)
+- [Technical Details](#technical-details)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 14.x or higher
-- npm or yarn
+- Docker (recommended)
+- Node.js >=14.0.0 (for local development)
 
-### Installation
+### Option 1: Docker (For Dummies)
 
-1. Clone the repository
+```sh
+docker run -p 3000:3000 -v ./data:/app/data dumbwareio/dumbassets:latest
 ```
+
+1. Go to [http://localhost:3000](http://localhost:3000)
+2. Add assets, upload photos/receipts, and track warranties
+3. Celebrate how dumb easy this was
+
+### Option 2: Docker Compose (For Dummies who like customizing)
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  dumbassets:
+    image: dumbwareio/dumbassets:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - ./data:/app/data
+    environment:
+      DUMBASSETS_PIN: 1234
+      APPRISE_URL: https://your.apprise.url
+      TZ: America/Chicago
+      # ...other env vars
+```
+
+Then run:
+
+```sh
+docker compose up -d
+```
+
+1. Go to [http://localhost:3000](http://localhost:3000)
+2. Add and manage your assets
+
+### Option 3: Running Locally (For Developers)
+
+```sh
 git clone https://github.com/yourusername/DumbAssets.git
 cd DumbAssets
-```
-
-2. Install dependencies
-```
 npm install
-```
-
-3. Start the server
-```
 npm start
 ```
 
-4. Open your browser and navigate to `http://localhost:3000`
+Open your browser to [http://localhost:3000](http://localhost:3000)
 
-## Usage
+---
 
-### Managing Assets
+## Features
 
-- Click "Add Asset" to create a new asset
-- Fill in the asset details including optional photo and receipt
-- Click on an asset in the sidebar to view its details
-- Use the Edit and Delete buttons to modify or remove assets
+- 🚀 Track assets with detailed info (model, serial, warranty, etc.)
+- 🧩 Add components and sub-components
+- 🖼️ Upload and store photos and receipts
+- 🔍 Search by name, model, serial, or description
+- 🏷️ Hierarchical organization of components
+- 📅 Warranty expiration notifications (configurable)
+- 🔔 Apprise notification integration
+- 🌗 Light/Dark mode with theme persistence
+- 🛡️ PIN authentication with brute force protection
+- 📦 Docker support for easy deployment
 
-### Managing Components
+---
 
-- Select an asset first
-- Click "Add Component" to add a component to the selected asset
-- Components can have their own details, photos, and receipts
-- First-level components can have sub-components (second level)
+## Configuration
 
-### Searching
+### Environment Variables
 
-- Use the search bar in the sidebar to find assets by name, model number, serial number, or description
+| Variable         | Description                                 | Default            | Required |
+|------------------|---------------------------------------------|--------------------|----------|
+| PORT             | Server port                                 | 3000               | No       |
+| DUMBASSETS_PIN   | PIN protection (4+ digits)                  | None               | No       |
+| APPRISE_URL      | Apprise URL for notifications               | None               | No       |
+| TZ               | Container timezone                          | America/Chicago    | No       |
+| BASE_URL         | Base URL for the application                | http://localhost   | No       |
+| SESSION_SECRET   | Session secret for cookies                  | random             | No       |
 
-## Data Storage
+### Data Storage
 
 All data is stored in JSON files in the `/data` directory:
 
-- `/data/Assets.json` - Contains all asset data
-- `/data/SubAssets.json` - Contains all component data
-- `/data/Images` - Stores uploaded asset and component photos
-- `/data/Receipts` - Stores uploaded receipts
+- `/data/Assets.json` - All asset data
+- `/data/SubAssets.json` - All component data
+- `/data/Images` - Uploaded photos
+- `/data/Receipts` - Uploaded receipts
+- `/data/config.json` - Notification and app config
 
-## Built With
+---
 
-- [Express](https://expressjs.com/) - Web framework
-- [Multer](https://github.com/expressjs/multer) - File upload handling
+## Security
 
-## License
+- Variable-length PIN support (4+ digits)
+- Constant-time PIN comparison
+- Brute force protection (lockout after too many attempts)
+- Secure session cookies
+- No client-side PIN storage
+- Rate limiting
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
 
-## Acknowledgments
+## Technical Details
 
-- Built by [DumbWare](https://dumbware.io) 
+- **Backend:** Node.js (>=14.0.0) with Express
+- **Frontend:** Vanilla JavaScript (ES6+)
+- **Container:** Docker with Alpine base
+- **Notifications:** Apprise integration (via Python)
+- **Uploads:** Multer for file handling
+- **Scheduling:** node-cron for warranty notifications
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+See the Development Guide for local setup and guidelines.
+
+---
+
+Made with ❤️ by DumbWare.io 
