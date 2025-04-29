@@ -634,8 +634,10 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
             serial: mappings.serial !== '' ? headers[parseInt(mappings.serial, 10)] : '',
             purchaseDate: mappings.purchaseDate !== '' ? headers[parseInt(mappings.purchaseDate, 10)] : '',
             purchasePrice: mappings.purchasePrice !== '' ? headers[parseInt(mappings.purchasePrice, 10)] : '',
-            location: mappings.location !== '' ? headers[parseInt(mappings.location, 10)] : '',
-            notes: mappings.notes !== '' ? headers[parseInt(mappings.notes, 10)] : ''
+            notes: mappings.notes !== '' ? headers[parseInt(mappings.notes, 10)] : '',
+            url: mappings.url !== '' ? headers[parseInt(mappings.url, 10)] : '',
+            warranty: mappings.warranty !== '' ? headers[parseInt(mappings.warranty, 10)] : '',
+            warrantyExpiration: mappings.warrantyExpiration !== '' ? headers[parseInt(mappings.warrantyExpiration, 10)] : ''
         };
         console.log("Column name mappings:", columnMappings);
         
@@ -653,15 +655,15 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
                 purchaseDate: columnMappings.purchaseDate ? (row[columnMappings.purchaseDate] || '') : '',
                 price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',
-                location: columnMappings.location ? (row[columnMappings.location] || '') : '',
                 description: columnMappings.notes ? (row[columnMappings.notes] || '') : '',
+                link: columnMappings.url ? (row[columnMappings.url] || '') : '',
                 photoPath: null,
                 receiptPath: null,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 warranty: {
-                    scope: '',
-                    expirationDate: ''
+                    scope: columnMappings.warranty ? (row[columnMappings.warranty] || '') : '',
+                    expirationDate: columnMappings.warrantyExpiration ? (row[columnMappings.warrantyExpiration] || '') : ''
                 }
             };
             return asset;
@@ -692,6 +694,45 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
     } catch (error) {
         console.error('Import error:', error);
         res.status(500).json({ error: 'Failed to import assets: ' + error.message });
+    }
+});
+
+// Get notification settings
+app.get('/api/notification-settings', authMiddleware, (req, res) => {
+    try {
+        const configPath = path.join(__dirname, 'data', 'config.json');
+        if (!fs.existsSync(configPath)) {
+            // Default settings if config does not exist
+            return res.json({
+                notifyAdd: true,
+                notifyDelete: false,
+                notifyEdit: true,
+                notify1Month: true,
+                notify2Week: false,
+                notify7Day: true,
+                notify3Day: false
+            });
+        }
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        res.json(config.notificationSettings || {});
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to load notification settings' });
+    }
+});
+
+// Save notification settings
+app.post('/api/notification-settings', authMiddleware, express.json(), (req, res) => {
+    try {
+        const configPath = path.join(__dirname, 'data', 'config.json');
+        let config = {};
+        if (fs.existsSync(configPath)) {
+            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+        config.notificationSettings = req.body;
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save notification settings' });
     }
 });
 

@@ -340,11 +340,10 @@ h2 {
 }
 
 .asset-item {
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease;
 }
 
 .asset-item:hover {
@@ -352,8 +351,23 @@ h2 {
 }
 
 .asset-item.active {
-    background-color: var(--primary-color);
-    color: white;
+    background-color: var(--active-color);
+}
+
+.asset-item-name {
+    font-weight: 500;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.asset-item-model {
+    font-size: 0.9em;
+    color: var(--text-secondary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .add-asset-btn {
@@ -601,17 +615,33 @@ h2 {
     overflow-y: auto;
 }
 
-.close-btn {
-    position: absolute;
-    right: 1.5rem;
-    top: 1.5rem;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--secondary-color);
+.modal-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.close-btn:hover {
+.modal-header .close {
+    position: absolute;
+    top: 0.75rem;
+    right: 1.25rem;
+    font-size: 2rem;
+    font-weight: 600;
     color: var(--text-color);
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25em 0.5em;
+    z-index: 2;
+    transition: color 0.2s;
+}
+
+.modal-header .close:hover {
+    color: var(--primary-color);
 }
 
 #modalTitle, #subModalTitle {
@@ -1208,4 +1238,115 @@ input, select, textarea {
 .import-actions {
     margin-top: 20px;
     text-align: right;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notification-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+    color: var(--text-color);
+    position: relative;
+}
+.notification-btn svg {
+    width: 1.7em;
+    height: 1.7em;
+    display: block;
+}
+.notification-btn:hover,
+.notification-btn:focus {
+    color: var(--primary-color);
+}
+
+/* Notification Modal Styles */
+#notificationModal .modal-content {
+    max-width: 420px;
+    padding: 0;
+}
+#notificationModal .modal-header {
+    padding-bottom: 0.5em;
+}
+#notificationModal .modal-header h2 {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 auto;
+    text-align: center;
+    flex: 1;
+}
+#notificationModal .modal-body {
+    padding: 1.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#notificationModal #notificationForm {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+#notificationModal fieldset {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75em 1em 0.5em 1.5em;
+    margin-bottom: 1em;
+    min-width: 0;
+}
+#notificationModal legend {
+    font-weight: 600;
+    font-size: 1.05em;
+    color: var(--primary-color);
+}
+#notificationModal label {
+    display: flex;
+    align-items: center;
+    font-size: 1em;
+    margin-bottom: 0.5em;
+    cursor: pointer;
+    gap: 0.5em;
+    padding-left: 0.1em;
+}
+#notificationModal label input[type="checkbox"] {
+    margin: 0;
+    accent-color: var(--primary-color);
+    width: 1.1em;
+    height: 1.1em;
+}
+#notificationModal .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 1.2em;
+}
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 2.5rem;
+    transform: translateX(-50%);
+    background: var(--primary-color);
+    color: #fff;
+    padding: 0.85em 2em;
+    border-radius: 2em;
+    font-size: 1.1em;
+    font-weight: 500;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2000;
+    transition: opacity 0.3s, bottom 0.3s;
+}
+.toast.show {
+    opacity: 1;
+    pointer-events: auto;
+    bottom: 3.5rem;
 }

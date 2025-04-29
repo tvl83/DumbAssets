@@ -42,6 +42,14 @@ const selectedFileName = document.getElementById('selectedFileName');
 const startImportBtn = document.getElementById('startImportBtn');
 const columnSelects = document.querySelectorAll('.column-select');
 
+// Notification Settings UI Logic
+const notificationBtn = document.getElementById('notificationBtn');
+const notificationModal = document.getElementById('notificationModal');
+const notificationForm = document.getElementById('notificationForm');
+const saveNotificationSettings = document.getElementById('saveNotificationSettings');
+const cancelNotificationSettings = document.getElementById('cancelNotificationSettings');
+const notificationClose = notificationModal.querySelector('.close');
+
 // Utility Functions
 function generateId() {
     // Generate a 10-digit ID
@@ -226,112 +234,57 @@ async function deleteSubAsset(subAssetId) {
 }
 
 // Rendering Functions
-function renderAssetList(filterText = '') {
-    if (!assetList) return;
+function renderAssetList() {
+    const searchQuery = searchInput.value.toLowerCase();
+    const assetList = document.getElementById('assetList');
     assetList.innerHTML = '';
-    if (!filterText) {
-        // Show only main assets if not searching
-        if (assets.length === 0) {
-            assetList.innerHTML = `
-                <div class="empty-state">
-                    <p>No assets found. Add your first asset to get started.</p>
-                </div>
-            `;
-            return;
-        }
-        assets.forEach(asset => {
-            const assetItem = document.createElement('div');
-            assetItem.className = 'asset-item';
-            if (asset.id === selectedAssetId) {
-                assetItem.classList.add('active');
-            }
-            assetItem.innerHTML = `
-                <div class="asset-item-name">${asset.name}</div>
-                <div class="asset-item-details">
-                    ${asset.modelNumber ? `<span>${asset.modelNumber}</span>` : ''}
-                    ${asset.serialNumber ? `<span>#${asset.serialNumber}</span>` : ''}
-                </div>
-            `;
-            assetItem.addEventListener('click', () => {
-                renderAssetDetails(asset.id);
-            });
-            assetList.appendChild(assetItem);
-        });
+
+    if (assets.length === 0) {
+        assetList.innerHTML = '<div class="empty-state">No assets found</div>';
         return;
     }
-    // Search across assets, sub-assets, and sub-sub-assets
-    const results = [];
-    // Main assets
-    assets.forEach(asset => {
-        if (
-            asset.name.toLowerCase().includes(filterText.toLowerCase()) ||
-            (asset.modelNumber && asset.modelNumber.toLowerCase().includes(filterText.toLowerCase())) ||
-            (asset.serialNumber && asset.serialNumber.toLowerCase().includes(filterText.toLowerCase())) ||
-            (asset.description && asset.description.toLowerCase().includes(filterText.toLowerCase()))
-        ) {
-            results.push({
-                type: 'Asset',
-                label: asset.name,
-                context: '',
-                id: asset.id,
-                isSub: false
-            });
+
+    const filteredAssets = searchQuery
+        ? assets.filter(asset => 
+            asset.name?.toLowerCase().includes(searchQuery) || 
+            asset.modelNumber?.toLowerCase().includes(searchQuery) ||
+            asset.serialNumber?.toLowerCase().includes(searchQuery) ||
+            asset.location?.toLowerCase().includes(searchQuery))
+        : assets;
+
+    filteredAssets.forEach(asset => {
+        const assetItem = document.createElement('div');
+        assetItem.className = 'asset-item';
+        assetItem.dataset.id = asset.id; // Store ID in dataset
+        
+        // Set active class if this is the currently selected asset
+        if (selectedAssetId && asset.id === selectedAssetId) {
+            assetItem.classList.add('active');
         }
-    });
-    // Sub-assets and sub-sub-assets
-    subAssets.forEach(sub => {
-        const parentAsset = assets.find(a => a.id === sub.parentId);
-        if (
-            sub.name.toLowerCase().includes(filterText.toLowerCase()) ||
-            (sub.modelNumber && sub.modelNumber.toLowerCase().includes(filterText.toLowerCase())) ||
-            (sub.serialNumber && sub.serialNumber.toLowerCase().includes(filterText.toLowerCase())) ||
-            (sub.description && sub.description.toLowerCase().includes(filterText.toLowerCase()))
-        ) {
-            if (!sub.parentSubId) {
-                // First-level sub-asset
-                results.push({
-                    type: 'Component',
-                    label: sub.name,
-                    context: parentAsset ? `(under ${parentAsset.name})` : '',
-                    id: sub.id,
-                    isSub: true
-                });
-            } else {
-                // Sub-sub-asset
-                results.push({
-                    type: 'Sub-Component',
-                    label: sub.name,
-                    context: parentAsset ? `(under ${parentAsset.name})` : '',
-                    id: sub.id,
-                    isSub: true
-                });
-            }
-        }
-    });
-    if (results.length === 0) {
-        assetList.innerHTML = `<div class="empty-state"><p>No matching assets or components found.</p></div>`;
-        return;
-    }
-    results.forEach(result => {
-        const item = document.createElement('div');
-        item.className = 'asset-item';
-        let pillClass = '';
-        let pillLabel = '';
-        if (result.type === 'Asset') {
-            pillClass = 'asset'; pillLabel = 'Asset';
-        } else if (result.type === 'Component') {
-            pillClass = 'component'; pillLabel = 'Component';
-        } else if (result.type === 'Sub-Component') {
-            pillClass = 'subcomponent'; pillLabel = 'Sub-Component';
-        }
-        item.innerHTML = `
-            <span class="type-pill ${pillClass}">${pillLabel}</span>
-            <span>${result.label}</span> <span style="color:var(--secondary-color);font-size:0.95em;">${result.context}</span>
+        
+        // Format asset item with name and model only
+        assetItem.innerHTML = `
+            <div class="asset-item-name">${asset.name || 'Unnamed Asset'}</div>
+            ${asset.modelNumber ? `<div class="asset-item-model">${asset.modelNumber}</div>` : ''}
         `;
-        item.addEventListener('click', () => {
-            renderAssetDetails(result.id, result.isSub);
+            
+        assetItem.addEventListener('click', () => {
+            // Remove active class from all asset items
+            document.querySelectorAll('.asset-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to clicked item
+            assetItem.classList.add('active');
+
+            // Set selectedAssetId before rendering details
+            selectedAssetId = asset.id;
+            
+            renderAssetDetails(asset.id);
+            handleSidebarNav();
         });
-        assetList.appendChild(item);
+        
+        assetList.appendChild(assetItem);
     });
 }
 
@@ -354,12 +307,12 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         selectedSubAssetId = assetId;
     }
     
-    // Update active class in list
+    // Update active class in list using dataset.id instead of name
     if (!isSub) {
         const assetItems = assetList.querySelectorAll('.asset-item');
         assetItems.forEach(item => {
             item.classList.remove('active');
-            if (item.querySelector('.asset-item-name').textContent === asset.name) {
+            if (item.dataset.id === assetId) {
                 item.classList.add('active');
             }
         });
@@ -1145,6 +1098,24 @@ importFile.addEventListener('change', async (e) => {
             });
         });
         
+        // Also populate new selects
+        const urlColumn = document.getElementById('urlColumn');
+        const warrantyColumn = document.getElementById('warrantyColumn');
+        const warrantyExpirationColumn = document.getElementById('warrantyExpirationColumn');
+        [urlColumn, warrantyColumn, warrantyExpirationColumn].forEach(select => {
+            if (!select) return;
+            select.innerHTML = '<option value="">Select Column</option>';
+            headers.forEach((header, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = header;
+                select.appendChild(option);
+            });
+        });
+        
+        // Auto-map columns after populating
+        autoMapColumns(headers);
+        
         startImportBtn.disabled = headers.length === 0;
     } catch (error) {
         console.error('Error reading file:', error);
@@ -1164,8 +1135,10 @@ startImportBtn.addEventListener('click', async () => {
         serial: document.getElementById('serialColumn').value,
         purchaseDate: document.getElementById('purchaseDateColumn').value,
         purchasePrice: document.getElementById('purchasePriceColumn').value,
-        location: document.getElementById('locationColumn').value,
-        notes: document.getElementById('notesColumn').value
+        notes: document.getElementById('notesColumn').value,
+        url: urlColumn.value,
+        warranty: warrantyColumn.value,
+        warrantyExpiration: warrantyExpirationColumn.value
     };
 
     // Validate required mappings
@@ -1217,5 +1190,111 @@ startImportBtn.addEventListener('click', async () => {
     } catch (error) {
         console.error('Import error:', error);
         alert('Failed to import assets: ' + error.message);
+    }
+});
+
+// Auto-mapping logic for import columns
+function autoMapColumns(headers) {
+    const mappingRules = {
+        nameColumn: ["name"],
+        modelColumn: ["model", "model #", "model number", "model num"],
+        serialColumn: ["serial", "serial #", "serial number", "serial num"],
+        purchaseDateColumn: ["purchase date", "date purchased", "bought date"],
+        purchasePriceColumn: ["purchase price", "price", "cost", "amount"],
+        notesColumn: ["notes", "note", "description", "desc", "comments"],
+        urlColumn: ["url", "link", "website"],
+        warrantyColumn: ["warranty", "warranty scope", "coverage"],
+        warrantyExpirationColumn: ["warranty expiration", "warranty expiry", "warranty end", "warranty end date", "expiration", "expiry"]
+    };
+    
+    // Normalize a string for comparison
+    function normalize(str) {
+        return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+    
+    Object.entries(mappingRules).forEach(([dropdownId, variations]) => {
+        const select = document.getElementById(dropdownId);
+        if (!select) return;
+        let foundIndex = "";
+        for (let i = 0; i < headers.length; i++) {
+            const headerNorm = normalize(headers[i]);
+            if (variations.some(variant => headerNorm === normalize(variant))) {
+                foundIndex = i;
+                break;
+            }
+        }
+        select.value = foundIndex;
+    });
+}
+
+// Open modal
+notificationBtn.addEventListener('click', async () => {
+    await loadNotificationSettings();
+    notificationModal.style.display = 'block';
+});
+// Close modal
+function closeNotificationModal() {
+    notificationModal.style.display = 'none';
+}
+notificationClose.addEventListener('click', closeNotificationModal);
+cancelNotificationSettings.addEventListener('click', closeNotificationModal);
+
+// Load settings from backend
+async function loadNotificationSettings() {
+    try {
+        const response = await fetch('/api/notification-settings', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to load notification settings');
+        const settings = await response.json();
+        notificationForm.notifyAdd.checked = !!settings.notifyAdd;
+        notificationForm.notifyDelete.checked = !!settings.notifyDelete;
+        notificationForm.notifyEdit.checked = !!settings.notifyEdit;
+        notificationForm.notify1Month.checked = !!settings.notify1Month;
+        notificationForm.notify2Week.checked = !!settings.notify2Week;
+        notificationForm.notify7Day.checked = !!settings.notify7Day;
+        notificationForm.notify3Day.checked = !!settings.notify3Day;
+    } catch (err) {
+        // fallback: uncheck all
+        notificationForm.notifyAdd.checked = true;
+        notificationForm.notifyDelete.checked = false;
+        notificationForm.notifyEdit.checked = true;
+        notificationForm.notify1Month.checked = true;
+        notificationForm.notify2Week.checked = false;
+        notificationForm.notify7Day.checked = true;
+        notificationForm.notify3Day.checked = false;
+    }
+}
+
+// Save settings to backend
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
+}
+
+saveNotificationSettings.addEventListener('click', async () => {
+    const settings = {
+        notifyAdd: notificationForm.notifyAdd.checked,
+        notifyDelete: notificationForm.notifyDelete.checked,
+        notifyEdit: notificationForm.notifyEdit.checked,
+        notify1Month: notificationForm.notify1Month.checked,
+        notify2Week: notificationForm.notify2Week.checked,
+        notify7Day: notificationForm.notify7Day.checked,
+        notify3Day: notificationForm.notify3Day.checked
+    };
+    try {
+        const response = await fetch('/api/notification-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings),
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to save notification settings');
+        closeNotificationModal();
+        showToast('Settings saved');
+    } catch (err) {
+        alert('Failed to save notification settings.');
     }
 }); 
