@@ -314,7 +314,7 @@ app.get('/api/subassets', (req, res) => {
 });
 
 // Create a new asset
-app.post('/api/asset', (req, res) => {
+app.post('/api/asset', async (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const newAsset = req.body;
     
@@ -333,8 +333,29 @@ app.post('/api/asset', (req, res) => {
     newAsset.updatedAt = new Date().toISOString();
     
     assets.push(newAsset);
-    
-    if (writeJsonFile(assetsFilePath, assets)) {
+    let success = writeJsonFile(assetsFilePath, assets);
+    if (success) {
+        // Notification logic
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (notificationSettings.notifyAdd && appriseUrl) {
+                await sendNotification('asset_added', {
+                    name: newAsset.name,
+                    modelNumber: newAsset.modelNumber,
+                    description: newAsset.description
+                }, {
+                    appriseUrl
+                });
+            }
+        } catch (err) {
+            console.error('Failed to send asset added notification:', err.message);
+        }
         res.status(201).json(newAsset);
     } else {
         res.status(500).json({ error: 'Failed to create asset' });
