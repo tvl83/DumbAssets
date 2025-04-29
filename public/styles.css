@@ -284,11 +284,13 @@ h2 {
 
 /* Sidebar styles */
 .sidebar {
-    background-color: var(--background-color);
+    flex: 0 0 300px;
     border-right: 1px solid var(--border-color);
+    background-color: var(--background-color);
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
 }
 
 .search-bar {
@@ -330,9 +332,11 @@ h2 {
 }
 
 .asset-list {
-    flex-grow: 1;
+    flex: 1;
     overflow-y: auto;
-    padding: 0.5rem;
+    padding: 10px;
+    overflow-x: hidden;
+    min-height: 0; /* Critical for flexbox to allow scrolling */
 }
 
 .asset-item {
@@ -1112,4 +1116,96 @@ input, select, textarea {
 }
 .type-pill.subcomponent {
     background: #8b5cf6;
+}
+
+.button-container {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--background-color);
+}
+
+.action-button {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.action-button:hover {
+    background-color: var(--primary-hover);
+}
+
+.action-button:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+}
+
+.import-container {
+    padding: 20px;
+}
+
+.file-upload-container {
+    margin-bottom: 20px;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-label {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.file-label:hover {
+    background-color: var(--primary-hover);
+}
+
+.selected-file {
+    margin-left: 10px;
+    color: var(--text-color);
+}
+
+.column-mapping {
+    margin-top: 20px;
+}
+
+.mapping-container {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.mapping-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    align-items: center;
+    gap: 10px;
+}
+
+.column-select {
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.import-actions {
+    margin-top: 20px;
+    text-align: right;
 }

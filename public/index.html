@@ -14,21 +14,21 @@
                 <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle asset list">☰</button>
                 <h1 id="siteTitle">DumbAssets</h1>
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" role="button" type="button">
-                    <svg class="moon" viewBox="0 0 24 24">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <svg class="sun" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line>
-                    </svg>
-                </button>
+                <svg class="moon" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg class="sun" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line>
+                </svg>
+            </button>
                 <div class="header-spacer"></div>
             </div>
             <div class="app-container">
@@ -36,7 +36,11 @@
                 <div class="sidebar">
                     <div class="search-bar">
                         <input type="text" id="searchInput" placeholder="Search assets...">
-                        <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="display:none;" aria-label="Clear search">&times;</button>
+                        <button id="clearSearchBtn" class="clear-search-btn" style="display:none;">&times;</button>
+                    </div>
+                    <div class="button-container">
+                        <button id="addAssetBtn" class="action-button">Add Asset</button>
+                        <button id="importAssetsBtn" class="action-button">Import Assets</button>
                     </div>
                     <div class="asset-list" id="assetList">
                         <!-- Assets will be listed here dynamically -->
@@ -44,7 +48,6 @@
                             <p>No assets found. Add your first asset to get started.</p>
                         </div>
                     </div>
-                    <button class="add-asset-btn" id="addAssetBtn">+ Add Asset</button>
                 </div>
                 <button id="sidebarCloseBtn" class="sidebar-close-btn" style="display:none;" aria-label="Close sidebar">&times;</button>
         
@@ -188,6 +191,61 @@
                             <button type="button" class="cancel-btn">Cancel</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Import Modal -->
+            <div id="importModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Import Assets</h2>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="import-container">
+                            <div class="file-upload-container">
+                                <input type="file" id="importFile" accept=".csv,.xls,.xlsx" class="file-input">
+                                <label for="importFile" class="file-label">Choose File</label>
+                                <span id="selectedFileName" class="selected-file">No file chosen</span>
+                            </div>
+                            <div class="column-mapping">
+                                <h3>Column Mapping</h3>
+                                <div class="mapping-container">
+                                    <div class="mapping-row">
+                                        <label>Name:</label>
+                                        <select id="nameColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Model:</label>
+                                        <select id="modelColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Serial:</label>
+                                        <select id="serialColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Purchase Date:</label>
+                                        <select id="purchaseDateColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Purchase Price:</label>
+                                        <select id="purchasePriceColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Location:</label>
+                                        <select id="locationColumn" class="column-select"></select>
+                                    </div>
+                                    <div class="mapping-row">
+                                        <label>Notes:</label>
+                                        <select id="notesColumn" class="column-select"></select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="import-actions">
+                                <button id="startImportBtn" class="action-button" disabled>Start Import</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

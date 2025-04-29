@@ -34,6 +34,14 @@ const sidebarToggle = document.getElementById('sidebarToggle');
 const mainContent = document.querySelector('.main-content');
 const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
 
+// Import functionality
+const importModal = document.getElementById('importModal');
+const importBtn = document.getElementById('importAssetsBtn');
+const importFile = document.getElementById('importFile');
+const selectedFileName = document.getElementById('selectedFileName');
+const startImportBtn = document.getElementById('startImportBtn');
+const columnSelects = document.querySelectorAll('.column-select');
+
 // Utility Functions
 function generateId() {
     // Generate a 10-digit ID
@@ -57,12 +65,12 @@ function formatCurrency(amount) {
 // Data Functions
 async function loadAssets() {
     try {
-        const response = await fetch('/api/assets');
+        const response = await fetch('/api/assets', {
+            credentials: 'include'
+        });
         if (!response.ok) {
-            // If unauthorized, redirect to login
             if (response.status === 401) {
-                const data = await response.json();
-                window.location.href = data.redirectTo || '/login';
+                window.location.href = '/login';
                 return;
             }
             throw new Error('Failed to load assets');
@@ -71,7 +79,6 @@ async function loadAssets() {
         renderAssetList();
     } catch (error) {
         console.error('Error loading assets:', error);
-        // If we can't load from server, create empty array
         assets = [];
         renderAssetList();
     }
@@ -79,12 +86,12 @@ async function loadAssets() {
 
 async function loadSubAssets() {
     try {
-        const response = await fetch('/api/subassets');
+        const response = await fetch('/api/subassets', {
+            credentials: 'include'
+        });
         if (!response.ok) {
-            // If unauthorized, redirect to login
             if (response.status === 401) {
-                const data = await response.json();
-                window.location.href = data.redirectTo || '/login';
+                window.location.href = '/login';
                 return;
             }
             throw new Error('Failed to load sub-assets');
@@ -92,7 +99,6 @@ async function loadSubAssets() {
         subAssets = await response.json();
     } catch (error) {
         console.error('Error loading sub-assets:', error);
-        // If we can't load from server, create empty array
         subAssets = [];
     }
 }
@@ -103,7 +109,8 @@ async function saveAsset(asset) {
             await fetch('/api/delete-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: asset.photoPath })
+                body: JSON.stringify({ path: asset.photoPath }),
+                credentials: 'include'
             });
             asset.photoPath = null;
         }
@@ -111,7 +118,8 @@ async function saveAsset(asset) {
             await fetch('/api/delete-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: asset.receiptPath })
+                body: JSON.stringify({ path: asset.receiptPath }),
+                credentials: 'include'
             });
             asset.receiptPath = null;
         }
@@ -120,7 +128,8 @@ async function saveAsset(asset) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(asset)
+            body: JSON.stringify(asset),
+            credentials: 'include'
         });
         if (!response.ok) throw new Error('Failed to save asset');
         await loadAssets();
@@ -137,7 +146,8 @@ async function saveSubAsset(subAsset) {
             await fetch('/api/delete-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: subAsset.photoPath })
+                body: JSON.stringify({ path: subAsset.photoPath }),
+                credentials: 'include'
             });
             subAsset.photoPath = null;
         }
@@ -145,7 +155,8 @@ async function saveSubAsset(subAsset) {
             await fetch('/api/delete-file', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: subAsset.receiptPath })
+                body: JSON.stringify({ path: subAsset.receiptPath }),
+                credentials: 'include'
             });
             subAsset.receiptPath = null;
         }
@@ -154,7 +165,8 @@ async function saveSubAsset(subAsset) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(subAsset)
+            body: JSON.stringify(subAsset),
+            credentials: 'include'
         });
         if (!response.ok) throw new Error('Failed to save sub-asset');
         await loadSubAssets();
@@ -175,7 +187,8 @@ async function deleteAsset(assetId) {
     
     try {
         const response = await fetch(`/api/asset/${assetId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         });
         
         if (!response.ok) throw new Error('Failed to delete asset');
@@ -196,7 +209,8 @@ async function deleteSubAsset(subAssetId) {
     
     try {
         const response = await fetch(`/api/subasset/${subAssetId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         });
         
         if (!response.ok) throw new Error('Failed to delete component');
@@ -978,7 +992,6 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
 }
 
 async function uploadFile(file, type, id) {
-    // type: 'image' or 'receipt'
     const endpoint = type === 'image' ? '/api/upload/image' : '/api/upload/receipt';
     const formData = new FormData();
     formData.append(type === 'image' ? 'photo' : 'receipt', file);
@@ -986,7 +999,8 @@ async function uploadFile(file, type, id) {
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
         if (!response.ok) throw new Error('Upload failed');
         const data = await response.json();
@@ -1073,4 +1087,135 @@ function handleSidebarNav() {
     if (window.innerWidth <= 768) closeSidebar();
 }
 // Call handleSidebarNav after asset/sub-asset click
-// In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav(); 
+// In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav();
+
+// Open import modal
+importBtn.addEventListener('click', () => {
+    importModal.style.display = 'block';
+});
+
+// Close import modal
+importModal.querySelector('.close').addEventListener('click', () => {
+    importModal.style.display = 'none';
+});
+
+// Handle file selection
+importFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    selectedFileName.textContent = file.name;
+    
+    try {
+        // Read the file and get headers
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        console.log('Sending file to get headers...');
+        const response = await fetch('/api/import-assets', {
+        method: 'POST',
+            body: formData,
+            credentials: 'include' // Maintain session
+        });
+        
+        console.log('Header response status:', response.status);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.log('Unauthorized, redirecting to login');
+                window.location.href = '/login';
+                return;
+            }
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to read file');
+        }
+        
+        const data = await response.json();
+        console.log('Headers received:', data.headers);
+        const headers = data.headers || [];
+        
+        // Populate column selects
+        columnSelects.forEach(select => {
+            select.innerHTML = '<option value="">Select Column</option>';
+            headers.forEach((header, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = header;
+                select.appendChild(option);
+            });
+        });
+        
+        startImportBtn.disabled = headers.length === 0;
+    } catch (error) {
+        console.error('Error reading file:', error);
+        alert('Failed to read file: ' + error.message);
+    }
+});
+
+// Handle import
+startImportBtn.addEventListener('click', async () => {
+    const file = importFile.files[0];
+    if (!file) return;
+
+    // Get column mappings
+    const mappings = {
+        name: document.getElementById('nameColumn').value,
+        model: document.getElementById('modelColumn').value,
+        serial: document.getElementById('serialColumn').value,
+        purchaseDate: document.getElementById('purchaseDateColumn').value,
+        purchasePrice: document.getElementById('purchasePriceColumn').value,
+        location: document.getElementById('locationColumn').value,
+        notes: document.getElementById('notesColumn').value
+    };
+
+    // Validate required mappings
+    if (!mappings.name) {
+        alert('Please map the Name column');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('mappings', JSON.stringify(mappings));
+
+        console.log('Sending import data with mappings:', mappings);
+        const response = await fetch('/api/import-assets', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include' // Maintain session
+        });
+
+        console.log('Import response status:', response.status);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.log('Unauthorized, redirecting to login');
+                window.location.href = '/login';
+                return;
+            }
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Import failed');
+        }
+
+        const result = await response.json();
+        console.log('Import result:', result);
+        alert(`Successfully imported ${result.importedCount} assets`);
+        
+        // Close modal and reset form
+        importModal.style.display = 'none';
+        importFile.value = '';
+        selectedFileName.textContent = 'No file chosen';
+        startImportBtn.disabled = true;
+        columnSelects.forEach(select => {
+            select.innerHTML = '<option value="">Select Column</option>';
+        });
+        
+        // Refresh asset list
+        console.log('Refreshing asset list after import');
+        await loadAssets();
+    } catch (error) {
+        console.error('Import error:', error);
+        alert('Failed to import assets: ' + error.message);
+    }
+}); 

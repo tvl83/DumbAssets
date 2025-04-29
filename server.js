@@ -15,6 +15,7 @@ const cookieParser = require('cookie-parser');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const XLSX = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,14 +95,14 @@ app.use(helmet({
 app.use(express.json());
 app.use(cookieParser());
 app.use(session({
-    secret: crypto.randomBytes(32).toString('hex'),
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000
+        secure: false, // Set to true in production with HTTPS
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
 
@@ -130,7 +131,7 @@ const authMiddleware = (req, res, next) => {
             });
         } else {
             // Redirect to login for page requests
-            return res.redirect(BASE_PATH + '/login');
+        return res.redirect(BASE_PATH + '/login');
         }
     }
     debugLog('Auth successful - Valid session found');
@@ -236,6 +237,12 @@ app.use((req, res, next) => {
 // Protected static file serving (only accessible after authentication)
 app.use('/Images', authMiddleware, express.static(path.join(__dirname, 'data', 'Images')));
 app.use('/Receipts', authMiddleware, express.static(path.join(__dirname, 'data', 'Receipts')));
+
+// Protected API routes
+app.use('/api', (req, res, next) => {
+    console.log(`API Request: ${req.method} ${req.path}`);
+    next();
+});
 
 // --- ASSET MANAGEMENT (existing code preserved) ---
 // File paths
@@ -582,6 +589,110 @@ app.post('/api/delete-file', (req, res) => {
         }
         res.json({ message: 'File deleted' });
     });
+});
+
+// Configure multer for file uploads
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
+
+// Import assets route
+app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        
+        // First get column headers
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // If this is the first request (no mappings provided), return the headers
+        if (!req.body.mappings) {
+            const headers = data[0] || [];
+            return res.json({ headers });
+        }
+
+        // When processing with mappings, use raw sheet data for better parsing
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+        console.log("Sample row:", jsonData.length > 0 ? jsonData[0] : "No data");
+        
+        // Get column mappings from request
+        const mappings = JSON.parse(req.body.mappings);
+        console.log("Mappings:", mappings);
+        
+        // Convert column index mappings to actual column names
+        const headers = data[0] || [];
+        const columnMappings = {
+            name: mappings.name !== '' ? headers[parseInt(mappings.name, 10)] : '',
+            model: mappings.model !== '' ? headers[parseInt(mappings.model, 10)] : '',
+            serial: mappings.serial !== '' ? headers[parseInt(mappings.serial, 10)] : '',
+            purchaseDate: mappings.purchaseDate !== '' ? headers[parseInt(mappings.purchaseDate, 10)] : '',
+            purchasePrice: mappings.purchasePrice !== '' ? headers[parseInt(mappings.purchasePrice, 10)] : '',
+            location: mappings.location !== '' ? headers[parseInt(mappings.location, 10)] : '',
+            notes: mappings.notes !== '' ? headers[parseInt(mappings.notes, 10)] : ''
+        };
+        console.log("Column name mappings:", columnMappings);
+        
+        // Transform data using header-based mappings
+        const transformedData = jsonData.map(row => {
+            // Create a unique ID for each asset
+            const assetId = uuidv4();
+            console.log("Processing row:", row);
+            
+            // Use column names to access the data
+            const asset = {
+                id: assetId,
+                name: columnMappings.name ? (row[columnMappings.name] || '') : '',
+                modelNumber: columnMappings.model ? (row[columnMappings.model] || '') : '',
+                serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
+                purchaseDate: columnMappings.purchaseDate ? (row[columnMappings.purchaseDate] || '') : '',
+                price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',
+                location: columnMappings.location ? (row[columnMappings.location] || '') : '',
+                description: columnMappings.notes ? (row[columnMappings.notes] || '') : '',
+                photoPath: null,
+                receiptPath: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                warranty: {
+                    scope: '',
+                    expirationDate: ''
+                }
+            };
+            return asset;
+        });
+
+        // Sample the first asset for debugging
+        console.log("Sample transformed asset:", transformedData.length > 0 ? transformedData[0] : "No data");
+
+        // Save transformed data to assets.json
+        const assetsPath = path.join(__dirname, 'data', 'Assets.json');
+        let existingAssets = [];
+        
+        if (fs.existsSync(assetsPath)) {
+            const fileContent = fs.readFileSync(assetsPath, 'utf8');
+            existingAssets = JSON.parse(fileContent);
+        }
+
+        // Add new assets to existing ones
+        const updatedAssets = [...existingAssets, ...transformedData];
+        
+        // Write back to file
+        fs.writeFileSync(assetsPath, JSON.stringify(updatedAssets, null, 2));
+
+        res.json({ 
+            message: 'Import successful', 
+            importedCount: transformedData.length 
+        });
+    } catch (error) {
+        console.error('Import error:', error);
+        res.status(500).json({ error: 'Failed to import assets: ' + error.message });
+    }
 });
 
 // --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
