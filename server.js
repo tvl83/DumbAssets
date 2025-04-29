@@ -16,6 +16,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const XLSX = require('xlsx');
+const { sendNotification } = require('./src/services/notifications/appriseNotifier');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -733,6 +734,28 @@ app.post('/api/notification-settings', authMiddleware, express.json(), (req, res
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to save notification settings' });
+    }
+});
+
+// Test notification endpoint
+app.post('/api/notification-test', authMiddleware, async (req, res) => {
+    try {
+        const configPath = path.join(__dirname, 'data', 'config.json');
+        let config = {};
+        if (fs.existsSync(configPath)) {
+            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+        // Use APPRISE_URL from env or config
+        const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+        if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
+        // Send test notification
+        await sendNotification('test', { name: 'Test Notification', eventType: 'test' }, {
+            appriseUrl,
+            appriseMessage: 'This is a test notification from DumbAssets.'
+        });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to send test notification.' });
     }
 });
 

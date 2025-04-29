@@ -49,6 +49,7 @@ const notificationForm = document.getElementById('notificationForm');
 const saveNotificationSettings = document.getElementById('saveNotificationSettings');
 const cancelNotificationSettings = document.getElementById('cancelNotificationSettings');
 const notificationClose = notificationModal.querySelector('.close');
+const testNotificationSettings = document.getElementById('testNotificationSettings');
 
 // Utility Functions
 function generateId() {
@@ -1296,5 +1297,21 @@ saveNotificationSettings.addEventListener('click', async () => {
         showToast('Settings saved');
     } catch (err) {
         alert('Failed to save notification settings.');
+    }
+});
+
+testNotificationSettings.addEventListener('click', async () => {
+    testNotificationSettings.disabled = true;
+    try {
+        const response = await fetch('/api/notification-test', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to send test notification');
+        showToast('Test notification sent');
+    } catch (err) {
+        showToast('Failed to send test notification');
+    } finally {
+        setTimeout(() => { testNotificationSettings.disabled = false; }, 1500);
     }
 }); 

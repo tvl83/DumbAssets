@@ -8,6 +8,27 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { formatDate, sanitizeText } = require('./utils');
 
+function formatNotification(eventType, assetData) {
+  let lines = [];
+  if (eventType === 'asset_added') {
+    lines.push('✅ Asset Added');
+  } else if (eventType === 'asset_deleted') {
+    lines.push('❌ Asset Deleted');
+  } else if (eventType === 'asset_edited') {
+    lines.push('✏️ Asset Edited');
+  } else if (eventType === 'warranty_expiring') {
+    lines.push(`⏰ Warranty Expiring in ${assetData.time || ''}`);
+  } else if (eventType === 'test') {
+    lines.push('🔔 Test Notification');
+  } else {
+    lines.push('🔔 Notification');
+  }
+  if (assetData.name) lines.push(assetData.name);
+  if (assetData.modelNumber) lines.push(assetData.modelNumber);
+  if (assetData.description) lines.push(assetData.description);
+  return lines.join('\n');
+}
+
 /**
  * Send a notification using Apprise
  * @param {string} eventType - Type of event (e.g., 'asset_added', 'import_complete')
@@ -29,11 +50,15 @@ async function sendNotification(eventType, assetData, config) {
     safeData.eventType = eventType;
     safeData.date = formatDate(new Date());
 
-    // Replace placeholders in message template
+    // Use formatted message for known event types
     let message = appriseMessage;
-    Object.entries(safeData).forEach(([key, value]) => {
-      message = message.replace(new RegExp(`{${key}}`, 'g'), value);
-    });
+    if (!appriseMessage || ['asset_added','asset_deleted','asset_edited','warranty_expiring','test'].includes(eventType)) {
+      message = formatNotification(eventType, safeData);
+    } else {
+      Object.entries(safeData).forEach(([key, value]) => {
+        message = message.replace(new RegExp(`{${key}}`, 'g'), value);
+      });
+    }
 
     await new Promise((resolve, reject) => {
       const appriseProcess = spawn('apprise', [appriseUrl, '-b', message]);
