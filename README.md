@@ -1,6 +1,6 @@
 # DumbAssets
 
-a stupid simple asset tracker for keeping track of your physical assets and their components.
+A stupid simple asset tracker for keeping track of your physical assets and their components.
 
 ---
 

@@ -1003,6 +1003,14 @@ document.addEventListener('DOMContentLoaded', () => {
             closeSubAssetModal();
         }
     });
+
+    // Set the header title from config if available
+    if (window.appConfig && window.appConfig.siteTitle) {
+        const siteTitleElem = document.getElementById('siteTitle');
+        if (siteTitleElem) {
+            siteTitleElem.textContent = window.appConfig.siteTitle;
+        }
+    }
 });
 
 function closeSidebar() {

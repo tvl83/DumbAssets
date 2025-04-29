@@ -901,13 +901,45 @@ input, select, textarea {
     }
 }
 
+/* Header row layout: left, center, right */
 .header-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    position: relative;
+    min-height: 56px;
     width: 100%;
-    margin-bottom: 1rem;
-    gap: 1rem;
+}
+
+.header-row .header-actions,
+.header-row .sidebar-toggle {
+    flex: 0 0 auto;
+    z-index: 2;
+}
+
+#siteTitle {
+    flex: 1 1 auto;
+    text-align: center;
+    margin: 0;
+    z-index: 1;
+    position: static;
+    transform: none;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    z-index: 2;
+}
+
+.sidebar-toggle {
+    z-index: 2;
+}
+
+/* Ensure header row has enough height for centering */
+.header-row {
+    min-height: 56px;
 }
 
 .header-row h1#siteTitle {
@@ -1349,4 +1381,11 @@ input, select, textarea {
     opacity: 1;
     pointer-events: auto;
     bottom: 3.5rem;
+}
+
+.header-spacer {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: block;
 }

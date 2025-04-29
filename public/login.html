@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">DumbTitle</title>
+    <title>{{SITE_TITLE}}</title>
     <script src="config.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,7 +11,8 @@
     <main>
         <form id="pinForm" action="verify-pin" method="POST">
             <div class="header-row">
-                <h1 id="siteTitle">DumbAssets</h1>
+                <div class="header-spacer"></div>
+                <h1 id="siteTitle">{{SITE_TITLE}}</h1>
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" role="button" type="button">
                     <svg class="moon" viewBox="0 0 24 24">
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -168,6 +169,18 @@
                     errorDisplay.setAttribute('aria-hidden', 'false');
                 }
             });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.appConfig && window.appConfig.siteTitle) {
+                // Set header
+                const siteTitleElem = document.getElementById('siteTitle');
+                if (siteTitleElem) {
+                    siteTitleElem.textContent = window.appConfig.siteTitle;
+                }
+                // Set tab title
+                document.title = window.appConfig.siteTitle;
+            }
         });
     </script>
 </body>

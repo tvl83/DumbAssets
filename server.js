@@ -843,11 +843,42 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
 });
 
 // --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
-app.get('*', (req, res) => {
+const SITE_TITLE = process.env.SITE_TITLE || 'DumbAssets';
+
+// Serve index.html with dynamic SITE_TITLE for main app
+app.get(BASE_PATH + '/', authMiddleware, (req, res) => {
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
+    res.send(html);
+});
+
+// Serve login.html with dynamic SITE_TITLE
+app.get(BASE_PATH + '/login', (req, res) => {
+    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
+    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
+    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
+    res.send(html);
+});
+
+// Redirect /index.html to /
+app.get(BASE_PATH + '/index.html', (req, res) => res.redirect(BASE_PATH + '/'));
+// Redirect /login.html to /login
+app.get(BASE_PATH + '/login.html', (req, res) => res.redirect(BASE_PATH + '/login'));
+
+// --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
+app.get('*', (req, res, next) => {
+    // Skip API and static asset requests
+    if (req.path.startsWith('/api/') || req.path.startsWith('/Images/') || req.path.startsWith('/Receipts/') || req.path.endsWith('.css') || req.path.endsWith('.js') || req.path.endsWith('.ico')) {
+        return next();
+    }
+    // Auth check
     if (!PIN || PIN.trim() === '' || req.session.authenticated) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+        html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
+        return res.send(html);
     } else {
-        res.redirect(BASE_PATH + '/login');
+        return res.redirect(BASE_PATH + '/login');
     }
 });
 
