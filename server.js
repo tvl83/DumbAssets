@@ -335,6 +335,9 @@ app.post('/api/asset', async (req, res) => {
     assets.push(newAsset);
     let success = writeJsonFile(assetsFilePath, assets);
     if (success) {
+        if (DEBUG) {
+            console.log('[DEBUG] Asset added:', { name: newAsset.name, modelNumber: newAsset.modelNumber, description: newAsset.description });
+        }
         // Notification logic
         try {
             const configPath = path.join(__dirname, 'data', 'config.json');
@@ -344,6 +347,9 @@ app.post('/api/asset', async (req, res) => {
             }
             const notificationSettings = config.notificationSettings || {};
             const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Notification settings (add):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
             if (notificationSettings.notifyAdd && appriseUrl) {
                 await sendNotification('asset_added', {
                     name: newAsset.name,
@@ -352,6 +358,9 @@ app.post('/api/asset', async (req, res) => {
                 }, {
                     appriseUrl
                 });
+                if (DEBUG) {
+                    console.log('[DEBUG] Asset added notification sent.');
+                }
             }
         } catch (err) {
             console.error('Failed to send asset added notification:', err.message);
@@ -386,6 +395,36 @@ app.put('/api/asset', (req, res) => {
     assets[index] = updatedAsset;
     
     if (writeJsonFile(assetsFilePath, assets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Asset edited:', { id: updatedAsset.id, name: updatedAsset.name, modelNumber: updatedAsset.modelNumber });
+        }
+        // Notification logic
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Notification settings (edit):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyEdit && appriseUrl) {
+                sendNotification('asset_edited', {
+                    name: updatedAsset.name,
+                    modelNumber: updatedAsset.modelNumber,
+                    description: updatedAsset.description
+                }, {
+                    appriseUrl
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Asset edited notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send asset edited notification:', err.message);
+        }
         res.json(updatedAsset);
     } else {
         res.status(500).json({ error: 'Failed to update asset' });
@@ -413,26 +452,36 @@ app.delete('/api/asset/:id', (req, res) => {
     
     // Write updated assets
     if (writeJsonFile(assetsFilePath, assets) && writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
-        // Try to delete image and receipt files if they exist
-        try {
-            if (deletedAsset.photoPath) {
-                const photoPath = path.join(__dirname, deletedAsset.photoPath.substring(1));
-                if (fs.existsSync(photoPath)) {
-                    fs.unlinkSync(photoPath);
-                }
-            }
-            
-            if (deletedAsset.receiptPath) {
-                const receiptPath = path.join(__dirname, deletedAsset.receiptPath.substring(1));
-                if (fs.existsSync(receiptPath)) {
-                    fs.unlinkSync(receiptPath);
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting files:', error);
-            // Continue even if file deletion fails
+        if (DEBUG) {
+            console.log('[DEBUG] Asset deleted:', { id: deletedAsset.id, name: deletedAsset.name, modelNumber: deletedAsset.modelNumber });
         }
-        
+        // Notification logic
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Notification settings (delete):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyDelete && appriseUrl) {
+                sendNotification('asset_deleted', {
+                    name: deletedAsset.name,
+                    modelNumber: deletedAsset.modelNumber,
+                    description: deletedAsset.description
+                }, {
+                    appriseUrl
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Asset deleted notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send asset deleted notification:', err.message);
+        }
         res.json({ message: 'Asset deleted successfully' });
     } else {
         res.status(500).json({ error: 'Failed to delete asset' });
@@ -760,6 +809,9 @@ app.post('/api/notification-settings', authMiddleware, express.json(), (req, res
 
 // Test notification endpoint
 app.post('/api/notification-test', authMiddleware, async (req, res) => {
+    if (DEBUG) {
+        console.log('[DEBUG] /api/notification-test called');
+    }
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
         let config = {};
@@ -768,12 +820,18 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
         }
         // Use APPRISE_URL from env or config
         const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+        if (DEBUG) {
+            console.log('[DEBUG] Notification settings (test):', config.notificationSettings, 'Apprise URL:', appriseUrl);
+        }
         if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
         // Send test notification
         await sendNotification('test', { name: 'Test Notification', eventType: 'test' }, {
             appriseUrl,
             appriseMessage: 'This is a test notification from DumbAssets.'
         });
+        if (DEBUG) {
+            console.log('[DEBUG] Test notification sent.');
+        }
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to send test notification.' });
