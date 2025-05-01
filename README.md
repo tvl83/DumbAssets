@@ -100,7 +100,6 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 | APPRISE_URL      | Apprise URL for notifications               | None               | No       |
 | TZ               | Container timezone                          | America/Chicago    | No       |
 | BASE_URL         | Base URL for the application                | http://localhost   | No       |
-| SESSION_SECRET   | Session secret for cookies                  | random             | No       |
 | SITE_TITLE       | Site title shown in browser tab and header      | DumbAssets          | No       |
 
 ### Data Storage
