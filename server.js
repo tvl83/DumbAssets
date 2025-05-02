@@ -674,6 +674,44 @@ const upload = multer({
     }
 });
 
+// Helper function to parse Excel dates
+function parseExcelDate(value) {
+    if (!value) return '';
+    
+    // If it's already a date string in ISO format, return as is
+    if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return value;
+    }
+    
+    // If it's a number (Excel date), convert it
+    if (typeof value === 'number') {
+        // Excel's epoch starts from Dec 30, 1899
+        const date = new Date((value - 25569) * 86400 * 1000);
+        return date.toISOString().split('T')[0];
+    }
+    
+    // Try to parse MM/DD/YYYY format
+    if (typeof value === 'string' && value.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        const [month, day, year] = value.split('/').map(Number);
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+        }
+    }
+    
+    // Try to parse as regular date string
+    try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+        }
+    } catch (e) {
+        console.log('Failed to parse date:', value);
+    }
+    
+    return '';
+}
+
 // Import assets route
 app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
     try {
@@ -728,7 +766,7 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 name: columnMappings.name ? (row[columnMappings.name] || '') : '',
                 modelNumber: columnMappings.model ? (row[columnMappings.model] || '') : '',
                 serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
-                purchaseDate: columnMappings.purchaseDate ? (row[columnMappings.purchaseDate] || '') : '',
+                purchaseDate: columnMappings.purchaseDate ? parseExcelDate(row[columnMappings.purchaseDate]) : '',
                 price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',
                 description: columnMappings.notes ? (row[columnMappings.notes] || '') : '',
                 link: columnMappings.url ? (row[columnMappings.url] || '') : '',
@@ -738,7 +776,7 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 updatedAt: new Date().toISOString(),
                 warranty: {
                     scope: columnMappings.warranty ? (row[columnMappings.warranty] || '') : '',
-                    expirationDate: columnMappings.warrantyExpiration ? (row[columnMappings.warrantyExpiration] || '') : ''
+                    expirationDate: columnMappings.warrantyExpiration ? parseExcelDate(row[columnMappings.warrantyExpiration]) : ''
                 }
             };
             return asset;
