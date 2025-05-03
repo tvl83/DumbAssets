@@ -9,12 +9,15 @@ let subAssets = [];
 let selectedAssetId = null;
 let selectedSubAssetId = null;
 let isEditMode = false;
+let currentSort = { field: null, direction: 'asc' };
 
 // Add these flags to track deletion
 let deletePhoto = false;
 let deleteReceipt = false;
+let deleteManual = false;
 let deleteSubPhoto = false;
 let deleteSubReceipt = false;
+let deleteSubManual = false;
 
 // DOM Elements
 const assetList = document.getElementById('assetList');
@@ -33,6 +36,8 @@ const sidebar = document.querySelector('.sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const mainContent = document.querySelector('.main-content');
 const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+const sortNameBtn = document.getElementById('sortNameBtn');
+const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
 
 // Import functionality
 const importModal = document.getElementById('importModal');
@@ -131,6 +136,15 @@ async function saveAsset(asset) {
                 credentials: 'include'
             });
             asset.receiptPath = null;
+        }
+        if (deleteManual && asset.manualPath) {
+            await fetch('/api/delete-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: asset.manualPath }),
+                credentials: 'include'
+            });
+            asset.manualPath = null;
         }
         const response = await fetch('/api/asset', {
             method: isEditMode ? 'PUT' : 'POST',
@@ -235,8 +249,7 @@ async function deleteSubAsset(subAssetId) {
 }
 
 // Rendering Functions
-function renderAssetList() {
-    const searchQuery = searchInput.value.toLowerCase();
+function renderAssetList(searchQuery = '') {
     const assetList = document.getElementById('assetList');
     assetList.innerHTML = '';
 
@@ -245,13 +258,18 @@ function renderAssetList() {
         return;
     }
 
-    const filteredAssets = searchQuery
+    let filteredAssets = searchQuery
         ? assets.filter(asset => 
             asset.name?.toLowerCase().includes(searchQuery) || 
             asset.modelNumber?.toLowerCase().includes(searchQuery) ||
             asset.serialNumber?.toLowerCase().includes(searchQuery) ||
             asset.location?.toLowerCase().includes(searchQuery))
         : assets;
+
+    // Apply sorting if a sort field is selected
+    if (currentSort.field) {
+        filteredAssets = sortAssets(filteredAssets, currentSort.field, currentSort.direction);
+    }
 
     filteredAssets.forEach(asset => {
         const assetItem = document.createElement('div');
@@ -396,6 +414,18 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             </div>
             ` : ''}
         </div>
+        ${asset.manualPath ? `
+        <div class="manual-preview">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <a href="${asset.manualPath}" target="_blank">View Manual</a>
+        </div>
+        ` : ''}
     `;
     // Add event listeners
     if (isSub) {
@@ -624,6 +654,7 @@ function openAssetModal(asset = null) {
     assetForm.reset();
     deletePhoto = false;
     deleteReceipt = false;
+    deleteManual = false;
     if (isEditMode && asset) {
         document.getElementById('assetName').value = asset.name || '';
         document.getElementById('assetModel').value = asset.modelNumber || '';
@@ -746,6 +777,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
     subAssetForm.reset();
     deleteSubPhoto = false;
     deleteSubReceipt = false;
+    deleteSubManual = false;
     document.getElementById('parentAssetId').value = subAsset?.parentId || parentId || '';
     document.getElementById('parentSubAssetId').value = subAsset?.parentSubId || parentSubId || '';
     if (isEditMode && subAsset) {
@@ -869,11 +901,60 @@ function closeSubAssetModal() {
 function setupFilePreview(inputId, previewId, isDocument = false) {
     const input = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
+    const uploadBox = document.querySelector(`[data-target="${inputId}"]`);
     
     if (!input || !preview) return;
     
     // Store the previous file value to restore if user cancels
     let previousValue = input.value;
+
+    // Drag and drop handlers
+    if (uploadBox) {
+        uploadBox.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadBox.classList.add('drag-over');
+        });
+
+        uploadBox.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadBox.classList.remove('drag-over');
+        });
+
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadBox.classList.add('drag-over');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadBox.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                // Check file type based on accept attribute
+                const acceptedTypes = input.accept.split(',');
+                const file = files[0];
+                const fileType = file.type;
+                const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                
+                const isAccepted = acceptedTypes.some(type => {
+                    if (type === 'image/*') return fileType.startsWith('image/');
+                    return type === fileType || type === fileExtension;
+                });
+                
+                if (isAccepted) {
+                    input.files = files;
+                    input.dispatchEvent(new Event('change'));
+                } else {
+                    alert('File type not accepted. Please upload a valid file.');
+                }
+            }
+        });
+    }
 
     input.onchange = () => {
         // Determine if there is an existing image
@@ -889,7 +970,7 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
         }
         // If there is an existing image and a new file is selected, warn the user
         if (hasExisting && input.files && input.files[0]) {
-            const confirmOverride = confirm('This will override the previous image. Are you sure?');
+            const confirmOverride = confirm('This will override the previous file. Are you sure?');
             if (!confirmOverride) {
                 input.value = previousValue;
                 return;
@@ -929,6 +1010,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     // Get file inputs
     const photoInput = document.getElementById(isSubAsset ? 'subAssetPhoto' : 'assetPhoto');
     const receiptInput = document.getElementById(isSubAsset ? 'subAssetReceipt' : 'assetReceipt');
+    const manualInput = document.getElementById(isSubAsset ? 'subAssetManual' : 'assetManual');
     
     // Handle photo upload
     if (photoInput.files && photoInput.files[0]) {
@@ -940,6 +1022,12 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     if (receiptInput.files && receiptInput.files[0]) {
         const receiptPath = await uploadFile(receiptInput.files[0], 'receipt', assetCopy.id);
         assetCopy.receiptPath = receiptPath;
+    }
+
+    // Handle manual upload
+    if (manualInput.files && manualInput.files[0]) {
+        const manualPath = await uploadFile(manualInput.files[0], 'manual', assetCopy.id);
+        assetCopy.manualPath = manualPath;
     }
     
     return assetCopy;
@@ -1010,6 +1098,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (siteTitleElem) {
             siteTitleElem.textContent = window.appConfig.siteTitle;
         }
+    }
+
+    // Set up sort buttons
+    if (sortNameBtn) {
+        sortNameBtn.addEventListener('click', () => {
+            const direction = sortNameBtn.getAttribute('data-direction') === 'asc' ? 'desc' : 'asc';
+            sortNameBtn.setAttribute('data-direction', direction);
+            currentSort = { field: 'name', direction };
+            updateSortButtons(sortNameBtn);
+            renderAssetList(searchInput.value);
+        });
+    }
+
+    if (sortWarrantyBtn) {
+        sortWarrantyBtn.addEventListener('click', () => {
+            const direction = sortWarrantyBtn.getAttribute('data-direction') === 'asc' ? 'desc' : 'asc';
+            sortWarrantyBtn.setAttribute('data-direction', direction);
+            currentSort = { field: 'warranty', direction };
+            updateSortButtons(sortWarrantyBtn);
+            renderAssetList(searchInput.value);
+        });
     }
 });
 
@@ -1322,4 +1431,42 @@ testNotificationSettings.addEventListener('click', async () => {
     } finally {
         setTimeout(() => { testNotificationSettings.disabled = false; }, 1500);
     }
-}); 
+});
+
+// Sorting Functions
+function sortAssets(assets, field, direction) {
+    return [...assets].sort((a, b) => {
+        let valueA, valueB;
+        
+        if (field === 'name') {
+            valueA = a.name?.toLowerCase() || '';
+            valueB = b.name?.toLowerCase() || '';
+        } else if (field === 'warranty') {
+            valueA = a.warranty?.expirationDate || '';
+            valueB = b.warranty?.expirationDate || '';
+        }
+        
+        if (direction === 'asc') {
+            return valueA.localeCompare(valueB);
+        } else {
+            return valueB.localeCompare(valueA);
+        }
+    });
+}
+
+function updateSortButtons(activeButton) {
+    // Remove active class from all buttons
+    document.querySelectorAll('.sort-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Set active button and update its direction
+    if (activeButton) {
+        activeButton.classList.add('active');
+        const direction = activeButton.getAttribute('data-direction');
+        const sortIcon = activeButton.querySelector('.sort-icon');
+        if (sortIcon) {
+            sortIcon.style.transform = direction === 'desc' ? 'rotate(180deg)' : '';
+        }
+    }
+} 

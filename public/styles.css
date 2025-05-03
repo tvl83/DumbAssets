@@ -28,10 +28,11 @@
     --shadow: 0 2px 4px rgba(0,0,0,0.2);
     --primary-color: #3b82f6;
     --secondary-color: #94a3b8;
-    --background-color: #1a1a1a;
+    --background-color: #2d2d2d;
     --text-color: #ffffff;
     --border-color: #334155;
     --hover-color: #1e293b;
+    --link-color: #60a5fa;  /* Lighter blue for better visibility in dark mode */
 }
 
 /* Base styles */
@@ -340,10 +341,10 @@ h2 {
 }
 
 .asset-item {
-    padding: 10px;
+    padding: 12px;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
 }
 
 .asset-item:hover {
@@ -351,23 +352,24 @@ h2 {
 }
 
 .asset-item.active {
-    background-color: var(--active-color);
+    background-color: rgba(59, 130, 246, 0.2);  /* Semi-transparent primary color */
+    color: var(--text-color);
+}
+
+.asset-item.active .asset-item-name,
+.asset-item.active .asset-item-model {
+    color: var(--text-color);
 }
 
 .asset-item-name {
     font-weight: 500;
-    margin-bottom: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--text-color);
 }
 
 .asset-item-model {
     font-size: 0.9em;
-    color: var(--text-secondary-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--secondary-color);
+    margin-top: 4px;
 }
 
 .add-asset-btn {
@@ -575,19 +577,47 @@ h2 {
 .sub-asset-item {
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 0.5rem;
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: var(--background-color);
+    transition: background-color 0.2s ease;
     cursor: pointer;
+    position: relative;
+    z-index: 1;
 }
 
 .sub-asset-item:hover {
     background-color: var(--hover-color);
+    z-index: 2;
 }
 
 .sub-asset-children {
-    margin-left: 0.75rem;
-    margin-top: 0.4rem;
-    padding-left: 0.4rem;
+    margin-left: 20px;
+    margin-top: 8px;
+    padding-left: 8px;
     border-left: 2px solid var(--border-color);
+    background-color: var(--background-color);
+    position: relative;
+    z-index: 1;
+}
+
+/* Ensure child items have the same background as parent */
+.sub-asset-children .sub-asset-item {
+    background-color: var(--background-color) !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Only highlight the specific item being hovered */
+.sub-asset-children .sub-asset-item:hover {
+    background-color: var(--hover-color) !important;
+    z-index: 2;
+}
+
+/* Remove any parent hover effects */
+.sub-asset-item:hover .sub-asset-children .sub-asset-item:not(:hover) {
+    background-color: var(--background-color) !important;
+    z-index: 1;
 }
 
 /* Modal styles */
@@ -1388,4 +1418,180 @@ input, select, textarea {
     height: 40px;
     flex: 0 0 40px;
     display: block;
+}
+
+.sort-container {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--background-color);
+}
+
+.sort-button {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+
+.sort-button:hover {
+    background-color: var(--hover-color);
+}
+
+.sort-button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.sort-button.active .sort-icon {
+    stroke: white;
+}
+
+.sort-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+}
+
+.sort-button[data-direction="desc"] .sort-icon {
+    transform: rotate(180deg);
+}
+
+.calendar-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.manual-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.manual-preview svg {
+    flex-shrink: 0;
+}
+
+.manual-preview a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.manual-preview a:hover {
+    text-decoration: underline;
+}
+
+.file-preview {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.file-preview img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 4px;
+}
+
+.file-preview .delete-preview-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-preview .delete-preview-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.file-upload-box {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background-color: var(--background-color);
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-upload-box:hover,
+.file-upload-box.drag-over {
+    border-color: var(--primary-color);
+    background-color: var(--hover-color);
+}
+
+.file-upload-box input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.upload-content svg {
+    width: 32px;
+    height: 32px;
+    stroke: var(--primary-color);
+}
+
+.upload-content span {
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.file-upload-box.drag-over .upload-content svg {
+    transform: scale(1.1);
+}
+
+.file-upload-box.drag-over .upload-content span {
+    color: var(--primary-color);
+}
+
+/* Add link color styles */
+a {
+    color: var(--link-color, var(--primary-color));
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }

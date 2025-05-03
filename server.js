@@ -294,6 +294,7 @@ function generateId() {
 // Initialize data directories
 ensureDirectoryExists(path.join(__dirname, 'data', 'Images'));
 ensureDirectoryExists(path.join(__dirname, 'data', 'Receipts'));
+ensureDirectoryExists(path.join(__dirname, 'data', 'Manuals'));
 
 // Initialize empty files if they don't exist
 if (!fs.existsSync(assetsFilePath)) {
@@ -453,6 +454,33 @@ app.delete('/api/asset/:id', (req, res) => {
     
     // Remove all related sub-assets
     const updatedSubAssets = subAssets.filter(sa => sa.parentId !== assetId);
+    
+    // Delete associated files if they exist
+    try {
+        if (deletedAsset.photoPath) {
+            const photoPath = path.join(__dirname, deletedAsset.photoPath.substring(1));
+            if (fs.existsSync(photoPath)) {
+                fs.unlinkSync(photoPath);
+            }
+        }
+        
+        if (deletedAsset.receiptPath) {
+            const receiptPath = path.join(__dirname, deletedAsset.receiptPath.substring(1));
+            if (fs.existsSync(receiptPath)) {
+                fs.unlinkSync(receiptPath);
+            }
+        }
+
+        if (deletedAsset.manualPath) {
+            const manualPath = path.join(__dirname, deletedAsset.manualPath.substring(1));
+            if (fs.existsSync(manualPath)) {
+                fs.unlinkSync(manualPath);
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting asset files:', error);
+        // Continue with asset deletion even if file deletion fails
+    }
     
     // Write updated assets
     if (writeJsonFile(assetsFilePath, assets) && writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
@@ -630,8 +658,53 @@ const receiptStorage = multer.diskStorage({
     }
 });
 
-const uploadImage = multer({ storage: imageStorage });
-const uploadReceipt = multer({ storage: receiptStorage });
+const manualStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'data/Manuals');
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `${req.body.id || uuidv4()}${ext}`);
+    }
+});
+
+const uploadImage = multer({ 
+    storage: imageStorage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
+
+const uploadReceipt = multer({ 
+    storage: receiptStorage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image and PDF files are allowed'));
+        }
+    }
+});
+
+const uploadManual = multer({ 
+    storage: manualStorage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+        }
+    }
+});
 
 app.post('/api/upload/image', uploadImage.single('photo'), (req, res) => {
     if (!req.file) {
@@ -651,7 +724,16 @@ app.post('/api/upload/receipt', uploadReceipt.single('receipt'), (req, res) => {
     res.json({ path: receiptPath });
 });
 
-// Delete a file (image or receipt)
+app.post('/api/upload/manual', uploadManual.single('manual'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const manualPath = `/Manuals/${req.file.filename}`;
+    res.json({ path: manualPath });
+});
+
+// Delete a file (image, receipt, or manual)
 app.post('/api/delete-file', (req, res) => {
     const { path: filePath } = req.body;
     if (!filePath) return res.status(400).json({ error: 'No file path provided' });
