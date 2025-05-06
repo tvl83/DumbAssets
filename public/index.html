@@ -14,8 +14,15 @@
                 <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle asset list">☰</button>
                 <h1 id="siteTitle">{{SITE_TITLE}}</h1>
                 <div class="header-actions">
+                    <button id="homeBtn" class="home-btn" aria-label="Go to Dashboard">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 12L12 4l8 8"></path>
+                            <path d="M5 12v7a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-7"></path>
+                        </svg>
+                    </button>
                     <button id="notificationBtn" class="notification-btn" aria-label="Notification Settings">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="3"></circle>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 5.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 8c.14.31.22.65.22 1v.09A1.65 1.65 0 0 0 21 12c0 .35-.08.69-.22 1z"></path>
                         </svg>
@@ -82,9 +89,6 @@
                 <div class="main-content">
                     <div id="assetDetails">
                         <!-- Selected asset details will appear here -->
-                        <div class="empty-state">
-                            <p>Select an asset to view details or add a new one</p>
-                        </div>
                     </div>
                     <div id="subAssetContainer" class="hidden">
                         <div class="sub-asset-header">
@@ -134,48 +138,52 @@
                         </div>
                         <div class="form-group">
                             <label for="assetPhoto">Photo</label>
-                            <div class="file-upload-box" data-target="assetPhoto">
-                                <input type="file" id="assetPhoto" accept="image/*" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
+                            <div class="file-upload-grid">
+                                <div class="file-upload-box" data-target="assetPhoto">
+                                    <input type="file" id="assetPhoto" accept="image/*" class="file-input" multiple>
+                                    <div class="upload-content">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                            <polyline points="17 8 12 3 7 8"/>
+                                            <line x1="12" y1="3" x2="12" y2="15"/>
+                                        </svg>
+                                        <span>Drag & drop or click to upload photos</span>
+                                    </div>
                                 </div>
+                                <div id="photoPreview" class="preview-grid"></div>
                             </div>
-                            <div id="photoPreview" class="file-preview"></div>
                         </div>
                         <div class="form-group">
                             <label for="assetReceipt">Receipt</label>
-                            <div class="file-upload-box" data-target="assetReceipt">
-                                <input type="file" id="assetReceipt" accept="image/*,.pdf" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
+                            <div class="file-upload-grid">
+                                <div class="file-upload-box" data-target="assetReceipt">
+                                    <input type="file" id="assetReceipt" accept=".pdf,.jpg,.jpeg,.png" class="file-input" multiple>
+                                    <div class="upload-content">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14 2 14 8 20 8"/>
+                                        </svg>
+                                        <span>Drag & drop or click to upload receipts</span>
+                                    </div>
                                 </div>
+                                <div id="receiptPreview" class="preview-grid"></div>
                             </div>
-                            <div id="receiptPreview" class="file-preview"></div>
                         </div>
                         <div class="form-group">
                             <label for="assetManual">Manual</label>
-                            <div class="file-upload-box" data-target="assetManual">
-                                <input type="file" id="assetManual" accept=".pdf,.doc,.docx" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
+                            <div class="file-upload-grid">
+                                <div class="file-upload-box" data-target="assetManual">
+                                    <input type="file" id="assetManual" accept=".pdf" class="file-input" multiple>
+                                    <div class="upload-content">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14 2 14 8 20 8"/>
+                                        </svg>
+                                        <span>Drag & drop or click to upload manuals</span>
+                                    </div>
                                 </div>
+                                <div id="manualPreview" class="preview-grid"></div>
                             </div>
-                            <div id="manualPreview" class="file-preview"></div>
                         </div>
                         <div class="form-group">
                             <label for="assetLink">Link</label>
@@ -199,93 +207,71 @@
                     <span class="close-btn">&times;</span>
                     <h2 id="subModalTitle">Add Component</h2>
                     <form id="subAssetForm">
+                        <input type="hidden" id="subAssetId" name="id">
                         <input type="hidden" id="parentAssetId" name="parentId">
                         <input type="hidden" id="parentSubAssetId" name="parentSubId">
                         
                         <div class="form-group">
-                            <label for="subAssetName">Name *</label>
+                            <label for="subAssetName">Name*</label>
                             <input type="text" id="subAssetName" name="name" required>
                         </div>
+                        
                         <div class="form-group">
                             <label for="subAssetModel">Model Number</label>
                             <input type="text" id="subAssetModel" name="modelNumber">
                         </div>
+                        
                         <div class="form-group">
                             <label for="subAssetSerial">Serial Number</label>
                             <input type="text" id="subAssetSerial" name="serialNumber">
                         </div>
+                        
                         <div class="form-group">
                             <label for="subAssetPurchaseDate">Purchase Date</label>
                             <input type="date" id="subAssetPurchaseDate" name="purchaseDate">
                         </div>
+                        
                         <div class="form-group">
-                            <label for="subAssetPrice">Price</label>
-                            <input type="number" id="subAssetPrice" name="price" step="0.01" min="0">
+                            <label for="subAssetPurchasePrice">Purchase Price</label>
+                            <input type="number" id="subAssetPurchasePrice" name="purchasePrice" step="0.01">
                         </div>
+                        
                         <div class="form-group">
                             <label for="subAssetWarrantyScope">Warranty Scope</label>
                             <input type="text" id="subAssetWarrantyScope" name="warrantyScope">
                         </div>
+                        
                         <div class="form-group">
                             <label for="subAssetWarrantyExpiration">Warranty Expiration</label>
                             <input type="date" id="subAssetWarrantyExpiration" name="warrantyExpiration">
                         </div>
+                        
                         <div class="form-group">
-                            <label for="subAssetPhoto">Photo</label>
-                            <div class="file-upload-box" data-target="subAssetPhoto">
-                                <input type="file" id="subAssetPhoto" accept="image/*" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
-                                </div>
-                            </div>
-                            <div id="subPhotoPreview" class="file-preview"></div>
+                            <label for="subAssetNotes">Notes</label>
+                            <textarea id="subAssetNotes" name="notes"></textarea>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="subAssetReceipt">Receipt</label>
-                            <div class="file-upload-box" data-target="subAssetReceipt">
-                                <input type="file" id="subAssetReceipt" accept="image/*,.pdf" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
-                                </div>
-                            </div>
-                            <div id="subReceiptPreview" class="file-preview"></div>
+                            <label>Photo</label>
+                            <input type="file" id="subAssetPhoto" name="photo" accept="image/*">
+                            <div id="subPhotoPreview" class="preview-container"></div>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="subAssetManual">Manual</label>
-                            <div class="file-upload-box" data-target="subAssetManual">
-                                <input type="file" id="subAssetManual" accept=".pdf,.doc,.docx" class="file-input">
-                                <div class="upload-content">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                        <polyline points="17 8 12 3 7 8"/>
-                                        <line x1="12" y1="3" x2="12" y2="15"/>
-                                    </svg>
-                                    <span>Drag & drop or click to upload</span>
-                                </div>
-                            </div>
-                            <div id="subManualPreview" class="file-preview"></div>
+                            <label>Receipt</label>
+                            <input type="file" id="subAssetReceipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png">
+                            <div id="subReceiptPreview" class="preview-container"></div>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="subAssetLink">Link</label>
-                            <input type="url" id="subAssetLink" name="link">
+                            <label>Manual</label>
+                            <input type="file" id="subAssetManual" name="manual" accept=".pdf">
+                            <div id="subManualPreview" class="preview-container"></div>
                         </div>
-                        <div class="form-group">
-                            <label for="subAssetDescription">Description</label>
-                            <textarea id="subAssetDescription" name="description" rows="3"></textarea>
-                        </div>
+                        
                         <div class="form-actions">
-                            <button type="submit" class="save-btn">Save</button>
                             <button type="button" class="cancel-btn">Cancel</button>
+                            <button type="submit" class="save-btn">Save</button>
                         </div>
                     </form>
                 </div>
@@ -394,7 +380,7 @@
     </div>
     
 
-    <script src="script.js"></script>
+    <script src="script.js" type="module"></script>
     <div id="toast" class="toast"></div>
 </body>
 </html> 

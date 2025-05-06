@@ -223,6 +223,10 @@ app.post(BASE_PATH + '/verify-pin', (req, res) => {
 app.use(BASE_PATH + '/styles.css', express.static('public/styles.css'));
 app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
 
+// Module files (need to be accessible for imports)
+app.use(BASE_PATH + '/src/services/fileUpload', express.static('src/services/fileUpload'));
+app.use(BASE_PATH + '/src/services/render', express.static('src/services/render'));
+
 // --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
 app.use((req, res, next) => {
     // Skip auth for login page and login-related resources
@@ -231,7 +235,9 @@ app.use((req, res, next) => {
         req.path === BASE_PATH + '/verify-pin' ||
         req.path === BASE_PATH + '/styles.css' ||
         req.path === BASE_PATH + '/script.js' ||
-        req.path === BASE_PATH + '/config.js') {
+        req.path === BASE_PATH + '/config.js' ||
+        req.path.startsWith(BASE_PATH + '/src/services/fileUpload/') ||
+        req.path.startsWith(BASE_PATH + '/src/services/render/')) {
         return next();
     }
     
@@ -242,6 +248,7 @@ app.use((req, res, next) => {
 // Protected static file serving (only accessible after authentication)
 app.use('/Images', authMiddleware, express.static(path.join(__dirname, 'data', 'Images')));
 app.use('/Receipts', authMiddleware, express.static(path.join(__dirname, 'data', 'Receipts')));
+app.use('/Manuals', authMiddleware, express.static(path.join(__dirname, 'data', 'Manuals')));
 
 // Protected API routes
 app.use('/api', (req, res, next) => {
