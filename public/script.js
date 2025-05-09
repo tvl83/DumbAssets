@@ -19,6 +19,7 @@ import {
     renderAssetList,
     sortAssets
 } from '/src/services/render/index.js';
+import {  registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 
 // State management
 let assets = [];
@@ -952,11 +953,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Set the header title from config if available
+    // Set the page and site title from config if available
     if (window.appConfig && window.appConfig.siteTitle) {
         const siteTitleElem = document.getElementById('siteTitle');
         if (siteTitleElem) {
-            siteTitleElem.textContent = window.appConfig.siteTitle;
+            siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+        }
+        const pageTitleElem = document.getElementById('pageTitle');
+        if (pageTitleElem) {
+            pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
         }
     }
     
@@ -1540,3 +1545,8 @@ function createSubAssetElement(subAsset) {
     
     return element;
 }
+
+// Keep at the end
+document.addEventListener('DOMContentLoaded', () => {
+    registerServiceWorker();
+});

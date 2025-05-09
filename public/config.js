@@ -17,7 +17,7 @@ function setCookie(name, value, days = 365) {
   d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
   const expires = "expires=" + d.toUTCString();
   document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict";
-  debug(`Set cookie ${name}=${value}`);
+  // debug(`Set cookie ${name}=${value}`);
 }
 
 function getCookie(name) {
@@ -34,8 +34,8 @@ function getCookie(name) {
 
 // Toggle between light and dark themes
 function toggleTheme(event) {
-  console.log("toggleTheme function called directly");
-  debug("toggleTheme function called directly");
+  // console.log("toggleTheme function called directly");
+  // debug("toggleTheme function called directly");
   
   // Prevent any default behavior
   if (event) {
@@ -46,7 +46,7 @@ function toggleTheme(event) {
   const currentTheme = document.documentElement.getAttribute('data-theme');
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   
-  debug(`Changing theme from ${currentTheme} to ${newTheme}`);
+  // debug(`Changing theme from ${currentTheme} to ${newTheme}`);
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('theme', newTheme);
   
@@ -58,7 +58,7 @@ function toggleTheme(event) {
 function updateThemeToggleState(theme) {
   const toggleButton = document.getElementById('themeToggle');
   if (toggleButton) {
-    debug(`Updating toggle button state for theme: ${theme}`);
+    // debug(`Updating toggle button state for theme: ${theme}`);
     toggleButton.setAttribute('aria-pressed', theme === 'dark');
     toggleButton.setAttribute('title', `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`);
   }
@@ -66,15 +66,15 @@ function updateThemeToggleState(theme) {
 
 // Set up theme toggle functionality
 function setupThemeToggle() {
-  console.log("Setting up theme toggle");
-  debug("Setting up theme toggle");
+  // console.log("Setting up theme toggle");
+  // debug("Setting up theme toggle");
   
   const themeToggle = document.getElementById('themeToggle');
-  console.log("Theme toggle element:", themeToggle);
+  // console.log("Theme toggle element:", themeToggle);
   
   if (!themeToggle) {
-    console.log("Theme toggle button not found!");
-    debug("Theme toggle button not found");
+    // console.log("Theme toggle button not found!");
+    // debug("Theme toggle button not found");
     return false;
   }
   
@@ -83,14 +83,14 @@ function setupThemeToggle() {
   
   // Add click handler directly
   themeToggle.onclick = function(e) {
-    console.log("Theme toggle clicked via onclick");
+    // console.log("Theme toggle clicked via onclick");
     toggleTheme(e);
   };
   
   // Add keyboard support
   themeToggle.onkeydown = function(e) {
     if (e.key === 'Enter' || e.key === ' ') {
-      console.log("Theme toggle triggered via keyboard");
+      // console.log("Theme toggle triggered via keyboard");
       e.preventDefault();
       toggleTheme(e);
     }
@@ -104,36 +104,36 @@ function setupThemeToggle() {
   const currentTheme = document.documentElement.getAttribute('data-theme');
   updateThemeToggleState(currentTheme);
   
-  console.log("Theme toggle setup complete");
-  debug("Theme toggle setup complete");
+  // console.log("Theme toggle setup complete");
+  // debug("Theme toggle setup complete");
   return true;
 }
 
 // Initialize theme based on localStorage or system preference
 function initTheme() {
-  debug("Initializing theme");
+  // debug("Initializing theme");
   const savedTheme = localStorage.getItem('theme');
-  debug(`Saved theme from localStorage: ${savedTheme || 'none'}`);
+  // debug(`Saved theme from localStorage: ${savedTheme || 'none'}`);
   
   const prefersDarkMedia = window.matchMedia('(prefers-color-scheme: dark)');
   const prefersDark = prefersDarkMedia.matches;
-  debug(`System prefers dark mode: ${prefersDark}`);
+  // debug(`System prefers dark mode: ${prefersDark}`);
   
   // Set initial theme
   let initialTheme;
   if (savedTheme) {
     // User has explicitly chosen a theme
     initialTheme = savedTheme;
-    debug(`Using saved theme: ${savedTheme}`);
+    // debug(`Using saved theme: ${savedTheme}`);
   } else {
     // Use system preference
     initialTheme = prefersDark ? 'dark' : 'light';
-    debug(`Using system theme: ${initialTheme}`);
+    // debug(`Using system theme: ${initialTheme}`);
   }
   
   // Apply the theme
   document.documentElement.setAttribute('data-theme', initialTheme);
-  debug(`Applied theme: ${initialTheme}`);
+  // debug(`Applied theme: ${initialTheme}`);
   
   // Listen for system preference changes
   prefersDarkMedia.addEventListener('change', (e) => {
@@ -142,15 +142,15 @@ function initTheme() {
       const newTheme = e.matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', newTheme);
       updateThemeToggleState(newTheme);
-      debug(`System preference changed, set theme to: ${newTheme}`);
+      // debug(`System preference changed, set theme to: ${newTheme}`);
     }
   });
 }
 
 // Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("DOM Content Loaded - setting up theme");
-  debug("DOM Content Loaded - setting up theme");
+  // console.log("DOM Content Loaded - setting up theme");
+  // debug("DOM Content Loaded - setting up theme");
   
   // Update page titles
   const pageTitle = document.getElementById('pageTitle');
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Also try on window load just in case
 window.addEventListener('load', () => {
-  console.log("Window loaded - checking theme toggle");
+  // console.log("Window loaded - checking theme toggle");
   setupThemeToggle();
 });
 

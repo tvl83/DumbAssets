@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{SITE_TITLE}}</title>
+    <title id="pageTitle">DumbAssets</title>
     <script src="config.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="assets/dumbassets.svg">
 </head>
 <body>
     <main>
         <form id="pinForm" action="verify-pin" method="POST">
             <div class="header-row">
                 <div class="header-spacer"></div>
-                <h1 id="siteTitle">{{SITE_TITLE}}</h1>
+                <h1 id="siteTitle">DumbAssets</h1>
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" role="button" type="button">
                     <svg class="moon" viewBox="0 0 24 24">
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -172,14 +173,16 @@
         });
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Set the page and site title from config if available
             if (window.appConfig && window.appConfig.siteTitle) {
-                // Set header
                 const siteTitleElem = document.getElementById('siteTitle');
                 if (siteTitleElem) {
-                    siteTitleElem.textContent = window.appConfig.siteTitle;
+                    siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
                 }
-                // Set tab title
-                document.title = window.appConfig.siteTitle;
+                const pageTitleElem = document.getElementById('pageTitle');
+                if (pageTitleElem) {
+                    pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+                }
             }
         });
     </script>

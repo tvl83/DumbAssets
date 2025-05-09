@@ -99,8 +99,21 @@ form {
 }
 
 /* Theme toggle */
-#themeToggle {
-    position: static;
+#themeToggle, #homeBtn, #notificationBtn {
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color var(--transition);
+    /* position: static;
     top: unset;
     right: unset;
     background: none;
@@ -114,14 +127,14 @@ form {
     justify-content: center;
     border-radius: 50%;
     transition: background-color var(--transition);
-    margin-left: auto;
+    margin-left: auto; */
 }
 
-#themeToggle:hover {
+#themeToggle:hover, #homeBtn:hover, #notificationBtn:hover {
     background: rgba(128, 128, 128, 0.1);
 }
 
-#themeToggle svg {
+#themeToggle svg, #homeBtn svg, #notificationBtn svg {
     width: 24px;
     height: 24px;
     stroke: var(--text);
@@ -1300,27 +1313,6 @@ input, select, textarea {
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-.notification-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    transition: color 0.2s;
-    color: var(--text-color);
-    position: relative;
-}
-.notification-btn svg {
-    width: 1.7em;
-    height: 1.7em;
-    display: block;
-}
-.notification-btn:hover,
-.notification-btn:focus {
-    color: var(--primary-color);
 }
 
 /* Notification Modal Styles */
