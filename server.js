@@ -5,24 +5,34 @@
 
 // --- SECURITY & CONFIG IMPORTS ---
 require('dotenv').config();
-console.log('process.env:', process.env);
+// console.log('process.env:', process.env);
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
 const crypto = require('crypto');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const XLSX = require('xlsx');
 const { sendNotification } = require('./src/services/notifications/appriseNotifier');
 const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
+const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
+const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DEBUG = process.env.DEBUG === 'TRUE';
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)` : (process.env.SITE_TITLE || 'DumbAssets');
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
 
+generatePWAManifest(SITE_TITLE);
 // Set timezone from environment variable or default to America/Chicago
 process.env.TZ = process.env.TZ || 'America/Chicago';
 
@@ -34,22 +44,22 @@ function debugLog(...args) {
 
 // --- BASE PATH & PIN CONFIG ---
 const BASE_PATH = (() => {
-    if (!process.env.BASE_URL) {
+    if (!BASE_URL) {
         debugLog('No BASE_URL set, using empty base path');
         return '';
     }
     try {
-        const url = new URL(process.env.BASE_URL);
+        const url = new URL(BASE_URL);
         const path = url.pathname.replace(/\/$/, '');
         debugLog('Base URL Configuration:', {
-            originalUrl: process.env.BASE_URL,
+            originalUrl: BASE_URL,
             extractedPath: path,
             protocol: url.protocol,
             hostname: url.hostname
         });
         return path;
     } catch {
-        const path = process.env.BASE_URL.replace(/\/$/, '');
+        const path = BASE_URL.replace(/\/$/, '');
         debugLog('Using direct path as BASE_URL:', path);
         return path;
     }
@@ -87,29 +97,61 @@ function recordAttempt(ip) {
 
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "blob:"],
-        },
-    },
+  noSniff: true, // Prevent MIME type sniffing
+  frameguard: { action: 'deny' }, // Prevent clickjacking
+  hsts: { maxAge: 31536000, includeSubDomains: true }, // Enforce HTTPS for one year
+  crossOriginEmbedderPolicy: true,
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  referrerPolicy: { policy: 'no-referrer-when-downgrade' }, // Set referrer policy
+  ieNoOpen: true, // Prevent IE from executing downloads
+  // Disabled Helmet middlewares:
+  contentSecurityPolicy: false, // Disable CSP for now
+  dnsPrefetchControl: true, // Disable DNS prefetching
+  permittedCrossDomainPolicies: false,
+  originAgentCluster: false,
+  xssFilter: false,
 }));
 app.use(express.json());
+app.set('trust proxy', 1);
+app.use(cors(getCorsOptions(BASE_URL)));
 app.use(cookieParser());
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
-        sameSite: 'lax',
+        secure: (BASE_URL.startsWith('https') && NODE_ENV === 'production'),
+        sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
+
+// --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
+app.use(BASE_PATH, (req, res, next) => {
+    // List of paths that should be publicly accessible
+    const publicPaths = [
+        '/login',
+        '/pin-length',
+        '/verify-pin',
+        '/config.js',
+        '/assets/',
+        '/styles.css',
+        '/manifest.json',
+        '/asset-manifest.json',
+    ];
+
+    // Check if the current path matches any of the public paths
+    if (publicPaths.some(path => req.path.startsWith(path))) {
+        return next();
+    }
+
+    // For all other paths, apply both origin validation and auth middleware
+    originValidationMiddleware(req, res, () => {
+        authMiddleware(req, res, next);
+    });
+});
 
 // --- PIN VERIFICATION ---
 function verifyPin(storedPin, providedPin) {
@@ -121,7 +163,7 @@ function verifyPin(storedPin, providedPin) {
 }
 
 // --- AUTH MIDDLEWARE ---
-const authMiddleware = (req, res, next) => {
+function authMiddleware(req, res, next) {
     debugLog('Auth check for path:', req.path, 'Method:', req.method);
     if (!PIN || PIN.trim() === '') return next();
     if (!req.session.authenticated) {
@@ -136,7 +178,7 @@ const authMiddleware = (req, res, next) => {
             });
         } else {
             // Redirect to login for page requests
-        return res.redirect(BASE_PATH + '/login');
+            return res.redirect(BASE_PATH + '/login');
         }
     }
     debugLog('Auth successful - Valid session found');
@@ -155,7 +197,7 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
         window.appConfig = {
             basePath: '${BASE_PATH}',
             debug: ${DEBUG},
-            siteTitle: '${process.env.SITE_TITLE || 'DumbTitle'}'
+            siteTitle: '${SITE_TITLE}'
         };
     `);
     
@@ -168,6 +210,15 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
     }
     
     res.end();
+});
+
+// Serve static files for public assets
+app.use(BASE_PATH + '/', express.static(path.join(PUBLIC_DIR)));
+app.get(BASE_PATH + "/manifest.json", (req, res) => {
+    res.sendFile(path.join(ASSETS_DIR, "manifest.json"));
+});
+app.get(BASE_PATH + "/asset-manifest.json", (req, res) => {
+    res.sendFile(path.join(ASSETS_DIR, "asset-manifest.json"));
 });
 
 // Unprotected routes and files (accessible without login)
@@ -184,39 +235,64 @@ app.get(BASE_PATH + '/pin-length', (req, res) => {
 
 app.post(BASE_PATH + '/verify-pin', (req, res) => {
     debugLog('PIN verification attempt from IP:', req.ip);
+    
+    // If no PIN is set, authentication is successful
     if (!PIN || PIN.trim() === '') {
+        debugLog('PIN verification bypassed - No PIN configured');
         req.session.authenticated = true;
         return res.status(200).json({ success: true });
     }
+
+    // Check if IP is locked out
     const ip = req.ip;
     if (isLockedOut(ip)) {
         const attempts = loginAttempts.get(ip);
         const timeLeft = Math.ceil((LOCKOUT_TIME - (Date.now() - attempts.lastAttempt)) / 1000 / 60);
-        return res.status(429).json({ error: `Too many attempts. Please try again in ${timeLeft} minutes.` });
+        debugLog('PIN verification blocked - IP is locked out:', ip);
+        return res.status(429).json({ 
+            error: `Too many attempts. Please try again in ${timeLeft} minutes.`
+        });
     }
+
     const { pin } = req.body;
     if (!pin || typeof pin !== 'string') {
+        debugLog('PIN verification failed - Invalid PIN format');
         return res.status(400).json({ error: 'Invalid PIN format' });
     }
-    const delay = crypto.randomInt(50, 150);
-    setTimeout(() => {
-        if (verifyPin(PIN, pin)) {
-            resetAttempts(ip);
-            req.session.authenticated = true;
-            res.cookie(`${projectName}_PIN`, pin, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 24 * 60 * 60 * 1000
-            });
-            res.status(200).json({ success: true });
-        } else {
-            recordAttempt(ip);
-            const attempts = loginAttempts.get(ip);
-            const attemptsLeft = MAX_ATTEMPTS - attempts.count;
-            res.status(401).json({ error: 'Invalid PIN', attemptsLeft: Math.max(0, attemptsLeft) });
-        }
-    }, delay);
+
+    // Verify PIN first
+    const isPinValid = verifyPin(PIN, pin);
+    if (isPinValid) {
+        debugLog('PIN verification successful');
+        // Reset attempts on successful login
+        resetAttempts(ip);
+        
+        // Set authentication in session immediately
+        req.session.authenticated = true;
+        
+        // Set secure cookie
+        res.cookie(`${projectName}_PIN`, pin, {
+            httpOnly: true,
+            secure: req.secure || (BASE_URL.startsWith('https') && NODE_ENV === 'production'),
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+        
+        // Redirect to main page on success
+        res.redirect(BASE_PATH + '/');
+    } else {
+        debugLog('PIN verification failed - Invalid PIN');
+        // Record failed attempt
+        recordAttempt(ip);
+        
+        const attempts = loginAttempts.get(ip);
+        const attemptsLeft = MAX_ATTEMPTS - attempts.count;
+        
+        res.status(401).json({ 
+            error: 'Invalid PIN',
+            attemptsLeft: Math.max(0, attemptsLeft)
+        });
+    }
 });
 
 // Login page static assets (need to be accessible without authentication)
@@ -226,29 +302,6 @@ app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
 // Module files (need to be accessible for imports)
 app.use(BASE_PATH + '/src/services/fileUpload', express.static('src/services/fileUpload'));
 app.use(BASE_PATH + '/src/services/render', express.static('src/services/render'));
-
-// --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
-app.use((req, res, next) => {
-    // Skip auth for login page and login-related resources
-    if (req.path === BASE_PATH + '/login' || 
-        req.path === BASE_PATH + '/pin-length' || 
-        req.path === BASE_PATH + '/verify-pin' ||
-        req.path === BASE_PATH + '/styles.css' ||
-        req.path === BASE_PATH + '/script.js' ||
-        req.path === BASE_PATH + '/config.js' ||
-        req.path.startsWith(BASE_PATH + '/src/services/fileUpload/') ||
-        req.path.startsWith(BASE_PATH + '/src/services/render/')) {
-        return next();
-    }
-    
-    // Apply authentication middleware
-    authMiddleware(req, res, next);
-});
-
-// Protected static file serving (only accessible after authentication)
-app.use('/Images', authMiddleware, express.static(path.join(__dirname, 'data', 'Images')));
-app.use('/Receipts', authMiddleware, express.static(path.join(__dirname, 'data', 'Receipts')));
-app.use('/Manuals', authMiddleware, express.static(path.join(__dirname, 'data', 'Manuals')));
 
 // Protected API routes
 app.use('/api', (req, res, next) => {
@@ -969,46 +1022,6 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
     }
 });
 
-// --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
-const SITE_TITLE = process.env.SITE_TITLE || 'DumbAssets';
-
-// Serve index.html with dynamic SITE_TITLE for main app
-app.get(BASE_PATH + '/', authMiddleware, (req, res) => {
-    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-    res.send(html);
-});
-
-// Serve login.html with dynamic SITE_TITLE
-app.get(BASE_PATH + '/login', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
-    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
-    let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
-    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-    res.send(html);
-});
-
-// Redirect /index.html to /
-app.get(BASE_PATH + '/index.html', (req, res) => res.redirect(BASE_PATH + '/'));
-// Redirect /login.html to /login
-app.get(BASE_PATH + '/login.html', (req, res) => res.redirect(BASE_PATH + '/login'));
-
-// --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
-app.get('*', (req, res, next) => {
-    // Skip API and static asset requests
-    if (req.path.startsWith('/api/') || req.path.startsWith('/Images/') || req.path.startsWith('/Receipts/') || req.path.endsWith('.css') || req.path.endsWith('.js') || req.path.endsWith('.ico')) {
-        return next();
-    }
-    // Auth check
-    if (!PIN || PIN.trim() === '' || req.session.authenticated) {
-        let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-        html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-        return res.send(html);
-    } else {
-        return res.redirect(BASE_PATH + '/login');
-    }
-});
-
 // --- CLEANUP LOCKOUTS ---
 setInterval(() => {
     const now = Date.now();
@@ -1028,9 +1041,9 @@ app.listen(PORT, () => {
         port: PORT,
         basePath: BASE_PATH,
         pinProtection: !!PIN,
-        nodeEnv: process.env.NODE_ENV || 'development',
+        nodeEnv: NODE_ENV,
         debug: DEBUG
     });
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on: ${BASE_URL}`);
 }); 
 // --- END --- 

@@ -122,8 +122,8 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             <div class="asset-title">
                 <h2>${asset.name}</h2>
                 <div class="asset-meta">
-                    Added on ${formatDate(asset.createdAt)}
-                    ${asset.updatedAt !== asset.createdAt ? ` • Updated on ${formatDate(asset.updatedAt)}` : ''}
+                    Added: ${formatDate(asset.createdAt)}
+                    ${asset.updatedAt !== asset.createdAt ? ` • Updated: ${formatDate(asset.updatedAt)}` : ''}
                 </div>
             </div>
             <div class="asset-actions">

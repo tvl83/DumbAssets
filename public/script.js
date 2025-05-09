@@ -19,6 +19,9 @@ import {
     renderAssetList,
     sortAssets
 } from '/src/services/render/index.js';
+import {  registerServiceWorker } from './helpers/serviceWorkerHelper.js';
+// Import collapsible sections functionality
+import { initCollapsibleSections } from './js/collapsible.js';
 
 // State management
 let assets = [];
@@ -61,7 +64,7 @@ const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
 const importModal = document.getElementById('importModal');
 const importBtn = document.getElementById('importAssetsBtn');
 const importFile = document.getElementById('importFile');
-const selectedFileName = document.getElementById('selectedFileName');
+// const selectedFileName = document.getElementById('selectedFileName');
 const startImportBtn = document.getElementById('startImportBtn');
 const columnSelects = document.querySelectorAll('.column-select');
 
@@ -71,7 +74,7 @@ const notificationModal = document.getElementById('notificationModal');
 const notificationForm = document.getElementById('notificationForm');
 const saveNotificationSettings = document.getElementById('saveNotificationSettings');
 const cancelNotificationSettings = document.getElementById('cancelNotificationSettings');
-const notificationClose = notificationModal.querySelector('.close');
+const notificationClose = notificationModal.querySelector('.close-btn');
 const testNotificationSettings = document.getElementById('testNotificationSettings');
 
 // Utility Functions
@@ -393,11 +396,11 @@ function renderDashboard() {
                         <div class="card-value">${allWarranties.length}</div>
                     </div>
                     <div class="dashboard-card within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
-                        <div class="card-label">Within 60 days</div>
+                        <div class="card-label">In 60 days</div>
                         <div class="card-value">${within60}</div>
                     </div>
                     <div class="dashboard-card within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
-                        <div class="card-label">Within 30 days</div>
+                        <div class="card-label">In 30 days</div>
                         <div class="card-value">${within30}</div>
                     </div>
                     <div class="dashboard-card expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
@@ -443,7 +446,7 @@ function renderEmptyState() {
 function openAssetModal(asset = null) {
     if (!assetModal || !assetForm) return;
     isEditMode = !!asset;
-    document.getElementById('modalTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
+    document.getElementById('addAssetTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
     assetForm.reset();
     deletePhoto = false;
     deleteReceipt = false;
@@ -596,6 +599,11 @@ function openAssetModal(asset = null) {
     
     // Show the modal
     assetModal.style.display = 'block';
+    
+    // // Initialize collapsible sections in the modal - with a slight delay to ensure content is visible
+    // setTimeout(() => {
+    //     initCollapsibleSections();
+    // }, 50);
 }
 
 function closeAssetModal() {
@@ -622,7 +630,7 @@ function closeAssetModal() {
 function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null) {
     if (!subAssetModal || !subAssetForm) return;
     isEditMode = !!subAsset;
-    document.getElementById('subModalTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
+    document.getElementById('addComponentTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
     subAssetForm.reset();
     deleteSubPhoto = false;
     deleteSubReceipt = false;
@@ -821,6 +829,11 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
     
     // Show the modal
     subAssetModal.style.display = 'block';
+    
+    // // Initialize any collapsible sections in the modal
+    // setTimeout(() => {
+    //     initCollapsibleSections();
+    // }, 50);
 }
 
 function closeSubAssetModal() {
@@ -843,183 +856,6 @@ function closeSubAssetModal() {
 
     subAssetModal.style.display = 'none';
 }
-
-// Event listeners
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if DOM elements exist
-    if (!assetList || !assetDetails) {
-        console.error('Required DOM elements not found.');
-        return;
-    }
-    
-    // Set up file upload functionality
-    initializeFileUploads();
-    
-    // Initialize the asset renderer module
-    initRenderer({
-        // Utility functions
-        formatDate,
-        formatCurrency,
-        
-        // Module functions
-        openAssetModal,
-        openSubAssetModal,
-        deleteAsset,
-        deleteSubAsset,
-        createSubAssetElement,
-        handleSidebarNav,
-        renderSubAssets,
-        
-        // Global state
-        assets,
-        subAssets,
-        
-        // DOM elements
-        assetList,
-        assetDetails,
-        subAssetContainer
-    });
-    
-    // Initialize the list renderer module
-    initListRenderer({
-        // Module functions
-        updateSelectedIds,
-        renderAssetDetails,
-        handleSidebarNav,
-        
-        // Global state
-        assets,
-        subAssets,
-        selectedAssetId,
-        dashboardFilter,
-        currentSort,
-        searchInput,
-        
-        // DOM elements
-        assetList
-    });
-    
-    // Set up search
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            renderAssetList(e.target.value);
-            if (clearSearchBtn) {
-                clearSearchBtn.style.display = e.target.value ? 'flex' : 'none';
-            }
-        });
-    }
-    if (clearSearchBtn && searchInput) {
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            clearSearchBtn.style.display = 'none';
-            renderAssetList('');
-            searchInput.focus();
-        });
-    }
-    
-    // Set up home button
-    const homeBtn = document.getElementById('homeBtn');
-    if (homeBtn) {
-        homeBtn.addEventListener('click', () => {
-            // Clear selected asset
-            updateSelectedIds(null, null);
-            
-            // Remove active class from all asset items
-            document.querySelectorAll('.asset-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Render dashboard
-            renderEmptyState();
-            
-            // Close sidebar on mobile
-            handleSidebarNav();
-        });
-    }
-    
-    // Set up add asset button
-    if (addAssetBtn) {
-        addAssetBtn.addEventListener('click', () => {
-            openAssetModal();
-        });
-    }
-    
-    // Add event listener for escape key to close modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeAssetModal();
-            closeSubAssetModal();
-        }
-    });
-    
-    // Set the header title from config if available
-    if (window.appConfig && window.appConfig.siteTitle) {
-        const siteTitleElem = document.getElementById('siteTitle');
-        if (siteTitleElem) {
-            siteTitleElem.textContent = window.appConfig.siteTitle;
-        }
-    }
-    
-    // Set up sort buttons
-    const sortNameBtn = document.getElementById('sortNameBtn');
-    const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
-    
-    if (sortNameBtn) {
-        sortNameBtn.addEventListener('click', () => {
-            const currentDirection = sortNameBtn.getAttribute('data-direction') || 'asc';
-            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
-            
-            // Update button state
-            sortNameBtn.setAttribute('data-direction', newDirection);
-            sortWarrantyBtn.setAttribute('data-direction', 'asc');
-            
-            // Update sort settings
-            currentSort = { field: 'name', direction: newDirection };
-            updateSort(currentSort);
-            
-            // Update UI
-            updateSortButtons(sortNameBtn);
-            
-            // Re-render with sort
-            renderAssetList(searchInput ? searchInput.value : '');
-        });
-    }
-    
-    if (sortWarrantyBtn) {
-        sortWarrantyBtn.addEventListener('click', () => {
-            const currentDirection = sortWarrantyBtn.getAttribute('data-direction') || 'asc';
-            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
-            
-            // Update button state
-            sortWarrantyBtn.setAttribute('data-direction', newDirection);
-            sortNameBtn.setAttribute('data-direction', 'asc');
-            
-            // Update sort settings
-            currentSort = { field: 'warranty', direction: newDirection };
-            updateSort(currentSort);
-            
-            // Update UI
-            updateSortButtons(sortWarrantyBtn);
-            
-            // Re-render with sort
-            renderAssetList(searchInput ? searchInput.value : '');
-        });
-    }
-    
-    // Top Sort Button (optional)
-    const topSortBtn = document.getElementById('topSortBtn');
-    if (topSortBtn) {
-        topSortBtn.addEventListener('click', () => {
-            const sortOptions = document.getElementById('sortOptions');
-            if (sortOptions) {
-                sortOptions.classList.toggle('visible');
-            }
-        });
-    }
-    
-    // Load initial data
-    loadAllData();
-});
 
 function closeSidebar() {
     if (sidebar) sidebar.classList.remove('open');
@@ -1065,7 +901,7 @@ importBtn.addEventListener('click', () => {
 });
 
 // Close import modal
-importModal.querySelector('.close').addEventListener('click', () => {
+importModal.querySelector('.close-btn').addEventListener('click', () => {
     importModal.style.display = 'none';
 });
 
@@ -1074,7 +910,7 @@ importFile.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    selectedFileName.textContent = file.name;
+    // selectedFileName.textContent = file.name;
     
     try {
         // Read the file and get headers
@@ -1195,7 +1031,7 @@ startImportBtn.addEventListener('click', async () => {
         // Close modal and reset form
         importModal.style.display = 'none';
         importFile.value = '';
-        selectedFileName.textContent = 'No file chosen';
+        // selectedFileName.textContent = 'No file chosen';
         startImportBtn.disabled = true;
         columnSelects.forEach(select => {
             select.innerHTML = '<option value="">Select Column</option>';
@@ -1540,3 +1376,188 @@ function createSubAssetElement(subAsset) {
     
     return element;
 }
+
+// Keep at the end
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if DOM elements exist
+    if (!assetList || !assetDetails) {
+        console.error('Required DOM elements not found.');
+        return;
+    }
+    
+    // Set up file upload functionality
+    initializeFileUploads();
+    
+    // Initialize collapsible sections
+    initCollapsibleSections();
+    
+    // Initialize the asset renderer module
+    initRenderer({
+        // Utility functions
+        formatDate,
+        formatCurrency,
+        
+        // Module functions
+        openAssetModal,
+        openSubAssetModal,
+        deleteAsset,
+        deleteSubAsset,
+        createSubAssetElement,
+        handleSidebarNav,
+        renderSubAssets,
+        
+        // Global state
+        assets,
+        subAssets,
+        
+        // DOM elements
+        assetList,
+        assetDetails,
+        subAssetContainer
+    });
+    
+    // Initialize the list renderer module
+    initListRenderer({
+        // Module functions
+        updateSelectedIds,
+        renderAssetDetails,
+        handleSidebarNav,
+        
+        // Global state
+        assets,
+        subAssets,
+        selectedAssetId,
+        dashboardFilter,
+        currentSort,
+        searchInput,
+        
+        // DOM elements
+        assetList
+    });
+    
+    // Set up search
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            renderAssetList(e.target.value);
+            if (clearSearchBtn) {
+                clearSearchBtn.style.display = e.target.value ? 'flex' : 'none';
+            }
+        });
+    }
+    if (clearSearchBtn && searchInput) {
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            renderAssetList('');
+            searchInput.focus();
+        });
+    }
+    
+    // Set up home button
+    const homeBtn = document.getElementById('homeBtn');
+    if (homeBtn) {
+        homeBtn.addEventListener('click', () => {
+            // Clear selected asset
+            updateSelectedIds(null, null);
+            
+            // Remove active class from all asset items
+            document.querySelectorAll('.asset-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Render dashboard
+            renderEmptyState();
+            
+            // Close sidebar on mobile
+            handleSidebarNav();
+        });
+    }
+    
+    // Set up add asset button
+    if (addAssetBtn) {
+        addAssetBtn.addEventListener('click', () => {
+            openAssetModal();
+        });
+    }
+    
+    // Add event listener for escape key to close modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAssetModal();
+            closeSubAssetModal();
+        }
+    });
+    
+    // Set the page and site title from config if available
+    if (window.appConfig && window.appConfig.siteTitle) {
+        const siteTitleElem = document.getElementById('siteTitle');
+        if (siteTitleElem) {
+            siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+        }
+        const pageTitleElem = document.getElementById('pageTitle');
+        if (pageTitleElem) {
+            pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+        }
+    }
+    
+    // Set up sort buttons
+    const sortNameBtn = document.getElementById('sortNameBtn');
+    const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
+    
+    if (sortNameBtn) {
+        sortNameBtn.addEventListener('click', () => {
+            const currentDirection = sortNameBtn.getAttribute('data-direction') || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            
+            // Update button state
+            sortNameBtn.setAttribute('data-direction', newDirection);
+            sortWarrantyBtn.setAttribute('data-direction', 'asc');
+            
+            // Update sort settings
+            currentSort = { field: 'name', direction: newDirection };
+            updateSort(currentSort);
+            
+            // Update UI
+            updateSortButtons(sortNameBtn);
+            
+            // Re-render with sort
+            renderAssetList(searchInput ? searchInput.value : '');
+        });
+    }
+    
+    if (sortWarrantyBtn) {
+        sortWarrantyBtn.addEventListener('click', () => {
+            const currentDirection = sortWarrantyBtn.getAttribute('data-direction') || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            
+            // Update button state
+            sortWarrantyBtn.setAttribute('data-direction', newDirection);
+            sortNameBtn.setAttribute('data-direction', 'asc');
+            
+            // Update sort settings
+            currentSort = { field: 'warranty', direction: newDirection };
+            updateSort(currentSort);
+            
+            // Update UI
+            updateSortButtons(sortWarrantyBtn);
+            
+            // Re-render with sort
+            renderAssetList(searchInput ? searchInput.value : '');
+        });
+    }
+    
+    // Top Sort Button (optional)
+    const topSortBtn = document.getElementById('topSortBtn');
+    if (topSortBtn) {
+        topSortBtn.addEventListener('click', () => {
+            const sortOptions = document.getElementById('sortOptions');
+            if (sortOptions) {
+                sortOptions.classList.toggle('visible');
+            }
+        });
+    }
+    
+    // Load initial data
+    loadAllData();
+    registerServiceWorker();
+});

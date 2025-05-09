@@ -133,6 +133,18 @@ dist
 .cursor
 .cursor/
 
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data folder for the data volume mapping
+data/
+
+# Generated Files
+/public/*manifest.json
+/public/assets/*manifest.json
+/public/pdfjs
+
 # Ignore asset and receipt data
 /data/
 

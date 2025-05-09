@@ -3,30 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{SITE_TITLE}}</title>
+    <title id="pageTitle">DumbAssets</title>
     <script src="config.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="assets/dumbassets.svg">
 </head>
 <body>
     <main>
-        <form id="pinForm" action="verify-pin" method="POST">
-            <div class="header-row">
-                <div class="header-spacer"></div>
-                <h1 id="siteTitle">{{SITE_TITLE}}</h1>
+        <form id="pinForm">
+            <div class="pin-header-row">
+                <h1 id="siteTitle">DumbAssets</h1>
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" role="button" type="button">
-                    <svg class="moon" viewBox="0 0 24 24">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    <svg class="moon">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
                     </svg>
-                    <svg class="sun" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line>
+                    <svg class="sun">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" />
+                        <path d="M6.343 17.657l-1.414 1.414" />
+                        <path d="M6.343 6.343l-1.414 -1.414" />
+                        <path d="M17.657 6.343l1.414 -1.414" />
+                        <path d="M17.657 17.657l1.414 1.414" />
+                        <path d="M4 12h-2" />
+                        <path d="M12 4v-2" />
+                        <path d="M20 12h2" />
+                        <path d="M12 20v2" />
                     </svg>
                 </button>
             </div>
@@ -42,144 +44,171 @@
     <script>
         // PIN input functionality
         document.addEventListener('DOMContentLoaded', async function() {
-            // Theme handled by config.js
-            
             // Get PIN length from server
             const pinContainer = document.querySelector('.pin-input-container');
             const pinForm = document.getElementById('pinForm');
             const errorDisplay = document.querySelector('.pin-error');
             let pinLength = 4; // Default
-            
-            try {
-                // Get actual pin length from server
-                const response = await fetch('pin-length');
-                if (response.ok) {
-                    const data = await response.json();
-                    pinLength = data.length || 4;
-                }
-            } catch (error) {
-                console.error('Error fetching PIN length:', error);
-            }
-            
-            // Create PIN inputs
-            for (let i = 0; i < pinLength; i++) {
-                const input = document.createElement('input');
-                input.type = 'password';
-                input.maxLength = 1;
-                input.className = 'pin-input';
-                input.name = `pin${i}`;
-                input.setAttribute('inputmode', 'numeric');
-                input.setAttribute('pattern', '[0-9]*');
-                input.required = true;
+
+            const submitPin = async () => {
+                // Collect PIN from inputs
+                const inputs = Array.from(pinContainer.querySelectorAll('input'));
+                const pin = inputs.map(input => input.value).join('').trim();
                 
-                input.addEventListener('input', function(e) {
-                    // Handle input changes
-                    if (this.value) {
-                        this.classList.add('has-value');
-                        
-                        // Auto-advance to next input
-                        const nextInput = this.nextElementSibling;
-                        if (nextInput && nextInput.classList.contains('pin-input')) {
-                            nextInput.focus();
-                        } else {
-                            // If this is the last input and it has a value, submit the form
-                            const allInputs = Array.from(pinContainer.querySelectorAll('input'));
-                            const allFilled = allInputs.every(input => input.value.trim() !== '');
-                            if (allFilled) {
-                                // Short delay to show the filled input before submitting
-                                setTimeout(() => {
-                                    pinForm.dispatchEvent(new Event('submit'));
-                                }, 300);
-                            }
-                        }
-                    } else {
-                        this.classList.remove('has-value');
+                try {
+                    const response = await fetch('verify-pin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ pin }),
+                        credentials: 'same-origin', // Ensure cookies are sent
+                        redirect: 'follow' // Follow server redirects
+                    });
+                    
+                    // If redirected, the response will be a redirect status (3xx)
+                    if (response.redirected) {
+                        window.location.replace(response.url);
+                        return;
                     }
                     
-                    // Hide error when user starts typing again
-                    errorDisplay.setAttribute('aria-hidden', 'true');
-                });
-                
-                input.addEventListener('keydown', function(e) {
-                    // Handle backspace navigation
-                    if (e.key === 'Backspace' && !this.value) {
-                        const prevInput = this.previousElementSibling;
-                        if (prevInput && prevInput.classList.contains('pin-input')) {
-                            prevInput.focus();
-                            prevInput.value = '';
-                            prevInput.classList.remove('has-value');
-                            e.preventDefault();
-                        }
+                    const data = await response.json();
+                    
+                    if (response.status === 429) {
+                        // Handle lockout
+                        errorDisplay.textContent = data.error;
+                        errorDisplay.setAttribute('aria-hidden', 'false');
+                        inputs.forEach(input => {
+                            input.value = '';
+                            input.classList.remove('has-value');
+                            input.disabled = true;
+                        });
+                    } else {
+                        // Handle invalid PIN
+                        const message = data.attemptsLeft > 0 
+                            ? `Incorrect PIN. ${data.attemptsLeft} attempts remaining.` 
+                            : 'Incorrect PIN. Last attempt before lockout.';
+                        
+                        errorDisplay.textContent = message;
+                        errorDisplay.setAttribute('aria-hidden', 'false');
+                        inputs.forEach(input => {
+                            input.value = '';
+                            input.classList.remove('has-value');
+                        });
+                        inputs[0].focus();
                     }
-                });
-                
-                pinContainer.appendChild(input);
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorDisplay.textContent = 'An error occurred. Please try again.';
+                    errorDisplay.setAttribute('aria-hidden', 'false');
+                }
             }
+
+            // Handle form submission
+            pinForm.addEventListener('submit', async function(e) {
+                // Prevent the default form submission
+                e.preventDefault();
+                try {
+                    await submitPin();                
+                }
+                catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+            
+            // Fetch PIN length from server
+            fetch('pin-length')
+                .then(response => response.json())
+                .then(data => {
+                    const pinLength = data.length;
+                    const container = document.querySelector('.pin-input-container');
+                    
+                    // Create PIN input fields
+                    for (let i = 0; i < pinLength; i++) {
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.maxLength = 1;
+                        input.className = 'pin-input';
+                        input.setAttribute('inputmode', 'numeric');
+                        input.pattern = '[0-9]*';
+                        input.setAttribute('autocomplete', 'off');
+                        container.appendChild(input);
+                    }
+
+                    // Handle input behavior
+                    const inputs = container.querySelectorAll('.pin-input');
+                    
+                    // Focus first input immediately
+                    if (inputs.length > 0) {
+                        inputs[0].focus();
+                    }
+
+                    inputs.forEach((input, index) => {
+                        input.addEventListener('input', (e) => {
+                            // Only allow numbers
+                            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                            
+                            if (e.target.value) {
+                                e.target.classList.add('has-value');
+                                if (index < inputs.length - 1) {
+                                    inputs[index + 1].focus();
+                                } else {
+                                    // Last digit entered, submit the form
+                                    const pin = Array.from(inputs).map(input => input.value).join('');
+                                    submitPin(pin, inputs);
+                                }
+                            } else {
+                                e.target.classList.remove('has-value');
+                            }
+                        });
+
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                                inputs[index - 1].focus();
+                            }
+                        });
+
+                        // Prevent paste of multiple characters
+                        input.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const pastedData = e.clipboardData.getData('text');
+                            const numbers = pastedData.match(/\d/g);
+                            
+                            if (numbers) {
+                                numbers.forEach((num, i) => {
+                                    if (inputs[index + i]) {
+                                        inputs[index + i].value = num;
+                                        inputs[index + i].classList.add('has-value');
+                                        if (index + i + 1 < inputs.length) {
+                                            inputs[index + i + 1].focus();
+                                        } else {
+                                            // If paste fills all inputs, submit the form
+                                            const pin = Array.from(inputs).map(input => input.value).join('');
+                                            submitPin(pin, inputs);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    });
+                });
             
             // Focus first input on page load
             setTimeout(() => {
                 const firstInput = pinContainer.querySelector('input');
                 if (firstInput) firstInput.focus();
             }, 100);
-            
-            // Handle form submission
-            pinForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                // Collect PIN from inputs
-                const inputs = Array.from(pinContainer.querySelectorAll('input'));
-                const pin = inputs.map(input => input.value).join('');
-                
-                try {
-                    const response = await fetch('verify-pin', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ pin })
-                    });
-                    
-                    if (response.ok) {
-                        // Successful login, redirect to main app
-                        window.location.href = '/';
-                    } else {
-                        // Show error
-                        errorDisplay.setAttribute('aria-hidden', 'false');
-                        
-                        // Clear inputs and focus first one
-                        inputs.forEach(input => {
-                            input.value = '';
-                            input.classList.remove('has-value');
-                        });
-                        inputs[0].focus();
-                        
-                        // If we have more info about the error, show it
-                        try {
-                            const errorData = await response.json();
-                            if (errorData.error) {
-                                errorDisplay.textContent = errorData.error;
-                            }
-                        } catch (e) {
-                            // Ignore parsing error
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error verifying PIN:', error);
-                    errorDisplay.textContent = 'Error connecting to server. Please try again.';
-                    errorDisplay.setAttribute('aria-hidden', 'false');
-                }
-            });
-        });
 
-        document.addEventListener('DOMContentLoaded', function() {
+            // Set the page and site title from config if available
             if (window.appConfig && window.appConfig.siteTitle) {
-                // Set header
                 const siteTitleElem = document.getElementById('siteTitle');
                 if (siteTitleElem) {
-                    siteTitleElem.textContent = window.appConfig.siteTitle;
+                    siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
                 }
-                // Set tab title
-                document.title = window.appConfig.siteTitle;
+                const pageTitleElem = document.getElementById('pageTitle');
+                if (pageTitleElem) {
+                    pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+                }
             }
         });
     </script>
