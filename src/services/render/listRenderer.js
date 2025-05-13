@@ -268,21 +268,66 @@ function renderAssetList(searchQuery = '') {
  * @returns {Array} Sorted assets array
  */
 function sortAssets(assets, field, direction) {
+    if (!assets || !Array.isArray(assets)) {
+        console.warn('sortAssets called with invalid assets array');
+        return [];
+    }
+    
     return [...assets].sort((a, b) => {
         let valueA, valueB;
         
+        // Safely extract values based on field
         if (field === 'name') {
-            valueA = a.name?.toLowerCase() || '';
-            valueB = b.name?.toLowerCase() || '';
-        } else if (field === 'warranty') {
-            valueA = a.warranty?.expirationDate || '';
-            valueB = b.warranty?.expirationDate || '';
+            // Handle name field (as string)
+            valueA = (a.name ? a.name.toLowerCase() : '');
+            valueB = (b.name ? b.name.toLowerCase() : '');
+            
+            // Compare as strings
+            if (direction === 'asc') {
+                return valueA.localeCompare(valueB);
+            } else {
+                return valueB.localeCompare(valueA);
+            }
+        } 
+        else if (field === 'warranty') {
+            // Handle warranty expiration dates
+            const dateA = a.warranty?.expirationDate ? new Date(a.warranty.expirationDate) : null;
+            const dateB = b.warranty?.expirationDate ? new Date(b.warranty.expirationDate) : null;
+            
+            // Handle cases with null dates (always put null dates at the end)
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return direction === 'asc' ? 1 : -1;
+            if (!dateB) return direction === 'asc' ? -1 : 1;
+            
+            // Compare valid dates
+            return direction === 'asc' 
+                ? dateA.getTime() - dateB.getTime()
+                : dateB.getTime() - dateA.getTime();
         }
-        
-        if (direction === 'asc') {
-            return valueA.localeCompare(valueB);
-        } else {
-            return valueB.localeCompare(valueA);
+        else if (field === 'updatedAt') {
+            // Handle updatedAt dates
+            const dateA = a.updatedAt ? new Date(a.updatedAt) : null;
+            const dateB = b.updatedAt ? new Date(b.updatedAt) : null;
+            
+            // Handle cases with null dates (always put null dates at the end)
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return direction === 'asc' ? 1 : -1;
+            if (!dateB) return direction === 'asc' ? -1 : 1;
+            
+            // Compare valid dates
+            return direction === 'asc' 
+                ? dateA.getTime() - dateB.getTime()
+                : dateB.getTime() - dateA.getTime();
+        }
+        else {
+            // Default to sorting by name for unknown fields
+            console.warn(`Unknown sort field: ${field}, defaulting to name`);
+            valueA = (a.name ? a.name.toLowerCase() : '');
+            valueB = (b.name ? b.name.toLowerCase() : '');
+            
+            return direction === 'asc'
+                ? valueA.localeCompare(valueB)
+                : valueB.localeCompare(valueA);
         }
     });
 }
