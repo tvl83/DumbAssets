@@ -24,36 +24,39 @@ import {  registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 // Import collapsible sections functionality
 import { initCollapsibleSections } from './js/collapsible.js';
 
-// State management
+// Initialize global variables for DOM elements
+let assetModal, assetForm, subAssetModal, subAssetForm, assetList, assetDetails, subAssetContainer;
+let searchInput, clearSearchBtn;
+
+// Initialize variables for app state
 let assets = [];
 let subAssets = [];
 let selectedAssetId = null;
 let selectedSubAssetId = null;
 let isEditMode = false;
-let currentSort = { field: null, direction: 'asc' };
-let dashboardFilter = null;
+let dashboardFilter = 'all';
+let currentSort = { field: 'updatedAt', direction: 'desc' };
 
-// Add these flags to track deletion
-let deletePhoto = false;
-let deleteReceipt = false;
-let deleteManual = false;
-let deleteSubPhoto = false;
-let deleteSubReceipt = false;
-let deleteSubManual = false;
+// Initialize variables for file deletion tracking
+window.deletePhoto = false;
+window.deleteReceipt = false;
+window.deleteManual = false;
+window.deleteSubPhoto = false;
+window.deleteSubReceipt = false;
+window.deleteSubManual = false;
+
+// Store local references for easier access
+let deletePhoto = window.deletePhoto;
+let deleteReceipt = window.deleteReceipt;
+let deleteManual = window.deleteManual;
+let deleteSubPhoto = window.deleteSubPhoto;
+let deleteSubReceipt = window.deleteSubReceipt;
+let deleteSubManual = window.deleteSubManual;
 
 // DOM Elements
-const assetList = document.getElementById('assetList');
-const assetDetails = document.getElementById('assetDetails');
-const subAssetContainer = document.getElementById('subAssetContainer');
 const subAssetList = document.getElementById('subAssetList');
-const searchInput = document.getElementById('searchInput');
 const addAssetBtn = document.getElementById('addAssetBtn');
 const addSubAssetBtn = document.getElementById('addSubAssetBtn');
-const assetModal = document.getElementById('assetModal');
-const subAssetModal = document.getElementById('subAssetModal');
-const assetForm = document.getElementById('assetForm');
-const subAssetForm = document.getElementById('subAssetForm');
-const clearSearchBtn = document.getElementById('clearSearchBtn');
 const sidebar = document.querySelector('.sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const mainContent = document.querySelector('.main-content');
@@ -187,6 +190,13 @@ async function saveAsset(asset) {
             manualPath: assetToSave.manualPath
         });
         
+        // Log the current state of delete flags
+        console.log('Current delete flags:', {
+            deletePhoto: window.deletePhoto,
+            deleteReceipt: window.deleteReceipt,
+            deleteManual: window.deleteManual
+        });
+        
         // Handle file deletions
         if (deletePhoto && assetToSave.photoPath) {
             console.log(`Deleting photo: ${assetToSave.photoPath}`);
@@ -255,10 +265,10 @@ async function saveAsset(asset) {
         // Close the modal
         closeAssetModal();
         
-        // Reset delete flags
-        deletePhoto = false;
-        deleteReceipt = false;
-        deleteManual = false;
+        // Reset delete flags both locally and on window
+        deletePhoto = window.deletePhoto = false;
+        deleteReceipt = window.deleteReceipt = false;
+        deleteManual = window.deleteManual = false;
         
         // Always explicitly render the asset details if it's the current selection
         // or if this is a new asset that should be selected
@@ -565,9 +575,11 @@ function openAssetModal(asset = null) {
     isEditMode = !!asset;
     document.getElementById('addAssetTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
     assetForm.reset();
-    deletePhoto = false;
-    deleteReceipt = false;
-    deleteManual = false;
+    
+    // Reset delete flags both locally and on window
+    deletePhoto = window.deletePhoto = false;
+    deleteReceipt = window.deleteReceipt = false;
+    deleteManual = window.deleteManual = false;
     
     // Clear file inputs and previews
     const photoInput = document.getElementById('assetPhoto');
@@ -609,7 +621,7 @@ function openAssetModal(asset = null) {
                 if (confirm('Are you sure you want to delete this image?')) {
                     photoPreview.innerHTML = '';
                     photoInput.value = '';
-                    deletePhoto = true;
+                    deletePhoto = window.deletePhoto = true;
                 }
             };
         }
@@ -631,7 +643,7 @@ function openAssetModal(asset = null) {
                 if (confirm('Are you sure you want to delete this receipt?')) {
                     receiptPreview.innerHTML = '';
                     receiptInput.value = '';
-                    deleteReceipt = true;
+                    deleteReceipt = window.deleteReceipt = true;
                 }
             };
         }
@@ -653,7 +665,7 @@ function openAssetModal(asset = null) {
                 if (confirm('Are you sure you want to delete this manual?')) {
                     manualPreview.innerHTML = '';
                     manualInput.value = '';
-                    deleteManual = true;
+                    deleteManual = window.deleteManual = true;
                 }
             };
         }
@@ -749,9 +761,11 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
     isEditMode = !!subAsset;
     document.getElementById('addComponentTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
     subAssetForm.reset();
-    deleteSubPhoto = false;
-    deleteSubReceipt = false;
-    deleteSubManual = false;
+    
+    // Reset delete flags both locally and on window
+    deleteSubPhoto = window.deleteSubPhoto = false;
+    deleteSubReceipt = window.deleteSubReceipt = false;
+    deleteSubManual = window.deleteSubManual = false;
     
     // Clear file inputs and previews
     const photoInput = document.getElementById('subAssetPhoto');
@@ -818,7 +832,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 if (confirm('Are you sure you want to delete this image?')) {
                     photoPreview.innerHTML = '';
                     photoInput.value = '';
-                    deleteSubPhoto = true;
+                    deleteSubPhoto = window.deleteSubPhoto = true;
                 }
             };
         }
@@ -831,7 +845,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 if (confirm('Are you sure you want to delete this receipt?')) {
                     receiptPreview.innerHTML = '';
                     receiptInput.value = '';
-                    deleteSubReceipt = true;
+                    deleteSubReceipt = window.deleteSubReceipt = true;
                 }
             };
         }
@@ -844,7 +858,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 if (confirm('Are you sure you want to delete this manual?')) {
                     manualPreview.innerHTML = '';
                     manualInput.value = '';
-                    deleteSubManual = true;
+                    deleteSubManual = window.deleteSubManual = true;
                 }
             };
         }
@@ -1551,8 +1565,38 @@ function refreshAssetDetails(assetId, isSubAsset = false) {
     }, 50);
 }
 
+// DOM initialization function
+function initializeDOMElements() {
+    // Initialize DOM elements
+    assetModal = document.getElementById('assetModal');
+    assetForm = document.getElementById('assetForm');
+    subAssetModal = document.getElementById('subAssetModal');
+    subAssetForm = document.getElementById('subAssetForm');
+    assetList = document.getElementById('assetList');
+    assetDetails = document.getElementById('assetDetails');
+    subAssetContainer = document.getElementById('subAssetContainer');
+    searchInput = document.getElementById('searchInput');
+    clearSearchBtn = document.getElementById('clearSearchBtn');
+    
+    // Log the initialization status
+    console.log('DOM Elements initialized:', {
+        assetModal: !!assetModal,
+        assetForm: !!assetForm,
+        subAssetModal: !!subAssetModal,
+        subAssetForm: !!subAssetForm,
+        assetList: !!assetList,
+        assetDetails: !!assetDetails,
+        subAssetContainer: !!subAssetContainer,
+        searchInput: !!searchInput,
+        clearSearchBtn: !!clearSearchBtn
+    });
+}
+
 // Keep at the end
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize DOM elements
+    initializeDOMElements();
+    
     // Check if DOM elements exist
     if (!assetList || !assetDetails) {
         console.error('Required DOM elements not found.');

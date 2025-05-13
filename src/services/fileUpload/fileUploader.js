@@ -5,6 +5,25 @@
 
 import { validateFileType, formatFileSize } from './utils.js';
 
+// Get access to the global flags
+let deletePhoto = false, deleteReceipt = false, deleteManual = false;
+let deleteSubPhoto = false, deleteSubReceipt = false, deleteSubManual = false;
+
+// Look for these flags in the window object to access them across modules
+function getDeleteFlags() {
+    // For main assets
+    if (typeof window !== 'undefined') {
+        deletePhoto = window.deletePhoto || false;
+        deleteReceipt = window.deleteReceipt || false;
+        deleteManual = window.deleteManual || false;
+        // For sub-assets
+        deleteSubPhoto = window.deleteSubPhoto || false;
+        deleteSubReceipt = window.deleteSubReceipt || false;
+        deleteSubManual = window.deleteSubManual || false;
+    }
+    return { deletePhoto, deleteReceipt, deleteManual, deleteSubPhoto, deleteSubReceipt, deleteSubManual };
+}
+
 /**
  * Upload a file to the server
  * @param {File} file - The file to upload
@@ -191,6 +210,9 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
  * @returns {Promise<Object>} - The updated asset with file paths
  */
 async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
+    // Get the current delete flags
+    getDeleteFlags();
+    
     // Clone the asset to avoid modifying the original
     const assetCopy = { ...asset };
     
@@ -205,6 +227,13 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         photoPath: assetCopy.photoPath,
         receiptPath: assetCopy.receiptPath,
         manualPath: assetCopy.manualPath
+    });
+    
+    // Also log the delete flags
+    console.log('Delete flags:', {
+        deletePhoto: isSubAsset ? deleteSubPhoto : deletePhoto,
+        deleteReceipt: isSubAsset ? deleteSubReceipt : deleteReceipt,
+        deleteManual: isSubAsset ? deleteSubManual : deleteManual
     });
     
     // Get file inputs
@@ -244,11 +273,19 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.photoPath = assetCopy.photoPaths[0] || null;
         console.log(`Setting main photoPath to: ${assetCopy.photoPath}`);
     } else if (isEditMode) {
-        // If editing and no new photos, preserve existing photo paths UNLESS deletePhoto is true
-        console.log(`Editing mode, no new photos uploaded. Preserving existing paths.`);
-        // The actual preservation of paths is handled in the saveAsset function
-        assetCopy.photoPath = asset.photoPath;
-        assetCopy.photoPaths = asset.photoPaths || [];
+        // Check if photo is being deleted
+        const isPhotoBeingDeleted = isSubAsset ? deleteSubPhoto : deletePhoto;
+        
+        if (isPhotoBeingDeleted) {
+            console.log('Photo marked for deletion, setting photoPath to null');
+            assetCopy.photoPath = null;
+            assetCopy.photoPaths = [];
+        } else {
+            // If editing and no new photos, preserve existing photo paths
+            console.log(`Editing mode, no new photos uploaded. Preserving existing paths.`);
+            assetCopy.photoPath = asset.photoPath;
+            assetCopy.photoPaths = asset.photoPaths || [];
+        }
     }
     
     // Handle receipt uploads
@@ -268,11 +305,19 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.receiptPath = assetCopy.receiptPaths[0] || null;
         console.log(`Setting main receiptPath to: ${assetCopy.receiptPath}`);
     } else if (isEditMode) {
-        // If editing and no new receipts, preserve existing receipt paths
-        console.log(`Editing mode, no new receipts uploaded. Preserving existing paths.`);
-        // The actual preservation is handled in the saveAsset function
-        assetCopy.receiptPath = asset.receiptPath;
-        assetCopy.receiptPaths = asset.receiptPaths || [];
+        // Check if receipt is being deleted
+        const isReceiptBeingDeleted = isSubAsset ? deleteSubReceipt : deleteReceipt;
+        
+        if (isReceiptBeingDeleted) {
+            console.log('Receipt marked for deletion, setting receiptPath to null');
+            assetCopy.receiptPath = null;
+            assetCopy.receiptPaths = [];
+        } else {
+            // If editing and no new receipts, preserve existing receipt paths
+            console.log(`Editing mode, no new receipts uploaded. Preserving existing paths.`);
+            assetCopy.receiptPath = asset.receiptPath;
+            assetCopy.receiptPaths = asset.receiptPaths || [];
+        }
     }
 
     // Handle manual uploads
@@ -292,11 +337,19 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.manualPath = assetCopy.manualPaths[0] || null;
         console.log(`Setting main manualPath to: ${assetCopy.manualPath}`);
     } else if (isEditMode) {
-        // If editing and no new manuals, preserve existing manual paths
-        console.log(`Editing mode, no new manuals uploaded. Preserving existing paths.`);
-        // The actual preservation is handled in the saveAsset function
-        assetCopy.manualPath = asset.manualPath;
-        assetCopy.manualPaths = asset.manualPaths || [];
+        // Check if manual is being deleted
+        const isManualBeingDeleted = isSubAsset ? deleteSubManual : deleteManual;
+        
+        if (isManualBeingDeleted) {
+            console.log('Manual marked for deletion, setting manualPath to null');
+            assetCopy.manualPath = null;
+            assetCopy.manualPaths = [];
+        } else {
+            // If editing and no new manuals, preserve existing manual paths
+            console.log(`Editing mode, no new manuals uploaded. Preserving existing paths.`);
+            assetCopy.manualPath = asset.manualPath;
+            assetCopy.manualPaths = asset.manualPaths || [];
+        }
     }
     
     // Log final state of file paths
