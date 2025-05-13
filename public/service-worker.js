@@ -115,23 +115,8 @@ async function installCache() {
         const processedAssets = assets.map(asset => getAssetPath(asset));
         ASSETS_TO_CACHE.push(...processedAssets);
         
-        // Always include critical files
-        const criticalFiles = [
-            'index.html',
-            'index.js',
-            'styles.css',
-            'assets/manifest.json',
-            'assets/dumbassets.png',
-        ];
-        
-        criticalFiles.forEach(file => {
-            const filePath = getAssetPath(file);
-            if (!ASSETS_TO_CACHE.includes(filePath)) {
-                ASSETS_TO_CACHE.push(filePath);
-            }
-        });
-        
-        console.log("Assets to cache:", ASSETS_TO_CACHE);
+        // Log what we're caching
+        console.log("Assets to cache from manifest:", ASSETS_TO_CACHE);
         await cache.addAll(ASSETS_TO_CACHE);
         console.log("Assets cached successfully");
         
@@ -207,13 +192,24 @@ self.addEventListener("fetch", (event) => {
                             return response;
                         }
 
-                        // Clone the response because it can only be used once
-                        const responseToCache = response.clone();
+                        // Only cache files that are in our ASSETS_TO_CACHE list
+                        const shouldCache = ASSETS_TO_CACHE.some(assetUrl => {
+                            return event.request.url === assetUrl || 
+                                   event.request.url.endsWith(assetUrl.replace(BASE_PATH, ''));
+                        });
 
-                        caches.open(CACHE_NAME)
-                            .then((cache) => {
-                                cache.put(event.request, responseToCache);
-                            });
+                        if (shouldCache) {
+                            console.log('Caching asset from manifest:', event.request.url);
+                            // Clone the response because it can only be used once
+                            const responseToCache = response.clone();
+                            caches.open(CACHE_NAME)
+                                .then((cache) => {
+                                    cache.put(event.request, responseToCache);
+                                });
+                        } 
+                        // else {
+                        //     console.log('Skipping cache for non-manifest file:', event.request.url);
+                        // }
 
                         return response;
                     });
@@ -257,5 +253,28 @@ self.addEventListener('message', async (event) => {
                 });
             });
         });
+    } else if (event.data && event.data.type === 'LIST_CACHED_URLS') {
+        // Return a list of all cached URLs for debugging
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const requests = await cache.keys();
+            const urls = requests.map(request => request.url);
+            
+            // Send the list of cached URLs back to the client
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({
+                    type: 'CACHED_URLS',
+                    urls: urls
+                });
+            }
+        } catch (error) {
+            console.error('Error listing cached URLs:', error);
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({
+                    type: 'ERROR',
+                    error: error.message
+                });
+            }
+        }
     }
 });
