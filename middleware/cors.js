@@ -45,7 +45,6 @@ function validateOrigin(origin) {
       }
 
       console.log("Validating Origin:", origin);
-
       if (allowedOrigins.includes(origin)) {
         console.log("Allowed request from origin:", origin);
         return true;
@@ -63,7 +62,6 @@ function validateOrigin(origin) {
 function originValidationMiddleware(req, res, next) {
   const origin = req.headers.referer || `${req.protocol}://${req.headers.host}`;
   const isOriginValid = validateOrigin(origin);
-
   if (isOriginValid) {
       next();
   } else {
@@ -79,8 +77,7 @@ function getCorsOptions(baseUrl) {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   };
-
   return corsOptions;
 }
 
-module.exports = { getCorsOptions, originValidationMiddleware, validateOrigin };
+module.exports = { getCorsOptions, originValidationMiddleware, validateOrigin, allowedOrigins };

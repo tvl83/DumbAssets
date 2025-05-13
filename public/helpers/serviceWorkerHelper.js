@@ -1,8 +1,5 @@
 import { joinPath } from '../helpers/paths.js';
 
-// Service Worker registration and update handling
-let updateTimeout;
-
 // Function to register the service worker
 export const registerServiceWorker = () => {
   if ("serviceWorker" in navigator) {

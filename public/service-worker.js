@@ -1,4 +1,4 @@
-const CACHE_VERSION = "1.0.0"; // Increment this with each significant change
+const CACHE_VERSION = "1.0.1"; // Increment this with each significant change
 const CACHE_NAME = `DUMBASSETS_PWA_CACHE_V${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [];
 const BASE_PATH = self.registration.scope;

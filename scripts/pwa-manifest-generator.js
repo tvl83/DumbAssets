@@ -38,7 +38,7 @@ function generatePWAManifest(siteTitle) {
   const pwaManifest = {
     name: siteTitle,
     short_name: siteTitle,
-    description: "A stupidly simple web-based terminal emulator",
+    description: "A stupidly simple asset tracker",
     start_url: BASE_PATH || "/",
     scope: BASE_PATH || "/",
     display: "standalone",

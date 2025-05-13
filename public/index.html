@@ -13,10 +13,11 @@
     <main>
         <div class="container">
             <div class="header-row">
-                <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle asset list">☰</button>
-                <h1 id="siteTitle">DumbAssets</h1>
+                <div id="header-title" class="header-title">
+                    <h1 id="siteTitle">DumbAssets</h1>
+                </div>
                 <div class="header-actions">
-                    <button id="homeBtn" class="home-btn" aria-label="Go to Dashboard">
+                    <button id="homeBtn" class="header-btn" aria-label="Go to Dashboard">
                         <svg  xmlns="http://www.w3.org/2000/svg">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
@@ -24,7 +25,7 @@
                             <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
                         </svg>
                     </button>
-                    <button id="notificationBtn" class="notification-btn" aria-label="Notification Settings">
+                    <button id="notificationBtn" class="header-btn" aria-label="Notification Settings">
                         <svg xmlns="http://www.w3.org/2000/svg">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" />
@@ -32,30 +33,35 @@
                         </svg>
                     </button>
                     <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
-                        <svg class="moon" viewBox="0 0 24 24">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        <svg class="moon">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
                         </svg>
-                        <svg class="sun" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y1="4.22"></line>
+                        <svg class="sun">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" />
+                            <path d="M6.343 17.657l-1.414 1.414" />
+                            <path d="M6.343 6.343l-1.414 -1.414" />
+                            <path d="M17.657 6.343l1.414 -1.414" />
+                            <path d="M17.657 17.657l1.414 1.414" />
+                            <path d="M4 12h-2" />
+                            <path d="M12 4v-2" />
+                            <path d="M20 12h2" />
+                            <path d="M12 20v2" />
                         </svg>
                     </button>
+                    <button id="sidebarToggle" class="sidebar-toggle hidden" aria-label="Toggle asset list">☰</button>
                 </div>
-                <div class="header-spacer"></div>
             </div>
             <div class="app-container">
                 <!-- Left panel: Asset list with search -->
                 <div class="sidebar">
                     <div class="search-bar">
                         <input type="text" id="searchInput" placeholder="Search assets...">
-                        <button id="clearSearchBtn" class="clear-search-btn" style="display:none;">&times;</button>
+                        <!-- <div>
+                            <button id="clearSearchBtn" class="clear-search-btn" style="display:none;">&times;</button>
+                            <button id="sidebarCloseBtn" class="sidebar-close-btn" style="display:none;" aria-label="Close sidebar">&times;</button>
+                        </div> -->
                     </div>
                     <div class="button-container">
                         <button id="addAssetBtn" class="action-button">Add Asset</button>
@@ -87,7 +93,6 @@
                         </div>
                     </div>
                 </div>
-                <button id="sidebarCloseBtn" class="sidebar-close-btn" style="display:none;" aria-label="Close sidebar">&times;</button>
         
                 <!-- Right panel: Asset details and sub-assets -->
                 <div class="main-content">
@@ -109,8 +114,12 @@
             <!-- Add/Edit Asset Modal -->
             <div id="assetModal" class="modal">
                 <div class="modal-content">
-                    <span class="close-btn">&times;</span>
-                    <h2 id="modalTitle">Add Asset</h2>
+                    <div class="modal-header">
+                        <h2 id="addAssetTitle" class="modal-title">Add Asset</h2>
+                        <div class="close-btn">
+                            <span>&times;</span>
+                        </div>
+                    </div>
                     <form id="assetForm">
                         <div class="form-group">
                             <label for="assetName">Name *</label>
@@ -140,55 +149,67 @@
                             <label for="assetWarrantyExpiration">Warranty Expiration</label>
                             <input type="date" id="assetWarrantyExpiration" name="warrantyExpiration">
                         </div>
-                        <div class="form-group">
-                            <label for="assetPhoto">Photo</label>
-                            <div class="file-upload-grid">
-                                <div class="file-upload-box" data-target="assetPhoto">
-                                    <input type="file" id="assetPhoto" accept="image/*" class="file-input" multiple>
-                                    <div class="upload-content">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                            <polyline points="17 8 12 3 7 8"/>
-                                            <line x1="12" y1="3" x2="12" y2="15"/>
-                                        </svg>
-                                        <span>Drag & drop or click to upload photos</span>
+                        
+                        <div class="collapsible-section" data-collapsed="true">
+                            <div class="collapsible-header">
+                                <h3>File Attachments</h3>
+                                <svg class="collapsible-toggle" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="collapsible-content">
+                                <div class="form-group">
+                                    <label for="assetPhoto">Photo</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="assetPhoto">
+                                            <input type="file" id="assetPhoto" accept="image/*" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                    <polyline points="17 8 12 3 7 8"/>
+                                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload photos</span>
+                                            </div>
+                                        </div>
+                                        <div id="photoPreview" class="preview-grid"></div>
                                     </div>
                                 </div>
-                                <div id="photoPreview" class="preview-grid"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="assetReceipt">Receipt</label>
-                            <div class="file-upload-grid">
-                                <div class="file-upload-box" data-target="assetReceipt">
-                                    <input type="file" id="assetReceipt" accept=".pdf,.jpg,.jpeg,.png" class="file-input" multiple>
-                                    <div class="upload-content">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14 2 14 8 20 8"/>
-                                        </svg>
-                                        <span>Drag & drop or click to upload receipts</span>
+                                <div class="form-group">
+                                    <label for="assetReceipt">Receipt</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="assetReceipt">
+                                            <input type="file" id="assetReceipt" accept=".pdf,.jpg,.jpeg,.png" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                    <polyline points="14 2 14 8 20 8"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload receipts</span>
+                                            </div>
+                                        </div>
+                                        <div id="receiptPreview" class="preview-grid"></div>
                                     </div>
                                 </div>
-                                <div id="receiptPreview" class="preview-grid"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="assetManual">Manual</label>
-                            <div class="file-upload-grid">
-                                <div class="file-upload-box" data-target="assetManual">
-                                    <input type="file" id="assetManual" accept=".pdf" class="file-input" multiple>
-                                    <div class="upload-content">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14 2 14 8 20 8"/>
-                                        </svg>
-                                        <span>Drag & drop or click to upload manuals</span>
+                                <div class="form-group">
+                                    <label for="assetManual">Manual</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="assetManual">
+                                            <input type="file" id="assetManual" accept=".pdf" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                    <polyline points="14 2 14 8 20 8"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload manuals</span>
+                                            </div>
+                                        </div>
+                                        <div id="manualPreview" class="preview-grid"></div>
                                     </div>
                                 </div>
-                                <div id="manualPreview" class="preview-grid"></div>
                             </div>
                         </div>
+                        
                         <div class="form-group">
                             <label for="assetLink">Link</label>
                             <input type="url" id="assetLink" name="link">
@@ -208,8 +229,12 @@
             <!-- Add/Edit Sub-Asset Modal -->
             <div id="subAssetModal" class="modal">
                 <div class="modal-content">
-                    <span class="close-btn">&times;</span>
-                    <h2 id="subModalTitle">Add Component</h2>
+                    <div class="modal-header">
+                        <h2 id="addComponentTitle" class="modal-title">Add Component</h2>
+                        <div>
+                            <span class="close-btn">&times;</span>
+                        </div>
+                    </div>
                     <form id="subAssetForm">
                         <input type="hidden" id="subAssetId" name="id">
                         <input type="hidden" id="parentAssetId" name="parentId">
@@ -254,23 +279,65 @@
                             <label for="subAssetNotes">Notes</label>
                             <textarea id="subAssetNotes" name="notes"></textarea>
                         </div>
-                        
-                        <div class="form-group">
-                            <label>Photo</label>
-                            <input type="file" id="subAssetPhoto" name="photo" accept="image/*">
-                            <div id="subPhotoPreview" class="preview-container"></div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Receipt</label>
-                            <input type="file" id="subAssetReceipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png">
-                            <div id="subReceiptPreview" class="preview-container"></div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Manual</label>
-                            <input type="file" id="subAssetManual" name="manual" accept=".pdf">
-                            <div id="subManualPreview" class="preview-container"></div>
+
+                        <div class="collapsible-section" data-collapsed="true">
+                            <div class="collapsible-header">
+                                <h3>File Attachments</h3>
+                                <svg class="collapsible-toggle" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="collapsible-content">
+                                <div class="form-group">
+                                    <label for="subAssetPhoto">Photo</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="subAssetPhoto">
+                                            <input type="file" id="subAssetPhoto" accept="image/*" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                    <polyline points="17 8 12 3 7 8"/>
+                                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload photos</span>
+                                            </div>
+                                        </div>
+                                        <div id="subPhotoPreview" class="preview-grid"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="subAssetReceipt">Receipt</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="subAssetReceipt">
+                                            <input type="file" id="subAssetReceipt" accept=".pdf,.jpg,.jpeg,.png" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                    <polyline points="14 2 14 8 20 8"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload receipts</span>
+                                            </div>
+                                        </div>
+                                        <div id="subReceiptPreview" class="preview-grid"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="subAssetManual">Manual</label>
+                                    <div class="file-upload-grid">
+                                        <div class="file-upload-box" data-target="subAssetManual">
+                                            <input type="file" id="subAssetManual" accept=".pdf,.doc,.docx,.md,.txt" class="file-input" multiple>
+                                            <div class="upload-content">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                    <polyline points="14 2 14 8 20 8"/>
+                                                </svg>
+                                                <span>Drag & drop or click to upload manuals</span>
+                                            </div>
+                                        </div>
+                                        <div id="subManualPreview" class="preview-grid"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="form-actions">
@@ -285,16 +352,34 @@
             <div id="importModal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2>Import Assets</h2>
-                        <span class="close">&times;</span>
+                        <h2 id="importAssetTitle" class="modal-title">Import Assets</h2>
+                        <div>
+                            <span class="close-btn">&times;</span>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <div class="import-container">
-                            <div class="file-upload-container">
+                            <div class="form-group">
+                                <!-- <label for="importFile">Import</label> -->
+                                <div class="file-upload-grid">
+                                    <div class="file-upload-box" data-target="importFile">
+                                        <input type="file" id="importFile" accept=".csv,.xls,.xlsx" class="file-input">
+                                        <div class="upload-content">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                <polyline points="14 2 14 8 20 8"/>
+                                            </svg>
+                                            <span>Accepted types: .csv, .xls, .xlsx</span>
+                                        </div>
+                                    </div>
+                                    <div id="importFilePreview" class="preview-grid"></div>
+                                </div>
+                            </div>
+                            <!-- <div class="file-upload-container">
                                 <input type="file" id="importFile" accept=".csv,.xls,.xlsx" class="file-input">
                                 <label for="importFile" class="file-label">Choose File</label>
                                 <span id="selectedFileName" class="selected-file">No file chosen</span>
-                            </div>
+                            </div> -->
                             <div class="column-mapping">
                                 <h3>Column Mapping</h3>
                                 <div class="mapping-container">
@@ -348,8 +433,10 @@
             <div id="notificationModal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2>Notification Settings</h2>
-                        <span class="close">&times;</span>
+                        <h2 id="noficationSettingsTitle" class="modal-title">Notification Settings</h2>
+                        <div class="close-btn">
+                            <span>&times;</span>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <form id="notificationForm">
@@ -368,10 +455,8 @@
                             </fieldset>
                             <div class="modal-actions">
                                 <button type="button" id="saveNotificationSettings" class="action-button">Save</button>
-                                <button type="button" id="cancelNotificationSettings" class="action-button">Cancel</button>
-                            </div>
-                            <div class="modal-actions" style="justify-content: flex-start; margin-top: 0.5em;">
-                                <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--secondary-color);">Test</button>
+                                <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--success-color);">Test</button>
+                                <button type="button" id="cancelNotificationSettings" class="action-button" style="background: var(--secondary-color);">Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -382,8 +467,6 @@
     <div class="dumbware-credit">
         Built by <a href="https://dumbware.io" target="_blank" rel="noopener noreferrer">DumbWare</a>
     </div>
-    
-
     <script src="script.js" type="module"></script>
     <div id="toast" class="toast"></div>
 </body>

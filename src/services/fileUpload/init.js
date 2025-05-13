@@ -19,6 +19,9 @@ export function initializeFileUploads() {
     setupFilePreview('subAssetReceipt', 'subReceiptPreview', true);
     setupFilePreview('subAssetManual', 'subManualPreview', true);
     
+    // Initialize import file uploads
+    setupFilePreview('importFile', 'importFilePreview', true);
+
     // Initialize drag and drop functionality
     setupDragAndDrop();
     
