@@ -100,12 +100,13 @@ function formatCurrency(amount) {
 // Data Functions
 async function loadAssets() {
     try {
-        const response = await fetch('/api/assets', {
+        const apiBaseUrl = getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/assets`, {
             credentials: 'include'
         });
         if (!response.ok) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                window.location.href = `${apiBaseUrl}/login`;
                 return;
             }
             throw new Error('Failed to load assets');
@@ -126,12 +127,13 @@ async function loadAssets() {
 
 async function loadSubAssets() {
     try {
-        const response = await fetch('/api/subassets', {
+        const apiBaseUrl = getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/subassets`, {
             credentials: 'include'
         });
         if (!response.ok) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                window.location.href = `${apiBaseUrl}/login`;
                 return;
             }
             throw new Error('Failed to load sub-assets');
@@ -153,10 +155,17 @@ async function loadAllData() {
     renderEmptyState(); // This will call renderDashboard()
 }
 
+// Helper function to get the API base URL
+function getApiBaseUrl() {
+    return window.location.origin + (window.appConfig?.basePath || '');
+}
+
 async function saveAsset(asset) {
     try {
+        const apiBaseUrl = getApiBaseUrl();
+        
         if (deletePhoto && asset.photoPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: asset.photoPath }),
@@ -165,7 +174,7 @@ async function saveAsset(asset) {
             asset.photoPath = null;
         }
         if (deleteReceipt && asset.receiptPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: asset.receiptPath }),
@@ -174,7 +183,7 @@ async function saveAsset(asset) {
             asset.receiptPath = null;
         }
         if (deleteManual && asset.manualPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: asset.manualPath }),
@@ -182,7 +191,7 @@ async function saveAsset(asset) {
             });
             asset.manualPath = null;
         }
-        const response = await fetch('/api/asset', {
+        const response = await fetch(`${apiBaseUrl}/api/asset`, {
             method: isEditMode ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -205,6 +214,8 @@ async function saveAsset(asset) {
 
 async function saveSubAsset(subAsset) {
     try {
+        const apiBaseUrl = getApiBaseUrl();
+        
         // Debug logging to see what we're sending
         console.log('Saving sub-asset with data:', JSON.stringify(subAsset, null, 2));
         
@@ -225,7 +236,7 @@ async function saveSubAsset(subAsset) {
         }
         
         if (deleteSubPhoto && subAsset.photoPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: subAsset.photoPath }),
@@ -234,7 +245,7 @@ async function saveSubAsset(subAsset) {
             subAsset.photoPath = null;
         }
         if (deleteSubReceipt && subAsset.receiptPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: subAsset.receiptPath }),
@@ -243,7 +254,7 @@ async function saveSubAsset(subAsset) {
             subAsset.receiptPath = null;
         }
         if (deleteSubManual && subAsset.manualPath) {
-            await fetch('/api/delete-file', {
+            await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path: subAsset.manualPath }),
@@ -252,7 +263,7 @@ async function saveSubAsset(subAsset) {
             subAsset.manualPath = null;
         }
         
-        const response = await fetch('/api/subasset', {
+        const response = await fetch(`${apiBaseUrl}/api/subasset`, {
             method: isEditMode ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -294,7 +305,8 @@ async function deleteAsset(assetId) {
     }
     
     try {
-        const response = await fetch(`/api/asset/${assetId}`, {
+        const apiBaseUrl = getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/asset/${assetId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
@@ -316,7 +328,8 @@ async function deleteSubAsset(subAssetId) {
     }
     
     try {
-        const response = await fetch(`/api/subasset/${subAssetId}`, {
+        const apiBaseUrl = getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/subasset/${subAssetId}`, {
             method: 'DELETE',
             credentials: 'include'
         });

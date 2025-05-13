@@ -15,15 +15,17 @@ import { validateFileType, formatFileSize } from './utils.js';
 async function uploadFile(file, type, id) {
     let fieldName;
     let endpoint;
+    const apiBaseUrl = window.location.origin + (window.appConfig?.basePath || '');
+    
     if (type === 'image') {
         fieldName = 'photo';
-        endpoint = '/api/upload/image';
+        endpoint = `${apiBaseUrl}/api/upload/image`;
     } else if (type === 'manual') {
         fieldName = 'manual';
-        endpoint = '/api/upload/manual';
+        endpoint = `${apiBaseUrl}/api/upload/manual`;
     } else {
         fieldName = 'receipt';
-        endpoint = '/api/upload/receipt';
+        endpoint = `${apiBaseUrl}/api/upload/receipt`;
     }
     const formData = new FormData();
     formData.append(fieldName, file);
