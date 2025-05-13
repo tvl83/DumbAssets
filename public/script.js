@@ -156,6 +156,17 @@ async function loadAllData() {
     renderEmptyState(); // This will call renderDashboard()
 }
 
+// Also add a dedicated refresh function to reload data without resetting the UI
+async function refreshAllData() {
+    try {
+        await Promise.all([loadAssets(), loadSubAssets()]);
+        return true;
+    } catch (error) {
+        console.error('Error refreshing data:', error);
+        return false;
+    }
+}
+
 // Helper function to get the API base URL
 function getApiBaseUrl() {
     return window.location.origin + (window.appConfig?.basePath || '');
@@ -201,12 +212,25 @@ async function saveAsset(asset) {
             credentials: 'include'
         });
         if (!response.ok) throw new Error('Failed to save asset');
-        await loadAssets();
+        
+        // Get the saved asset from the response
+        const savedAsset = await response.json();
+        
+        // Reload all data to ensure everything is updated
+        await refreshAllData();
+        
+        // Close the modal
         closeAssetModal();
-        // Refresh the asset details view if we're currently viewing the edited asset
-        if (selectedAssetId === asset.id) {
-            renderAssetDetails(asset.id);
+        
+        // Always explicitly render the asset details if it's the current selection
+        // or if this is a new asset that should be selected
+        if (selectedAssetId === asset.id || !selectedAssetId) {
+            selectedAssetId = savedAsset.id;
+            refreshAssetDetails(savedAsset.id, false);
         }
+        
+        // Show success message
+        showToast(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
     } catch (error) {
         console.error('Error saving asset:', error);
         alert('Error saving asset. Please try again.');
@@ -281,19 +305,29 @@ async function saveSubAsset(subAsset) {
         }
         
         // Get the updated sub-asset from the response
-        const updatedSubAsset = await response.json();
-        console.log('Server response with updated sub-asset:', updatedSubAsset);
+        const savedSubAsset = await response.json();
+        console.log('Server response with updated sub-asset:', savedSubAsset);
         
-        // Load the updated sub-assets
-        await loadSubAssets();
+        // Reload all data to ensure everything is updated
+        await refreshAllData();
         
         // Close the modal
         closeSubAssetModal();
         
-        // Refresh the asset details view to show the updated sub-assets
-        if (selectedAssetId) {
-            renderAssetDetails(selectedAssetId);
+        // Determine which view to render after saving
+        if (subAsset.parentSubId) {
+            // If this is a sub-sub-asset, go to the parent sub-asset view
+            refreshAssetDetails(subAsset.parentSubId, true);
+        } else if (selectedSubAssetId === subAsset.id) {
+            // If we're editing the currently viewed sub-asset
+            refreshAssetDetails(subAsset.id, true);
+        } else {
+            // Otherwise, go to the parent asset view
+            refreshAssetDetails(subAsset.parentId, false);
         }
+        
+        // Show success message
+        showToast(isEditMode ? "Component updated successfully!" : "Component added successfully!");
     } catch (error) {
         console.error('Error saving sub-asset:', error);
         alert('Error saving component. Please try again.');
@@ -314,9 +348,9 @@ async function deleteAsset(assetId) {
         
         if (!response.ok) throw new Error('Failed to delete asset');
         updateSelectedIds(null, null);
-        await loadAssets();
-        await loadSubAssets();
+        await refreshAllData();
         renderEmptyState();
+        showToast("Asset deleted successfully!");
     } catch (error) {
         console.error('Error deleting asset:', error);
         alert('Error deleting asset. Please try again.');
@@ -330,17 +364,37 @@ async function deleteSubAsset(subAssetId) {
     
     try {
         const apiBaseUrl = getApiBaseUrl();
+        
+        // Find the sub-asset to get parent info before deleting
+        const subAsset = subAssets.find(s => s.id === subAssetId);
+        if (!subAsset) {
+            throw new Error('Sub-asset not found');
+        }
+        
+        // Store parent info for later
+        const parentAssetId = subAsset.parentId;
+        const parentSubId = subAsset.parentSubId;
+        
         const response = await fetch(`${apiBaseUrl}/api/subasset/${subAssetId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
         
         if (!response.ok) throw new Error('Failed to delete component');
+        
         updateSelectedIds(selectedAssetId, null);
-        await loadSubAssets();
-        if (selectedAssetId) {
-            renderAssetDetails(selectedAssetId);
+        await refreshAllData();
+        
+        // Refresh the view of the parent
+        if (parentSubId) {
+            // If this was a sub-sub-asset, go back to the parent sub-asset view
+            refreshAssetDetails(parentSubId, true);
+        } else if (parentAssetId) {
+            // Otherwise go back to the parent asset view
+            refreshAssetDetails(parentAssetId, false);
         }
+        
+        showToast("Component deleted successfully!");
     } catch (error) {
         console.error('Error deleting component:', error);
         alert('Error deleting component. Please try again.');
@@ -1389,6 +1443,47 @@ function createSubAssetElement(subAsset) {
     });
     
     return element;
+}
+
+// Add/enhance function to render asset details properly
+function refreshAssetDetails(assetId, isSubAsset = false) {
+    console.log(`Refreshing ${isSubAsset ? 'sub-asset' : 'asset'} details for ID: ${assetId}`);
+    
+    if (!assetId) {
+        console.log('No ID provided for refresh');
+        return;
+    }
+    
+    // Select correct collection based on whether this is a sub-asset
+    const collection = isSubAsset ? subAssets : assets;
+    const item = collection.find(a => a.id === assetId);
+    
+    if (!item) {
+        console.error(`Could not find ${isSubAsset ? 'sub-asset' : 'asset'} with ID: ${assetId}`);
+        return;
+    }
+    
+    // Ensure that any image paths are properly formatted
+    if (item.photoPath) {
+        console.log(`Original photo path: ${item.photoPath}`);
+        const formattedPhotoPath = formatFilePath(item.photoPath);
+        console.log(`Formatted photo path: ${formattedPhotoPath}`);
+    }
+    
+    if (item.receiptPath) {
+        console.log(`Original receipt path: ${item.receiptPath}`);
+        const formattedReceiptPath = formatFilePath(item.receiptPath);
+        console.log(`Formatted receipt path: ${formattedReceiptPath}`);
+    }
+    
+    if (item.manualPath) {
+        console.log(`Original manual path: ${item.manualPath}`);
+        const formattedManualPath = formatFilePath(item.manualPath);
+        console.log(`Formatted manual path: ${formattedManualPath}`);
+    }
+    
+    // Render the details
+    renderAssetDetails(assetId, isSubAsset);
 }
 
 // Keep at the end
