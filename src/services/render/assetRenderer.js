@@ -80,6 +80,29 @@ function updateSelectedIds(assetId, subAssetId) {
 }
 
 /**
+ * Format a file path to use the correct base URL
+ * @param {string} path - The file path (/Images/filename.jpg, etc.)
+ * @returns {string} - The properly formatted URL
+ */
+function formatFilePath(path) {
+    if (!path) return '';
+    
+    // If the path already includes the full URL, return it as is
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+    
+    // Get the base URL from window.appConfig or window.location
+    const baseUrl = window.appConfig?.basePath || '';
+    
+    // Ensure path starts with a slash
+    const formattedPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // Return the complete URL
+    return `${baseUrl}${formattedPath}`;
+}
+
+/**
  * Render asset details in the UI
  * 
  * @param {String} assetId ID of the asset to render
@@ -115,6 +138,11 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             }
         });
     }
+    
+    // Format file paths with the correct base URL
+    const photoPath = formatFilePath(asset.photoPath);
+    const receiptPath = formatFilePath(asset.receiptPath);
+    const manualPath = formatFilePath(asset.manualPath);
     
     // Render asset or sub-asset details
     assetDetails.innerHTML = `
@@ -178,13 +206,13 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             <div class="files-grid">
                 ${asset.photoPath ? `
                 <div class="file-item photo">
-                    <img src="${asset.photoPath}" alt="${asset.name}" class="asset-image">
+                    <img src="${photoPath}" alt="${asset.name}" class="asset-image">
                     <div class="file-label">Photo</div>
                 </div>
                 ` : ''}
                 ${asset.receiptPath ? `
                 <div class="file-item receipt">
-                    <a href="${asset.receiptPath}" target="_blank" class="file-preview">
+                    <a href="${receiptPath}" target="_blank" class="file-preview">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -198,7 +226,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                 ` : ''}
                 ${asset.manualPath ? `
                 <div class="file-item manual">
-                    <a href="${asset.manualPath}" target="_blank" class="file-preview">
+                    <a href="${manualPath}" target="_blank" class="file-preview">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
@@ -286,5 +314,6 @@ export {
     initRenderer,
     updateState,
     updateSelectedIds,
-    renderAssetDetails
+    renderAssetDetails,
+    formatFilePath
 }; 

@@ -303,6 +303,11 @@ app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
 app.use(BASE_PATH + '/src/services/fileUpload', express.static('src/services/fileUpload'));
 app.use(BASE_PATH + '/src/services/render', express.static('src/services/render'));
 
+// Serve uploaded files
+app.use(BASE_PATH + '/Images', express.static('data/Images'));
+app.use(BASE_PATH + '/Receipts', express.static('data/Receipts'));
+app.use(BASE_PATH + '/Manuals', express.static('data/Manuals'));
+
 // Protected API routes
 app.use('/api', (req, res, next) => {
     console.log(`API Request: ${req.method} ${req.path}`);

@@ -8,7 +8,8 @@ import {
     initRenderer,
     updateState,
     updateSelectedIds,
-    renderAssetDetails
+    renderAssetDetails,
+    formatFilePath
 } from './assetRenderer.js';
 
 // Import from list renderer module
@@ -31,6 +32,7 @@ export {
     updateState,
     updateSelectedIds,
     renderAssetDetails,
+    formatFilePath,
     
     // List renderer functions
     initListRenderer,

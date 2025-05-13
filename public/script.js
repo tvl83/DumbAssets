@@ -11,6 +11,7 @@ import {
     updateState, 
     updateSelectedIds, 
     renderAssetDetails,
+    formatFilePath,
     // Import list renderer functions
     initListRenderer,
     updateListState,
@@ -496,7 +497,7 @@ function openAssetModal(asset = null) {
         // Preview existing images
         if (photoPreview && asset.photoPath) {
             photoPreview.innerHTML = `<div style="position:relative;display:inline-block;">
-                <img src="${asset.photoPath}" alt="Asset Photo">
+                <img src="${formatFilePath(asset.photoPath)}" alt="Asset Photo">
                 <button type="button" class="delete-preview-btn" title="Delete Image" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;padding:2px;cursor:pointer;">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 </button>
@@ -707,7 +708,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         // Preview existing images if available
         if (photoPreview && subAsset.photoPath) {
             photoPreview.innerHTML = `<div class="preview-item">
-                <img src="${subAsset.photoPath}" alt="Component Photo" style="max-width:100%;max-height:150px;">
+                <img src="${formatFilePath(subAsset.photoPath)}" alt="Component Photo" style="max-width:100%;max-height:150px;">
                 <button type="button" class="delete-preview-btn" title="Delete Image">×</button>
             </div>`;
             photoPreview.querySelector('.delete-preview-btn').onclick = () => {
