@@ -185,6 +185,12 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+    // Only attempt to cache GET requests
+    if (event.request.method !== 'GET') {
+        // For non-GET requests, just fetch from network without caching
+        return event.respondWith(fetch(event.request));
+    }
+    
     event.respondWith(
         caches.match(event.request)
             .then((cachedResponse) => {
