@@ -194,11 +194,17 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     // Clone the asset to avoid modifying the original
     const assetCopy = { ...asset };
     
-    // Check and preserve required fields
+    // Log initial state of file paths
     console.log('handleFileUploads starting with asset:', {
         id: assetCopy.id,
         name: assetCopy.name,
         parentId: assetCopy.parentId || null
+    });
+    
+    console.log('Initial file paths:', {
+        photoPath: assetCopy.photoPath,
+        receiptPath: assetCopy.receiptPath,
+        manualPath: assetCopy.manualPath
     });
     
     // Get file inputs
@@ -223,51 +229,82 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     
     // Handle photo uploads
     if (photoInput.files && photoInput.files.length > 0) {
+        console.log(`Uploading ${photoInput.files.length} photo(s)`);
+        assetCopy.photoPaths = []; // Reset paths when uploading new files
+        
         for (const file of photoInput.files) {
+            console.log(`Uploading photo: ${file.name}`);
             const photoPath = await uploadFile(file, 'image', assetCopy.id);
             if (photoPath) {
+                console.log(`Photo uploaded successfully, path: ${photoPath}`);
                 assetCopy.photoPaths.push(photoPath);
             }
         }
         // Set the first photo as the main photo
         assetCopy.photoPath = assetCopy.photoPaths[0] || null;
+        console.log(`Setting main photoPath to: ${assetCopy.photoPath}`);
     } else if (isEditMode) {
-        // If editing and no new photos, preserve existing photo paths
+        // If editing and no new photos, preserve existing photo paths UNLESS deletePhoto is true
+        console.log(`Editing mode, no new photos uploaded. Preserving existing paths.`);
+        // The actual preservation of paths is handled in the saveAsset function
         assetCopy.photoPath = asset.photoPath;
         assetCopy.photoPaths = asset.photoPaths || [];
     }
     
     // Handle receipt uploads
     if (receiptInput.files && receiptInput.files.length > 0) {
+        console.log(`Uploading ${receiptInput.files.length} receipt(s)`);
+        assetCopy.receiptPaths = []; // Reset paths when uploading new files
+        
         for (const file of receiptInput.files) {
+            console.log(`Uploading receipt: ${file.name}`);
             const receiptPath = await uploadFile(file, 'receipt', assetCopy.id);
             if (receiptPath) {
+                console.log(`Receipt uploaded successfully, path: ${receiptPath}`);
                 assetCopy.receiptPaths.push(receiptPath);
             }
         }
         // Set the first receipt as the main receipt
         assetCopy.receiptPath = assetCopy.receiptPaths[0] || null;
+        console.log(`Setting main receiptPath to: ${assetCopy.receiptPath}`);
     } else if (isEditMode) {
         // If editing and no new receipts, preserve existing receipt paths
+        console.log(`Editing mode, no new receipts uploaded. Preserving existing paths.`);
+        // The actual preservation is handled in the saveAsset function
         assetCopy.receiptPath = asset.receiptPath;
         assetCopy.receiptPaths = asset.receiptPaths || [];
     }
 
     // Handle manual uploads
     if (manualInput.files && manualInput.files.length > 0) {
+        console.log(`Uploading ${manualInput.files.length} manual(s)`);
+        assetCopy.manualPaths = []; // Reset paths when uploading new files
+        
         for (const file of manualInput.files) {
+            console.log(`Uploading manual: ${file.name}`);
             const manualPath = await uploadFile(file, 'manual', assetCopy.id);
             if (manualPath) {
+                console.log(`Manual uploaded successfully, path: ${manualPath}`);
                 assetCopy.manualPaths.push(manualPath);
             }
         }
         // Set the first manual as the main manual
         assetCopy.manualPath = assetCopy.manualPaths[0] || null;
+        console.log(`Setting main manualPath to: ${assetCopy.manualPath}`);
     } else if (isEditMode) {
         // If editing and no new manuals, preserve existing manual paths
+        console.log(`Editing mode, no new manuals uploaded. Preserving existing paths.`);
+        // The actual preservation is handled in the saveAsset function
         assetCopy.manualPath = asset.manualPath;
         assetCopy.manualPaths = asset.manualPaths || [];
     }
+    
+    // Log final state of file paths
+    console.log('Final file paths after uploads:', {
+        photoPath: assetCopy.photoPath,
+        receiptPath: assetCopy.receiptPath,
+        manualPath: assetCopy.manualPath
+    });
     
     return assetCopy;
 }

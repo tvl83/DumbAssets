@@ -110,6 +110,8 @@ function formatFilePath(path) {
  * @returns {void}
  */
 function renderAssetDetails(assetId, isSubAsset = false) {
+    console.log(`renderAssetDetails called for ${isSubAsset ? 'sub-asset' : 'asset'} ID: ${assetId}`);
+    
     // Find the asset or sub-asset
     let asset, isSub = false;
     if (!isSubAsset) {
@@ -118,7 +120,20 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         asset = subAssets.find(sa => sa.id === assetId);
         isSub = true;
     }
-    if (!asset) return;
+    
+    if (!asset) {
+        console.error(`Asset not found with ID: ${assetId}`);
+        return;
+    }
+    
+    // Log the asset data before formatting
+    console.log(`Asset data before formatting:`, {
+        id: asset.id,
+        name: asset.name,
+        photoPath: asset.photoPath,
+        receiptPath: asset.receiptPath,
+        manualPath: asset.manualPath
+    });
     
     // Update selected asset/sub-asset
     if (!isSub) {
@@ -140,9 +155,16 @@ function renderAssetDetails(assetId, isSubAsset = false) {
     }
     
     // Format file paths with the correct base URL
-    const photoPath = formatFilePath(asset.photoPath);
-    const receiptPath = formatFilePath(asset.receiptPath);
-    const manualPath = formatFilePath(asset.manualPath);
+    const photoPath = asset.photoPath ? formatFilePath(asset.photoPath) : null;
+    const receiptPath = asset.receiptPath ? formatFilePath(asset.receiptPath) : null;
+    const manualPath = asset.manualPath ? formatFilePath(asset.manualPath) : null;
+    
+    // Log the formatted paths
+    console.log(`Formatted paths for asset ${asset.id}:`, {
+        photoPath,
+        receiptPath,
+        manualPath
+    });
     
     // Render asset or sub-asset details
     assetDetails.innerHTML = `
@@ -204,13 +226,13 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         ` : ''}
         <div class="asset-files">
             <div class="files-grid">
-                ${asset.photoPath ? `
+                ${photoPath ? `
                 <div class="file-item photo">
                     <img src="${photoPath}" alt="${asset.name}" class="asset-image">
                     <div class="file-label">Photo</div>
                 </div>
-                ` : ''}
-                ${asset.receiptPath ? `
+                ` : '<!-- No photo available -->'}
+                ${receiptPath ? `
                 <div class="file-item receipt">
                     <a href="${receiptPath}" target="_blank" class="file-preview">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -223,8 +245,8 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                         <div class="file-label">Receipt</div>
                     </a>
                 </div>
-                ` : ''}
-                ${asset.manualPath ? `
+                ` : '<!-- No receipt available -->'}
+                ${manualPath ? `
                 <div class="file-item manual">
                     <a href="${manualPath}" target="_blank" class="file-preview">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -237,7 +259,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                         <div class="file-label">Manual</div>
                     </a>
                 </div>
-                ` : ''}
+                ` : '<!-- No manual available -->'}
             </div>
         </div>
     `;

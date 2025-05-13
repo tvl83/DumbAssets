@@ -176,45 +176,78 @@ async function saveAsset(asset) {
     try {
         const apiBaseUrl = getApiBaseUrl();
         
-        if (deletePhoto && asset.photoPath) {
+        // Create a copy to avoid mutation issues
+        const assetToSave = { ...asset };
+        
+        console.log('Starting saveAsset with data:', {
+            id: assetToSave.id,
+            name: assetToSave.name,
+            photoPath: assetToSave.photoPath,
+            receiptPath: assetToSave.receiptPath,
+            manualPath: assetToSave.manualPath
+        });
+        
+        // Handle file deletions
+        if (deletePhoto && assetToSave.photoPath) {
+            console.log(`Deleting photo: ${assetToSave.photoPath}`);
             await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: asset.photoPath }),
+                body: JSON.stringify({ path: assetToSave.photoPath }),
                 credentials: 'include'
             });
-            asset.photoPath = null;
+            assetToSave.photoPath = null;
         }
-        if (deleteReceipt && asset.receiptPath) {
+        
+        if (deleteReceipt && assetToSave.receiptPath) {
+            console.log(`Deleting receipt: ${assetToSave.receiptPath}`);
             await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: asset.receiptPath }),
+                body: JSON.stringify({ path: assetToSave.receiptPath }),
                 credentials: 'include'
             });
-            asset.receiptPath = null;
+            assetToSave.receiptPath = null;
         }
-        if (deleteManual && asset.manualPath) {
+        
+        if (deleteManual && assetToSave.manualPath) {
+            console.log(`Deleting manual: ${assetToSave.manualPath}`);
             await fetch(`${apiBaseUrl}/api/delete-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: asset.manualPath }),
+                body: JSON.stringify({ path: assetToSave.manualPath }),
                 credentials: 'include'
             });
-            asset.manualPath = null;
+            assetToSave.manualPath = null;
         }
+        
+        console.log('After handling deletions, asset state:', {
+            photoPath: assetToSave.photoPath,
+            receiptPath: assetToSave.receiptPath,
+            manualPath: assetToSave.manualPath
+        });
+        
+        // Make the API call to save the asset
         const response = await fetch(`${apiBaseUrl}/api/asset`, {
             method: isEditMode ? 'PUT' : 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(asset),
+            body: JSON.stringify(assetToSave),
             credentials: 'include'
         });
+        
         if (!response.ok) throw new Error('Failed to save asset');
         
         // Get the saved asset from the response
         const savedAsset = await response.json();
+        console.log('Asset saved successfully. Response data:', {
+            id: savedAsset.id,
+            name: savedAsset.name,
+            photoPath: savedAsset.photoPath,
+            receiptPath: savedAsset.receiptPath,
+            manualPath: savedAsset.manualPath
+        });
         
         // Reload all data to ensure everything is updated
         await refreshAllData();
@@ -222,10 +255,26 @@ async function saveAsset(asset) {
         // Close the modal
         closeAssetModal();
         
+        // Reset delete flags
+        deletePhoto = false;
+        deleteReceipt = false;
+        deleteManual = false;
+        
         // Always explicitly render the asset details if it's the current selection
         // or if this is a new asset that should be selected
-        if (selectedAssetId === asset.id || !selectedAssetId) {
+        if (selectedAssetId === assetToSave.id || !selectedAssetId) {
             selectedAssetId = savedAsset.id;
+            
+            // Force a refresh of the asset from the server data
+            const refreshedAsset = assets.find(a => a.id === savedAsset.id);
+            if (refreshedAsset) {
+                console.log('Refreshing asset display with data:', {
+                    photoPath: refreshedAsset.photoPath,
+                    receiptPath: refreshedAsset.receiptPath,
+                    manualPath: refreshedAsset.manualPath
+                });
+            }
+            
             refreshAssetDetails(savedAsset.id, false);
         }
         
@@ -1463,11 +1512,23 @@ function refreshAssetDetails(assetId, isSubAsset = false) {
         return;
     }
     
+    // Log all the item's properties to help debug
+    console.log(`Found ${isSubAsset ? 'sub-asset' : 'asset'} data:`, {
+        id: item.id,
+        name: item.name,
+        photoPath: item.photoPath,
+        receiptPath: item.receiptPath,
+        manualPath: item.manualPath,
+        updatedAt: item.updatedAt
+    });
+    
     // Ensure that any image paths are properly formatted
     if (item.photoPath) {
         console.log(`Original photo path: ${item.photoPath}`);
         const formattedPhotoPath = formatFilePath(item.photoPath);
         console.log(`Formatted photo path: ${formattedPhotoPath}`);
+    } else {
+        console.log(`No photo path found for asset ${item.id}`);
     }
     
     if (item.receiptPath) {
@@ -1482,8 +1543,12 @@ function refreshAssetDetails(assetId, isSubAsset = false) {
         console.log(`Formatted manual path: ${formattedManualPath}`);
     }
     
-    // Render the details
-    renderAssetDetails(assetId, isSubAsset);
+    // Render the details with a brief delay to ensure the DOM is ready
+    // and any data changes are fully applied
+    setTimeout(() => {
+        console.log(`Rendering details for ${isSubAsset ? 'sub-asset' : 'asset'} ${item.id}`);
+        renderAssetDetails(assetId, isSubAsset);
+    }, 50);
 }
 
 // Keep at the end
