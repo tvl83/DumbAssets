@@ -59,6 +59,7 @@ const addAssetBtn = document.getElementById('addAssetBtn');
 const addSubAssetBtn = document.getElementById('addSubAssetBtn');
 const sidebar = document.querySelector('.sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
 const mainContent = document.querySelector('.main-content');
 const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
 const sortNameBtn = document.getElementById('sortNameBtn');
@@ -992,11 +993,29 @@ function closeSidebar() {
     if (sidebar) sidebar.classList.remove('open');
     if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'none';
     if (sidebarToggle) sidebarToggle.style.display = 'block';
+    document.querySelector('.app-container').classList.remove('sidebar-active');
+    
+    // Hide overlay directly with JavaScript for cross-browser compatibility
+    if (sidebarOverlay) {
+        sidebarOverlay.style.display = 'none';
+        sidebarOverlay.style.opacity = '0';
+        sidebarOverlay.style.pointerEvents = 'none';
+    }
 }
+
 function openSidebar() {
     if (sidebar) sidebar.classList.add('open');
     if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'block';
     if (sidebarToggle) sidebarToggle.style.display = 'none';
+    document.querySelector('.app-container').classList.add('sidebar-active');
+    
+    // Show overlay directly with JavaScript for cross-browser compatibility
+    // Only in mobile view (width <= 853px)
+    if (sidebarOverlay && window.innerWidth <= 853) {
+        sidebarOverlay.style.display = 'block';
+        sidebarOverlay.style.opacity = '1';
+        sidebarOverlay.style.pointerEvents = 'auto';
+    }
 }
 
 if (sidebarToggle) {
@@ -1013,15 +1032,35 @@ if (sidebarCloseBtn) {
         closeSidebar();
     });
 }
-// Close sidebar when clicking outside (on main content) on mobile
-if (mainContent) {
-    mainContent.addEventListener('click', () => {
-        if (window.innerWidth <= 768) closeSidebar();
+
+// Close sidebar when clicking the overlay
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeSidebar();
     });
 }
+
+// Handle window resize events to update sidebar overlay
+window.addEventListener('resize', () => {
+    // If we're now in desktop mode but overlay is visible, hide it
+    if (window.innerWidth > 853 && sidebarOverlay) {
+        sidebarOverlay.style.display = 'none';
+        sidebarOverlay.style.opacity = '0';
+        sidebarOverlay.style.pointerEvents = 'none';
+    }
+    // If we're now in mobile mode with sidebar open, show overlay
+    else if (window.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
+        sidebarOverlay.style.display = 'block';
+        sidebarOverlay.style.opacity = '1';
+        sidebarOverlay.style.pointerEvents = 'auto';
+    }
+});
+
 // Optionally close sidebar on navigation
 function handleSidebarNav() {
-    if (window.innerWidth <= 768) closeSidebar();
+    if (window.innerWidth <= 853) closeSidebar();
 }
 // Call handleSidebarNav after asset/sub-asset click
 // In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav();
