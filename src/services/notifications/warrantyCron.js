@@ -18,6 +18,7 @@ const debugLog = (typeof global.debugLog === 'function') ? global.debugLog : (..
 };
 
 const assetsFilePath = path.join(__dirname, '../../../data/assets.json');
+const notificationSettingsPath = path.join(__dirname, '../../../data/config.json');
 
 function readJsonFile(filePath) {
     try {
@@ -30,60 +31,66 @@ function readJsonFile(filePath) {
 function startWarrantyCron() {
     cron.schedule('1 12 * * *', () => {
         const assets = readJsonFile(assetsFilePath);
-        const configPath = path.join(__dirname, '../../../data/config.json');
-        let config = {};
-        if (fs.existsSync(configPath)) {
-            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        }
-        const notificationSettings = config.notificationSettings || {};
-        const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
-        if (!(notificationSettings.notify1Month || notificationSettings.notify2Week || notificationSettings.notify7Day || notificationSettings.notify3Day)) {
-            return;
-        }
-        const now = DateTime.now().setZone(process.env.TZ || 'America/Chicago');
-        const todayNoon = now.set({ hour: 12, minute: 0, second: 0, millisecond: 0 });
-        if (now < todayNoon) return;
-        assets.forEach(asset => {
-            if (!asset.warranty || !asset.warranty.expirationDate) return;
-            const expDate = DateTime.fromISO(asset.warranty.expirationDate, { zone: process.env.TZ || 'America/Chicago' });
+        const now = DateTime.now();
+        const notificationSettings = readJsonFile(notificationSettingsPath);
+        const appriseUrl = process.env.APPRISE_URL;
+
+        // Helper function to check and send warranty notifications
+        function checkAndNotifyWarranty(asset, warranty, isSecondary = false) {
+            if (!warranty || !warranty.expirationDate) return;
+            const expDate = DateTime.fromISO(warranty.expirationDate, { zone: process.env.TZ || 'America/Chicago' });
             if (!expDate.isValid) return;
             const daysOut = Math.floor(expDate.diff(now, 'days').days);
+            const warrantyType = isSecondary ? 'Secondary Warranty' : 'Warranty';
+
             if (notificationSettings.notify1Month && daysOut === 30) {
                 sendNotification('warranty_expiring', {
                     name: asset.name,
                     modelNumber: asset.modelNumber,
-                    expirationDate: asset.warranty.expirationDate,
-                    days: 30
+                    expirationDate: warranty.expirationDate,
+                    days: 30,
+                    warrantyType
                 }, { appriseUrl });
-                debugLog(`[DEBUG] Warranty 30-day notification sent for asset: ${asset.name}`);
+                debugLog(`[DEBUG] ${warrantyType} 30-day notification sent for asset: ${asset.name}`);
             }
             if (notificationSettings.notify2Week && daysOut === 14) {
                 sendNotification('warranty_expiring', {
                     name: asset.name,
                     modelNumber: asset.modelNumber,
-                    expirationDate: asset.warranty.expirationDate,
-                    days: 14
+                    expirationDate: warranty.expirationDate,
+                    days: 14,
+                    warrantyType
                 }, { appriseUrl });
-                debugLog(`[DEBUG] Warranty 14-day notification sent for asset: ${asset.name}`);
+                debugLog(`[DEBUG] ${warrantyType} 14-day notification sent for asset: ${asset.name}`);
             }
             if (notificationSettings.notify7Day && daysOut === 7) {
                 sendNotification('warranty_expiring', {
                     name: asset.name,
                     modelNumber: asset.modelNumber,
-                    expirationDate: asset.warranty.expirationDate,
-                    days: 7
+                    expirationDate: warranty.expirationDate,
+                    days: 7,
+                    warrantyType
                 }, { appriseUrl });
-                debugLog(`[DEBUG] Warranty 7-day notification sent for asset: ${asset.name}`);
+                debugLog(`[DEBUG] ${warrantyType} 7-day notification sent for asset: ${asset.name}`);
             }
             if (notificationSettings.notify3Day && daysOut === 3) {
                 sendNotification('warranty_expiring', {
                     name: asset.name,
                     modelNumber: asset.modelNumber,
-                    expirationDate: asset.warranty.expirationDate,
-                    days: 3
+                    expirationDate: warranty.expirationDate,
+                    days: 3,
+                    warrantyType
                 }, { appriseUrl });
-                debugLog(`[DEBUG] Warranty 3-day notification sent for asset: ${asset.name}`);
+                debugLog(`[DEBUG] ${warrantyType} 3-day notification sent for asset: ${asset.name}`);
             }
+        }
+
+        assets.forEach(asset => {
+            // Check primary warranty
+            checkAndNotifyWarranty(asset, asset.warranty);
+            
+            // Check secondary warranty
+            checkAndNotifyWarranty(asset, asset.secondaryWarranty, true);
         });
     }, {
         timezone: process.env.TZ || 'America/Chicago'

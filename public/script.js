@@ -582,6 +582,46 @@ function openAssetModal(asset = null) {
     deleteReceipt = window.deleteReceipt = false;
     deleteManual = window.deleteManual = false;
     
+    // Reset secondary warranty fields
+    const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
+    if (secondaryWarrantyFields) {
+        secondaryWarrantyFields.style.display = 'none';
+    }
+    
+    // Set up secondary warranty button
+    const addSecondaryWarrantyBtn = document.getElementById('addSecondaryWarranty');
+    if (addSecondaryWarrantyBtn) {
+        addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
+        addSecondaryWarrantyBtn.setAttribute('aria-controls', 'secondaryWarrantyFields');
+        addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
+        addSecondaryWarrantyBtn.onclick = () => {
+            const fields = document.getElementById('secondaryWarrantyFields');
+            const expanded = fields && fields.style.display !== 'none';
+            if (fields) {
+                if (expanded) {
+                    fields.style.display = 'none';
+                    addSecondaryWarrantyBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        + Warranty`;
+                    addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
+                    addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
+                } else {
+                    fields.style.display = 'block';
+                    addSecondaryWarrantyBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Remove Secondary Warranty`;
+                    addSecondaryWarrantyBtn.title = 'Remove Secondary Warranty';
+                    addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'true');
+                }
+            }
+        };
+    }
+    
     // Clear file inputs and previews
     const photoInput = document.getElementById('assetPhoto');
     const receiptInput = document.getElementById('assetReceipt');
@@ -608,6 +648,37 @@ function openAssetModal(asset = null) {
         document.getElementById('assetPrice').value = asset.price || '';
         document.getElementById('assetWarrantyScope').value = asset.warranty?.scope || '';
         document.getElementById('assetWarrantyExpiration').value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
+        
+        // Handle secondary warranty
+        if (asset.secondaryWarranty) {
+            const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
+            if (secondaryWarrantyFields) {
+                secondaryWarrantyFields.style.display = 'block';
+                document.getElementById('assetSecondaryWarrantyScope').value = asset.secondaryWarranty.scope || '';
+                document.getElementById('assetSecondaryWarrantyExpiration').value = asset.secondaryWarranty.expirationDate ? new Date(asset.secondaryWarranty.expirationDate).toISOString().split('T')[0] : '';
+                if (addSecondaryWarrantyBtn) {
+                    addSecondaryWarrantyBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Remove Secondary Warranty`;
+                    addSecondaryWarrantyBtn.title = 'Remove Secondary Warranty';
+                    addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'true');
+                }
+            }
+        } else {
+            if (addSecondaryWarrantyBtn) {
+                addSecondaryWarrantyBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    + Warranty`;
+                addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
+                addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
+        
         document.getElementById('assetLink').value = asset.link || '';
         document.getElementById('assetDescription').value = asset.description || '';
         // Preview existing images
@@ -690,6 +761,19 @@ function openAssetModal(asset = null) {
             description: document.getElementById('assetDescription').value,
             updatedAt: new Date().toISOString()
         };
+        
+        // Add secondary warranty if fields are visible and filled
+        const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
+        if (secondaryWarrantyFields && secondaryWarrantyFields.style.display !== 'none') {
+            const secondaryScope = document.getElementById('assetSecondaryWarrantyScope').value;
+            const secondaryExpiration = document.getElementById('assetSecondaryWarrantyExpiration').value;
+            if (secondaryScope || secondaryExpiration) {
+                newAsset.secondaryWarranty = {
+                    scope: secondaryScope,
+                    expirationDate: secondaryExpiration
+                };
+            }
+        }
         
         // Add ID if editing, generate new one if adding
         if (isEditMode && asset) {
@@ -1594,6 +1678,21 @@ function refreshAssetDetails(assetId, isSubAsset = false) {
         console.log(`Original manual path: ${item.manualPath}`);
         const formattedManualPath = formatFilePath(item.manualPath);
         console.log(`Formatted manual path: ${formattedManualPath}`);
+    }
+    
+    // Add secondary warranty info if it exists
+    let detailsHtml = '';
+    if (item.secondaryWarranty) {
+        detailsHtml += `
+            <div class="info-item">
+                <div class="info-label">Secondary Warranty</div>
+                <div>${item.secondaryWarranty.scope || 'N/A'}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Secondary Warranty Expiration</div>
+                <div>${formatDate(item.secondaryWarranty.expirationDate)}</div>
+            </div>
+        `;
     }
     
     // Render the details with a brief delay to ensure the DOM is ready

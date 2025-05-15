@@ -219,8 +219,8 @@ input, select, textarea {
 
 .header-title {
     flex: 0 1 auto;
-    // Comment flex above and use below to center title
-    //flex: 1; 
+    /* Comment flex above and use below to center title */
+    /* flex: 1; */
     text-align: center;
     margin-left: 1rem;
 }
@@ -517,7 +517,7 @@ input, select, textarea {
     border-radius: 8px;
     padding: 0.75rem;
     width: calc(100% - 0.5rem);
-    margin: 0.5rem 0.5rem 0.5rem auto; // margin-right to match the .main-content gap
+    margin: 0.5rem 0.5rem 0.5rem auto;
     box-sizing: border-box;
 }
 
@@ -1721,6 +1721,44 @@ a:hover {
     margin: auto 0.5rem auto 0.5rem;
 }
 
+.secondary-warranty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.7rem;
+    margin: 0.5rem 0 0.5rem 0;
+    background: transparent;
+    border: 1px dashed var(--secondary-color);
+    border-radius: 16px;
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    box-shadow: none;
+    outline: none;
+    position: relative;
+}
+.secondary-warranty-btn:hover, .secondary-warranty-btn:focus {
+    background: var(--hover-color);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    text-decoration: underline;
+}
+.secondary-warranty-btn svg {
+    width: 1em;
+    height: 1em;
+    stroke: currentColor;
+    margin-right: 0.2em;
+}
+.secondary-warranty-fields {
+    margin-top: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--hover-color);
+}
+
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
 @media (max-width: 853px) {
@@ -1742,10 +1780,9 @@ a:hover {
     }
     .container {
         width: 100vw;
-        min-height: 95svh; */
+        min-height: 95svh;
         max-width: 100vw;
         max-height: calc(100vh - 7rem);
-        /* max-height: 100%; */
         margin: 0;
         padding: 0;
         box-sizing: border-box;

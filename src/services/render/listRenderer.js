@@ -80,14 +80,31 @@ function updateSort(newSort) {
  * @returns {String|null} Dot type ('red', 'yellow', or null)
  */
 function getWarrantyDotType(asset) {
-    const exp = asset?.warranty?.expirationDate;
-    if (!exp) return null;
-    const expDate = new Date(exp);
-    if (isNaN(expDate)) return null;
+    // Check both primary and secondary warranties
+    const warranties = [
+        { exp: asset?.warranty?.expirationDate },
+        { exp: asset?.secondaryWarranty?.expirationDate }
+    ].filter(w => w.exp);
+
+    if (warranties.length === 0) return null;
+
     const now = new Date();
-    const diff = (expDate - now) / (1000 * 60 * 60 * 24);
-    if (diff >= 0 && diff <= 30) return 'red';
-    if (diff > 30 && diff <= 60) return 'yellow';
+    let hasExpiring = false;
+    let hasWarning = false;
+
+    warranties.forEach(warranty => {
+        const expDate = new Date(warranty.exp);
+        if (isNaN(expDate)) return;
+        const diff = (expDate - now) / (1000 * 60 * 60 * 24);
+        if (diff >= 0 && diff <= 30) {
+            hasExpiring = true;
+        } else if (diff > 30 && diff <= 60) {
+            hasWarning = true;
+        }
+    });
+
+    if (hasExpiring) return 'red';
+    if (hasWarning) return 'yellow';
     return null;
 }
 
