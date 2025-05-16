@@ -1,5 +1,5 @@
 {
-  "name": "dumb-assets",
+  "name": "dumbassets",
   "version": "1.0.0",
   "description": "Asset tracking application for managing assets and their components",
   "main": "server.js",
@@ -14,7 +14,6 @@
     "management"
   ],
   "author": "DumbWare",
-  "license": "MIT",
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
