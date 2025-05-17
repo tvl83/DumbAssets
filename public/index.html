@@ -150,26 +150,14 @@
                             <label for="assetWarrantyExpiration">Warranty Expiration</label>
                             <input type="date" id="assetWarrantyExpiration" name="warrantyExpiration">
                         </div>
-                        
-                        <button type="button" id="addSecondaryWarranty" class="secondary-warranty-btn" title="Add Secondary Warranty">
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            + Warranty
-                        </button>
-                        
-                        <div id="secondaryWarrantyFields" class="secondary-warranty-fields" style="display: none;">
-                            <div class="form-group">
-                                <label for="assetSecondaryWarrantyScope">Secondary Warranty Scope</label>
-                                <input type="text" id="assetSecondaryWarrantyScope" name="secondaryWarrantyScope">
-                            </div>
-                            <div class="form-group">
-                                <label for="assetSecondaryWarrantyExpiration">Secondary Warranty Expiration</label>
-                                <input type="date" id="assetSecondaryWarrantyExpiration" name="secondaryWarrantyExpiration">
-                            </div>
+                        <div class="form-group">
+                            <label for="assetLink">Link</label>
+                            <input type="url" id="assetLink" name="link">
                         </div>
-                        
+                        <div class="form-group">
+                            <label for="assetDescription">Description</label>
+                            <textarea id="assetDescription" name="description" rows="3"></textarea>
+                        </div>
                         <div class="collapsible-section" data-collapsed="true">
                             <div class="collapsible-header">
                                 <h3>File Attachments</h3>
@@ -229,14 +217,22 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="assetLink">Link</label>
-                            <input type="url" id="assetLink" name="link">
-                        </div>
-                        <div class="form-group">
-                            <label for="assetDescription">Description</label>
-                            <textarea id="assetDescription" name="description" rows="3"></textarea>
+                        <button type="button" id="addSecondaryWarranty" class="secondary-warranty-btn" title="Add Secondary Warranty">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Warranty
+                        </button>
+                        <div id="secondaryWarrantyFields" class="secondary-warranty-fields" style="display: none;">
+                            <div class="form-group">
+                                <label for="assetSecondaryWarrantyScope">Secondary Warranty Scope</label>
+                                <input type="text" id="assetSecondaryWarrantyScope" name="secondaryWarrantyScope">
+                            </div>
+                            <div class="form-group">
+                                <label for="assetSecondaryWarrantyExpiration">Secondary Warranty Expiration</label>
+                                <input type="date" id="assetSecondaryWarrantyExpiration" name="secondaryWarrantyExpiration">
+                            </div>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="save-btn">Save</button>
@@ -361,8 +357,8 @@
                         </div>
                         
                         <div class="form-actions">
-                            <button type="button" class="cancel-btn">Cancel</button>
                             <button type="submit" class="save-btn">Save</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
                         </div>
                     </form>
                 </div>

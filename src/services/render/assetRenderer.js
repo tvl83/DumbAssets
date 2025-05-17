@@ -211,16 +211,6 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                 <div class="info-label">Warranty Expiration</div>
                 <div>${formatDate(asset.warranty?.expirationDate)}</div>
             </div>
-            ${asset.secondaryWarranty ? `
-            <div class="info-item">
-                <div class="info-label">Secondary Warranty</div>
-                <div>${asset.secondaryWarranty.scope || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Secondary Warranty Expiration</div>
-                <div>${formatDate(asset.secondaryWarranty.expirationDate)}</div>
-            </div>
-            ` : ''}
             ${asset.link ? `
             <div class="info-item">
                 <div class="info-label">Link</div>
