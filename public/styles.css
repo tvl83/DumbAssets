@@ -19,8 +19,9 @@
     --error-color: #ef4444;
     --warning-color: #f59e0b;
     --app-border: 0.13rem solid var(--border-color);
-    --app-border-radius: 0.5rem;
+    --app-border-radius: 0.80rem;
     --file-label-color:rgba(37, 100, 235, 0.15);
+    --toast-success:rgba(37, 100, 235, 0.7);
 }
 
 [data-theme="dark"] {
@@ -35,7 +36,8 @@
     --text-color: #ffffff;
     --border-color: #334155;
     --hover-color: #1e293b;
-    --link-color: #60a5fa;  /* Lighter blue for better visibility in dark mode */
+    --link-color: #60a5fa;
+    --toast-success:rgba(37, 100, 235, 0.4);
 }
 
 [data-theme="light"] .moon {
@@ -453,6 +455,7 @@ input, select, textarea {
 .asset-item.active {
     background-color: rgba(59, 130, 246, 0.2);  /* Semi-transparent primary color */
     color: var(--text-color);
+    border-radius: var(--app-border-radius);
 }
 
 .asset-item.active .asset-item-name,
@@ -565,19 +568,17 @@ input, select, textarea {
 }
 
 .asset-actions .edit-asset-btn:hover {
-    background-color: var(--primary-color);
+    background-color: rgba(37, 100, 235, 0.4);    
+    box-shadow: 0 0 5px rgb(37, 100, 235);
 }
 
-.asset-actions .edit-asset-btn:hover svg {
+.asset-actions .edit-asset-btn:hover svg, .asset-actions .delete-asset-btn:hover svg  {  
     stroke: #fff;
 }
 
 .asset-actions .delete-asset-btn:hover {
-    background-color: var(--error-color);
-}
-
-.asset-actions .delete-asset-btn:hover svg {
-    stroke: #fff;
+    background-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 5px rgb(239, 68, 68);
 }
 
 .asset-info {
@@ -765,6 +766,12 @@ input, select, textarea {
     margin-bottom: 0.5rem;
 }
 
+#assetDescription, #subAssetNotes {
+    min-width: 100%;
+    max-width: 100%;
+    min-height: 50px;
+}
+
 .preview-container {
     margin-top: 0.5rem;
     max-width: 100%;
@@ -840,21 +847,6 @@ input, select, textarea {
     gap: 0.2rem;
 }
 
-/* .sub-asset-actions button {
-    padding: 0.3rem 0.5rem;
-    border: none;
-    border-radius: var(--app-border-radius);
-    cursor: pointer;
-    background-color: var(--hover-color);
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    transition: background 0.2s, color 0.2s;
-    margin-left: 0;
-} */
-
 .sub-asset-actions .edit-sub-btn svg {
     stroke: var(--primary-color);
     width: 20px;
@@ -868,7 +860,9 @@ input, select, textarea {
 }
 
 .sub-asset-actions .edit-sub-btn:hover {
-    background-color: var(--primary-color);
+    background-color: rgba(37, 100, 235, 0.4);    
+    box-shadow: 0 0 5px rgb(37, 100, 235);
+    z-index: 5;
 }
 
 .sub-asset-actions .edit-sub-btn:hover svg {
@@ -876,7 +870,9 @@ input, select, textarea {
 }
 
 .sub-asset-actions .delete-sub-btn:hover {
-    background-color: var(--error-color);
+    background-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 5px rgb(239, 68, 68);
+    z-index: 5;
 }
 
 .sub-asset-actions .delete-sub-btn:hover svg {
@@ -916,7 +912,8 @@ input, select, textarea {
 }
 
 .back-to-parent-btn:hover {
-    background: var(--primary-color);
+    background-color: rgba(37, 100, 235, 0.4);    
+    box-shadow: 0 0 5px rgb(37, 100, 235);
 }
 
 .back-to-parent-btn:hover svg {
@@ -994,6 +991,7 @@ input, select, textarea {
     color: var(--text-color);
 }
 
+/* Import modal styling */
 .column-mapping {
     margin-top: 20px;
 }
@@ -1025,15 +1023,16 @@ input, select, textarea {
 }
 
 /* Notification Modal Styles */
+#notificationModal .modal-header {
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
 #notificationModal .modal-content {
     max-width: 420px;
     padding: 0;
 }
-#notificationModal .modal-header {
-    padding-bottom: 0.5em;
-}
 #notificationModal .modal-header h2 {
-    font-size: 1.5em;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--text);
     margin: 0 auto;
@@ -1088,9 +1087,9 @@ input, select, textarea {
 .toast {
     position: fixed;
     left: 50%;
-    bottom: 1.5rem;
+    bottom: 3rem;
     transform: translateX(-50%);
-    background: var(--primary-color);
+    background: var(--toast-success);
     color: #fff;
     padding: 0.85em 2em;
     border-radius: 2em;
@@ -1105,7 +1104,7 @@ input, select, textarea {
 .toast.show {
     opacity: 1;
     pointer-events: auto;
-    bottom: 2rem;
+    bottom: 3rem;
 }
 
 .header-spacer {
@@ -1172,6 +1171,7 @@ input, select, textarea {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
 }
 .file-preview img {
     max-width: 200px;
@@ -1179,18 +1179,12 @@ input, select, textarea {
     border-radius: var(--app-border-radius);
 }
 
-.file-preview .delete-preview-btn {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    border-radius: 50%;
-    padding: 2px;
-    cursor: pointer;
+.file-preview .preview-content {
+    width: 100%;
+    position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
 }
 
 .file-upload-box {
@@ -1295,13 +1289,14 @@ a:hover {
 .preview-grid .file-preview-item img {
     width: 100%;
     height: 120px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: var(--app-border-radius);
+    z-index: 1;
 }
 .preview-grid .file-preview-item .delete-preview-btn {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: 2px;
+    right: 2px;
     background: transparent;
     border: none;
     border-radius: 50%;
@@ -1310,6 +1305,7 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
 }
 .file-preview-item .delete-preview-btn svg {
     width: 16px;
@@ -1323,6 +1319,28 @@ a:hover {
 
 .file-info {
     font-size: 0.7rem;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.file-info .file-type {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.file-info .file-name {
+    font-size: 0.7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    color: var(--text-color-light);
+}
+
+.file-info .file-size {
+    font-size: 0.65rem;
+    color: var(--text-color-light);
 }
 
 .files-grid {
@@ -1380,6 +1398,7 @@ a:hover {
     height: 150px;
     object-fit: cover;
     border-radius: var(--app-border-radius);
+    border: none;
     flex: 1;
 }
 
@@ -1387,7 +1406,7 @@ a:hover {
     font-size: 0.9rem;
     text-align: center;
     padding: 0.4rem 0;
-    width: 30%;
+    width: 35%;
     background-color: var(--file-label-color);
     border-radius: 1rem;
     color: var(--primary-color);
@@ -1636,7 +1655,7 @@ a:hover {
     background: var(--hover-color);
     color: var(--primary-color);
     border-color: var(--primary-color);
-    text-decoration: underline;
+    /* text-decoration: underline; */
 }
 .secondary-warranty-btn svg {
     width: 1em;

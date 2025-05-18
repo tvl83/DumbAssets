@@ -5,6 +5,7 @@
 
 // Import file upload module
 import { initializeFileUploads, handleFileUploads } from '/src/services/fileUpload/index.js';
+import { formatFileSize } from '/src/services/fileUpload/utils.js';
 // Import asset renderer module
 import { 
     initRenderer, 
@@ -18,9 +19,13 @@ import {
     updateDashboardFilter,
     updateSort,
     renderAssetList,
-    sortAssets
+    sortAssets,
+    // Import file preview renderer
+    setupFilePreview
 } from '/src/services/render/index.js';
-import {  registerServiceWorker } from './helpers/serviceWorkerHelper.js';
+
+// Use setupFilePreview from the render index.js
+import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 // Import collapsible sections functionality
 import { initCollapsibleSections } from './js/collapsible.js';
 
@@ -681,58 +686,57 @@ function openAssetModal(asset = null) {
         
         document.getElementById('assetLink').value = asset.link || '';
         document.getElementById('assetDescription').value = asset.description || '';
-        // Preview existing images
-        if (photoPreview && asset.photoPath) {
-            photoPreview.innerHTML = `<div style="position:relative;display:inline-block;">
-                <img src="${formatFilePath(asset.photoPath)}" alt="Asset Photo">
-                <button type="button" class="delete-preview-btn" title="Delete Image" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;padding:2px;cursor:pointer;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </button>
-            </div>`;
-            photoPreview.querySelector('.delete-preview-btn').onclick = () => {
-                if (confirm('Are you sure you want to delete this image?')) {
-                    photoPreview.innerHTML = '';
-                    photoInput.value = '';
-                    deletePhoto = window.deletePhoto = true;
-                }
-            };
+        
+        // Preview existing files using our utility function
+        if (asset.photoPath) {
+            // Extract filename from path
+            const photoFileName = asset.photoPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~200 KB'; 
+            setupFilePreview(
+                photoPreview, 
+                'photo', 
+                formatFilePath(asset.photoPath), 
+                photoInput, 
+                { deletePhoto }, 
+                'deletePhoto',
+                photoFileName,
+                estimatedSize
+            );
         }
-        if (receiptPreview && asset.receiptPath) {
-            receiptPreview.innerHTML = `<div class="receipt-preview" style="position:relative;display:inline-block;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <span>Receipt file attached</span>
-                <button type="button" class="delete-preview-btn" title="Delete Receipt" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;padding:2px;cursor:pointer;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </button>
-            </div>`;
-            receiptPreview.querySelector('.delete-preview-btn').onclick = () => {
-                if (confirm('Are you sure you want to delete this receipt?')) {
-                    receiptPreview.innerHTML = '';
-                    receiptInput.value = '';
-                    deleteReceipt = window.deleteReceipt = true;
-                }
-            };
+        
+        if (asset.receiptPath) {
+            // Extract filename from path
+            const receiptFileName = asset.receiptPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~150 KB';
+            setupFilePreview(
+                receiptPreview, 
+                'receipt', 
+                formatFilePath(asset.receiptPath), 
+                receiptInput, 
+                { deleteReceipt }, 
+                'deleteReceipt',
+                receiptFileName,
+                estimatedSize
+            );
         }
-        if (manualPreview && asset.manualPath) {
-            manualPreview.innerHTML = `<div class="manual-preview" style="position:relative;display:inline-block;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <span>Manual file attached</span>
-                <button type="button" class="delete-preview-btn" title="Delete Manual" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;padding:2px;cursor:pointer;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </button>
-            </div>`;
+        
+        if (asset.manualPath) {
+            // Extract filename from path
+            const manualFileName = asset.manualPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~500 KB';
+            setupFilePreview(
+                manualPreview, 
+                'manual', 
+                formatFilePath(asset.manualPath), 
+                manualInput, 
+                { deleteManual }, 
+                'deleteManual',
+                manualFileName,
+                estimatedSize
+            );
             manualPreview.querySelector('.delete-preview-btn').onclick = () => {
                 if (confirm('Are you sure you want to delete this manual?')) {
                     manualPreview.innerHTML = '';
@@ -908,37 +912,55 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         if (warrantyExpirationInput) warrantyExpirationInput.value = subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : '';
         
         // Preview existing images if available
-        if (photoPreview && subAsset.photoPath) {
-            photoPreview.innerHTML = `<div class="preview-item">
-                <img src="${formatFilePath(subAsset.photoPath)}" alt="Component Photo" style="max-width:100%;max-height:150px;">
-                <button type="button" class="delete-preview-btn" title="Delete Image">×</button>
-            </div>`;
-            photoPreview.querySelector('.delete-preview-btn').onclick = () => {
-                if (confirm('Are you sure you want to delete this image?')) {
-                    photoPreview.innerHTML = '';
-                    photoInput.value = '';
-                    deleteSubPhoto = window.deleteSubPhoto = true;
-                }
-            };
+        if (subAsset.photoPath) {
+            // Extract filename from path
+            const photoFileName = subAsset.photoPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~200 KB';
+            setupFilePreview(
+                photoPreview, 
+                'photo', 
+                formatFilePath(subAsset.photoPath), 
+                photoInput, 
+                { deleteSubPhoto }, 
+                'deleteSubPhoto',
+                photoFileName,
+                estimatedSize
+            );
         }
-        if (receiptPreview && subAsset.receiptPath) {
-            receiptPreview.innerHTML = `<div class="preview-item">
-                <span>Receipt file attached</span>
-                <button type="button" class="delete-preview-btn" title="Delete Receipt">×</button>
-            </div>`;
-            receiptPreview.querySelector('.delete-preview-btn').onclick = () => {
-                if (confirm('Are you sure you want to delete this receipt?')) {
-                    receiptPreview.innerHTML = '';
-                    receiptInput.value = '';
-                    deleteSubReceipt = window.deleteSubReceipt = true;
-                }
-            };
+        
+        if (subAsset.receiptPath) {
+            // Extract filename from path
+            const receiptFileName = subAsset.receiptPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~150 KB';
+            setupFilePreview(
+                receiptPreview, 
+                'receipt', 
+                formatFilePath(subAsset.receiptPath), 
+                receiptInput, 
+                { deleteSubReceipt }, 
+                'deleteSubReceipt',
+                receiptFileName,
+                estimatedSize
+            );
         }
-        if (manualPreview && subAsset.manualPath) {
-            manualPreview.innerHTML = `<div class="preview-item">
-                <span>Manual file attached</span>
-                <button type="button" class="delete-preview-btn" title="Delete Manual">×</button>
-            </div>`;
+        
+        if (subAsset.manualPath) {
+            // Extract filename from path
+            const manualFileName = subAsset.manualPath.split('/').pop();
+            // Use estimate file size since we don't have actual size
+            const estimatedSize = '~500 KB';
+            setupFilePreview(
+                manualPreview, 
+                'manual', 
+                formatFilePath(subAsset.manualPath), 
+                manualInput, 
+                { deleteSubManual }, 
+                'deleteSubManual',
+                manualFileName,
+                estimatedSize
+            );
             manualPreview.querySelector('.delete-preview-btn').onclick = () => {
                 if (confirm('Are you sure you want to delete this manual?')) {
                     manualPreview.innerHTML = '';
@@ -1157,6 +1179,8 @@ importBtn.addEventListener('click', () => {
 // Close import modal
 importModal.querySelector('.close-btn').addEventListener('click', () => {
     importModal.style.display = 'none';
+    // Reset the import form when closing the modal
+    resetImportForm();
 });
 
 // Handle file selection
@@ -1193,6 +1217,12 @@ importFile.addEventListener('change', async (e) => {
         const data = await response.json();
         console.log('Headers received:', data.headers);
         const headers = data.headers || [];
+        
+        // Show the column mapping section
+        const mappingContainer = document.querySelector('.column-mapping');
+        if (mappingContainer) {
+            mappingContainer.style.display = 'block';
+        }
         
         // Populate column selects
         columnSelects.forEach(select => {
@@ -1333,6 +1363,24 @@ function autoMapColumns(headers) {
         select.value = foundIndex;
     });
 }
+
+// Global function to reset the import form
+function resetImportForm() {
+    // Reset all column mapping dropdowns
+    const columnSelects = document.querySelectorAll('.column-select');
+    columnSelects.forEach(select => {
+        select.innerHTML = '<option value="">Select Column</option>';
+    });
+    
+    // Disable the start import button
+    const startImportBtn = document.getElementById('startImportBtn');
+    if (startImportBtn) {
+        startImportBtn.disabled = true;
+    }
+}
+
+// Make it available globally
+window.resetImportForm = resetImportForm;
 
 // Open modal
 notificationBtn.addEventListener('click', async () => {

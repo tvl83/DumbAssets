@@ -4,6 +4,7 @@
  */
 
 import { validateFileType, formatFileSize } from './utils.js';
+import { createPhotoPreview, createDocumentPreview } from '../render/previewRenderer.js';
 
 // Get access to the global flags
 let deletePhoto = false, deleteReceipt = false, deleteManual = false;
@@ -65,12 +66,13 @@ async function uploadFile(file, type, id) {
 }
 
 /**
- * Setup file preview functionality for a file input
+ * Setup file preview functionality for a file input element
  * @param {string} inputId - The ID of the file input element
  * @param {string} previewId - The ID of the preview container element
  * @param {boolean} isDocument - Whether the file is a document (true) or image (false)
+ * @param {string} fileType - The type of file ('image', 'receipt', or 'manual')
  */
-function setupFilePreview(inputId, previewId, isDocument = false, fileType = 'image') {
+function setupFileInputPreview(inputId, previewId, isDocument = false, fileType = 'image') {
     const input = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
     const uploadBox = document.querySelector(`[data-target="${inputId}"]`);
@@ -132,77 +134,26 @@ function setupFilePreview(inputId, previewId, isDocument = false, fileType = 'im
         // Only show preview if there are files
         if (input.files && input.files.length > 0) {
             Array.from(input.files).forEach(file => {
+                // Create the preview element using component approach
                 const previewItem = document.createElement('div');
-                previewItem.className = 'file-preview-item';
                 
                 if (isDocument) {
-                    // For documents, show icon and filename
-                    const icon = fileType === 'receipt' 
-                        ? `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
-                        </svg>` 
-                        : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>`;
-
-                    previewItem.innerHTML = `
-                        <div>
-                            ${icon}
-                            <div class="file-info">
-                                <span>${file.name}</span>
-                                <div class="file-size">
-                                    <span>${formatFileSize(file.size)}</span>
-                                </div>
-                            </div>
-                            <button type="button" class="delete-preview-btn" title="Delete File">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                                    <line x1="10" y1="11" x2="10" y2="17"/>
-                                    <line x1="14" y1="11" x2="14" y2="17"/>
-                                </svg>
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    // For images, show preview
+                    // For documents (receipt, manual, or import), use the document preview component
+                    let docType;
+                    if (fileType === 'receipt') {
+                        docType = 'receipt';
+                    } else if (fileType === 'import') {
+                        docType = 'import';
+                    } else if (fileType === 'manual') {
+                        docType = 'manual';
+                    } else {
+                        docType = 'document';
+                    }
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        previewItem.innerHTML = `
-                        <div class="file-preview">
-                            <div>
-                                <img src="${e.target.result}" alt="Preview">
-                                <div class="file-info">
-                                    <span>${file.name}</span>
-                                    <div class="file-size">
-                                        <span>${formatFileSize(file.size)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="delete-preview-btn" title="Delete Image">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                                    <line x1="10" y1="11" x2="10" y2="17"/>
-                                    <line x1="14" y1="11" x2="14" y2="17"/>
-                                </svg>
-                            </button>
-                        </div>    
-                        `;
-                    };
-                    reader.readAsDataURL(file);
-                }
-
-                // Add delete handler
-                const deleteBtn = previewItem.querySelector('.delete-preview-btn');
-                if (deleteBtn) {
-                    deleteBtn.onclick = () => {
-                        if (confirm('Are you sure you want to delete this file?')) {
+                    
+                    // Set up delete handler
+                    const deleteHandler = () => {
+                        if (confirm(`Are you sure you want to delete this ${docType}?`)) {
                             previewItem.remove();
                             // Update the input files
                             const dataTransfer = new DataTransfer();
@@ -212,8 +163,42 @@ function setupFilePreview(inputId, previewId, isDocument = false, fileType = 'im
                                 }
                             });
                             input.files = dataTransfer.files;
+                            
+                            // If this is an import file, reset the import form
+                            if (fileType === 'import' && window.resetImportForm) {
+                                window.resetImportForm();
+                            }
                         }
                     };
+                    
+                    // Use createDocumentPreview for documents with filename and size
+                    const docPreview = createDocumentPreview(docType, file.name, deleteHandler, file.name, formatFileSize(file.size));
+                    previewItem.appendChild(docPreview);
+                    
+                } else {
+                    // For images, use the photo preview component
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        // Set up delete handler
+                        const deleteHandler = () => {
+                            if (confirm('Are you sure you want to delete this image?')) {
+                                previewItem.remove();
+                                // Update the input files
+                                const dataTransfer = new DataTransfer();
+                                Array.from(input.files).forEach((f, i) => {
+                                    if (f !== file) {
+                                        dataTransfer.items.add(f);
+                                    }
+                                });
+                                input.files = dataTransfer.files;
+                            }
+                        };
+                        
+                        // Use createPhotoPreview for images with filename and size
+                        const photoPreview = createPhotoPreview(e.target.result, deleteHandler, file.name, formatFileSize(file.size));
+                        previewItem.appendChild(photoPreview);
+                    };
+                    reader.readAsDataURL(file);
                 }
 
                 preview.appendChild(previewItem);
@@ -453,7 +438,7 @@ function setupDragAndDrop() {
 // Export the functions
 export {
     uploadFile,
-    setupFilePreview,
+    setupFileInputPreview,
     handleFileUploads,
     setupDragAndDrop
-}; 
+};
