@@ -133,6 +133,106 @@ input, select, textarea {
     color: var(--text-color);
 }
 
+/* Modern Date Input Styling */
+input[type="date"] {
+    position: relative;
+    padding: 0.75rem 1rem;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: var(--app-border);
+    border-radius: var(--app-border-radius);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+/* Custom calendar icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'></rect><line x1='16' y1='2' x2='16' y2='6'></line><line x1='8' y1='2' x2='8' y2='6'></line><line x1='3' y1='10' x2='21' y2='10'></line></svg>");
+    background-size: contain;
+    opacity: 0.7;
+    cursor: pointer;
+}
+
+/* Enhanced Date Input Wrapper */
+.date-input-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.date-input-wrapper input[type="date"] {
+    flex: 1;
+    padding-right: 70px; /* Space for the buttons */
+}
+
+/* Clear button styling */
+.date-clear-btn {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+    z-index: 2;
+}
+
+.date-clear-btn:hover {
+    background-color: rgba(100, 116, 139, 0.1);
+    color: var(--error-color);
+}
+
+/* Styling for inputs with values */
+input[type="date"][data-has-value="true"] {
+    color: var(--text-color);
+    font-weight: 500;
+    border-color: var(--primary-color);
+}
+
+/* Show the clear button only when hovering over inputs with values */
+.date-input-wrapper:hover .date-clear-btn {
+    opacity: 1;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'></rect><line x1='16' y1='2' x2='16' y2='6'></line><line x1='8' y1='2' x2='8' y2='6'></line><line x1='3' y1='10' x2='21' y2='10'></line></svg>");
+    opacity: 0.8;
+}
+
+[data-theme="dark"] .date-clear-btn:hover {
+    background-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Firefox specific styling */
+@-moz-document url-prefix() {
+    input[type="date"] {
+        padding-right: 2.5rem; /* Extra space for the calendar icon in Firefox */
+    }
+}
+
+
 /* Login page specific styles */
 #pinForm {
     width: 450px;
