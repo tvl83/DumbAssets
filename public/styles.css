@@ -20,6 +20,7 @@
     --warning-color: #f59e0b;
     --app-border: 0.13rem solid var(--border-color);
     --app-border-radius: 0.5rem;
+    --file-label-color:rgba(37, 100, 235, 0.15);
 }
 
 [data-theme="dark"] {
@@ -988,20 +989,6 @@ input, select, textarea {
     display: none;
 }
 
-.file-label {
-    display: inline-block;
-    padding: 8px 16px;
-    background-color: var(--primary-color);
-    color: white;
-    border-radius: var(--app-border-radius);
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.file-label:hover {
-    background-color: var(--primary-hover);
-}
-
 .selected-file {
     margin-left: 10px;
     color: var(--text-color);
@@ -1179,47 +1166,6 @@ input, select, textarea {
     height: 16px;
 }
 
-.manual-preview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    border: var(--app-border);
-    border-radius: var(--app-border-radius);
-    background-color: var(--background-color);
-    position: relative;
-}
-.manual-preview svg {
-    width: 48px;
-    height: 48px;
-    stroke: var(--primary-color);
-}
-.manual-preview span {
-    color: var(--text-color);
-    font-size: 0.9rem;
-    text-align: center;
-    word-break: break-word;
-    max-width: 200px;
-}
-.manual-preview .delete-preview-btn {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    border-radius: var(--app-border-radius);
-    padding: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.manual-preview .delete-preview-btn svg {
-    width: 16px;
-    height: 16px;
-    stroke: red;
-}
 
 .file-preview {
     margin-top: 8px;
@@ -1245,10 +1191,6 @@ input, select, textarea {
     display: flex;
     align-items: center;
     justify-content: center;
-}
-.file-preview .delete-preview-btn svg {
-    width: 16px;
-    height: 16px;
 }
 
 .file-upload-box {
@@ -1360,7 +1302,7 @@ a:hover {
     position: absolute;
     top: 4px;
     right: 4px;
-    background: rgba(0, 0, 0, 0.5);
+    background: transparent;
     border: none;
     border-radius: 50%;
     padding: 4px;
@@ -1369,22 +1311,18 @@ a:hover {
     align-items: center;
     justify-content: center;
 }
-.preview-grid .file-preview-item .delete-preview-btn svg {
+.file-preview-item .delete-preview-btn svg {
     width: 16px;
     height: 16px;
     stroke: red;
 }
-.preview-grid .manual-preview {
-    width: 100%;
-    margin: 0;
-}
-.preview-grid .receipt-preview {
-    width: 100%;
-    margin: 0;
-}
 
 .asset-files {
     margin-top: 1.5rem;
+}
+
+.file-info {
+    font-size: 0.7rem;
 }
 
 .files-grid {
@@ -1398,13 +1336,14 @@ a:hover {
     position: relative;
     border: var(--app-border);
     border-radius: var(--app-border-radius);
-    padding: 1rem;
+    padding: 0;
     background-color: var(--background-color);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
     transition: all 0.2s ease;
+    height: 250px;
+    overflow: hidden;
 }
 
 .file-item:hover {
@@ -1413,85 +1352,53 @@ a:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.file-item.photo img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    border-radius: var(--app-border-radius);
-}
-
 .file-item .file-preview {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: flex-start;
     text-decoration: none;
     color: var(--text-color);
     width: 100%;
     height: 100%;
-    padding: 1rem;
+    padding: 0;
+    flex: 1 1 auto;
+    position: relative;
 }
 
 .file-item svg {
-    width: 48px;
-    height: 48px;
+    width: 80px;
+    height: 80px;
     stroke: var(--primary-color);
+    margin: auto;
+    transition: transform 0.2s ease;
+    flex: 1;
+}
+
+.file-item.photo img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: var(--app-border-radius);
+    flex: 1;
 }
 
 .file-label {
     font-size: 0.9rem;
-    color: var(--text-color);
     text-align: center;
+    padding: 0.4rem 0;
+    width: 30%;
+    background-color: var(--file-label-color);
+    border-radius: 1rem;
+    color: var(--primary-color);
+    transition: color 0.2s ease;
+    position: relative;
+    bottom: 0.5rem;
+    /* left: 25%; */
 }
 
-.file-item.receipt .file-preview:hover svg,
-.file-item.manual .file-preview:hover svg {
-    stroke: var(--primary-color);
+.file-item .file-preview:hover svg {
     transform: scale(1.1);
-}
-.file-item.receipt .file-preview:hover .file-label,
-.file-item.manual .file-preview:hover .file-label {
-    color: var(--primary-color);
-}
-.file-item.manual svg {
-    width: 80px;
-    height: 80px;
-    stroke: var(--primary-color);
-}
-.file-item.manual .file-preview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100%;
-    padding: 0;
-    flex: 1 1 auto;
-}
-.file-item.manual .file-label {
-    margin-top: auto;
-    text-align: center;
-    width: 100%;
-    padding-bottom: 0.5rem;
-}
-.file-item.receipt svg {
-    width: 80px;
-    height: 80px;
-    stroke: var(--primary-color);
-}
-.file-item.receipt .file-preview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100%;
-    padding: 0;
-    flex: 1 1 auto;
-}
-.file-item.receipt .file-label {
-    margin-top: auto;
-    text-align: center;
-    width: 100%;
-    padding-bottom: 0.5rem;
 }
 
 .warranty-expiring-dot {

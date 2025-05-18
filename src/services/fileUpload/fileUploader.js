@@ -70,7 +70,7 @@ async function uploadFile(file, type, id) {
  * @param {string} previewId - The ID of the preview container element
  * @param {boolean} isDocument - Whether the file is a document (true) or image (false)
  */
-function setupFilePreview(inputId, previewId, isDocument = false) {
+function setupFilePreview(inputId, previewId, isDocument = false, fileType = 'image') {
     const input = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
     const uploadBox = document.querySelector(`[data-target="${inputId}"]`);
@@ -137,14 +137,28 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
                 
                 if (isDocument) {
                     // For documents, show icon and filename
+                    const icon = fileType === 'receipt' 
+                        ? `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
+                        </svg>` 
+                        : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>`;
+
                     previewItem.innerHTML = `
-                        <div class="manual-preview">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                            </svg>
-                            <span>${file.name}</span>
-                            <span class="file-size">${formatFileSize(file.size)}</span>
+                        <div>
+                            ${icon}
+                            <div class="file-info">
+                                <span>${file.name}</span>
+                                <div class="file-size">
+                                    <span>${formatFileSize(file.size)}</span>
+                                </div>
+                            </div>
                             <button type="button" class="delete-preview-btn" title="Delete File">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="3 6 5 6 21 6"/>
@@ -160,10 +174,15 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         previewItem.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
-                            <div class="file-info">
-                                <span>${file.name}</span>
-                                <span class="file-size">${formatFileSize(file.size)}</span>
+                        <div class="file-preview">
+                            <div>
+                                <img src="${e.target.result}" alt="Preview">
+                                <div class="file-info">
+                                    <span>${file.name}</span>
+                                    <div class="file-size">
+                                        <span>${formatFileSize(file.size)}</span>
+                                    </div>
+                                </div>
                             </div>
                             <button type="button" class="delete-preview-btn" title="Delete Image">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -173,6 +192,7 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
                                     <line x1="14" y1="11" x2="14" y2="17"/>
                                 </svg>
                             </button>
+                        </div>    
                         `;
                     };
                     reader.readAsDataURL(file);
