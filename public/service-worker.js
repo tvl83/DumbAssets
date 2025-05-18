@@ -1,7 +1,44 @@
-const CACHE_VERSION = "1.0.2"; // Increment this with each significant change
-const CACHE_NAME = `DUMBASSETS_PWA_CACHE_V${CACHE_VERSION}`;
+// Default to 1.0.0, but will be replaced by the server with the actual version from package.json
+let APP_VERSION = "1.0.0";
+let CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
 const ASSETS_TO_CACHE = [];
 const BASE_PATH = self.registration.scope;
+
+// Try to get version from the service worker script URL if available
+function getVersionFromURL() {
+    try {
+        if (self && self.location && self.location.search) {
+            const urlParams = new URLSearchParams(self.location.search);
+            const urlVersion = urlParams.get('v');
+            if (urlVersion) {
+                console.log(`Found version in URL: ${urlVersion}`);
+                return urlVersion;
+            }
+        }
+    } catch (err) {
+        console.error('Error parsing version from URL:', err);
+    }
+    return null;
+}
+
+// Check URL for version parameter during initialization
+const urlVersion = getVersionFromURL();
+if (urlVersion) {
+    APP_VERSION = urlVersion;
+    CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
+}
+
+// Log the version we're using on initialization
+console.log(`Service worker initializing with version: ${APP_VERSION}`);
+
+// Function to update the cache name when app version changes
+function updateCacheName(version) {
+    if (version && version !== APP_VERSION) {
+        APP_VERSION = version;
+        CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
+        console.log(`Service worker updated to use cache version: ${APP_VERSION}`);
+    }
+}
 
 // Helper to prepend base path to URLs that need it
 function getAssetPath(url) {
@@ -18,14 +55,14 @@ async function checkCacheVersion() {
     const keys = await caches.keys();
     
     // Find any existing DUMBASSETS cache
-    const existingCache = keys.find(key => key.startsWith('DUMBASSETS_PWA_CACHE'));
+    const existingCache = keys.find(key => key.startsWith('DUMBASSETS_') && key.includes('CACHE'));
     const existingVersion = existingCache ? existingCache.split('V')[1] : null;
     
     // Check if current version cache exists
     const currentCacheExists = keys.includes(CACHE_NAME);
     
-    // Check for old versions
-    const oldCaches = keys.filter(key => key !== CACHE_NAME && key.startsWith('DUMBASSETS_PWA_CACHE'));
+    // Check for old versions - use dynamic CACHE_NAME based on APP_VERSION
+    const oldCaches = keys.filter(key => key !== CACHE_NAME && key.startsWith('DUMBASSETS_') && key.includes('CACHE'));
     const hasOldVersions = oldCaches.length > 0;
     
     return {
@@ -54,7 +91,7 @@ async function cleanOldCaches() {
 // Function to notify clients about version status
 async function notifyClients() {
     const { existingVersion } = await checkCacheVersion();
-    if (existingVersion !== CACHE_VERSION) {
+    if (existingVersion !== APP_VERSION) {
         // Clean up old caches before notifying about updates
         await cleanOldCaches();
         
@@ -63,7 +100,7 @@ async function notifyClients() {
                 client.postMessage({
                     type: 'UPDATE_AVAILABLE',
                     currentVersion: existingVersion,
-                    newVersion: CACHE_VERSION
+                    newVersion: APP_VERSION
                 });
             });
         });
@@ -84,8 +121,8 @@ const preload = async () => {
     }
     
     // If we have an older version, clean old caches and notify clients
-    if (existingVersion && existingVersion !== CACHE_VERSION) {
-        console.log(`New version ${CACHE_VERSION} available (current: ${existingVersion})`);
+    if (existingVersion && existingVersion !== APP_VERSION) {
+        console.log(`New version ${APP_VERSION} available (current: ${existingVersion})`);
         
         // Clean up any old caches to prevent reload loops
         await cleanOldCaches();
@@ -102,7 +139,7 @@ const preload = async () => {
 
 // Function to install or update the cache
 async function installCache() {
-    console.log(`Installing/updating cache to version ${CACHE_VERSION}`);
+    console.log(`Installing/updating cache to version ${APP_VERSION}`);
     const cache = await caches.open(CACHE_NAME);
     
     try {
@@ -128,7 +165,7 @@ async function installCache() {
             clients.forEach(client => {
                 client.postMessage({
                     type: 'UPDATE_COMPLETE',
-                    version: CACHE_VERSION,
+                    version: APP_VERSION,
                     success: true
                 });
             });
@@ -140,7 +177,7 @@ async function installCache() {
             clients.forEach(client => {
                 client.postMessage({
                     type: 'UPDATE_COMPLETE',
-                    version: CACHE_VERSION,
+                    version: APP_VERSION,
                     success: false,
                     error: error.message
                 });
@@ -150,7 +187,16 @@ async function installCache() {
 }
 
 self.addEventListener("install", (event) => {
-    console.log("Service Worker installing...");
+    console.log(`Service Worker installing with version ${APP_VERSION}...`);
+    
+    // Double check if we can get version from URL
+    const urlVersion = getVersionFromURL();
+    if (urlVersion && urlVersion !== APP_VERSION) {
+        console.log(`Updating version from URL: ${urlVersion} (was: ${APP_VERSION})`);
+        APP_VERSION = urlVersion;
+        CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
+    }
+    
     event.waitUntil(
         Promise.all([
             preload(),
@@ -160,11 +206,16 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-    console.log("Service Worker activating...");
+    console.log(`Service Worker activating with version ${APP_VERSION}...`);
+    
+    // Force cache cleanup on activation to ensure we're using the correct version
     event.waitUntil(
         Promise.all([
             self.clients.claim(), // Take control of all clients immediately
-            notifyClients() // Check version and notify clients immediately
+            cleanOldCaches().then(() => {
+                // After cleaning old caches, check if we need to notify clients
+                return notifyClients();
+            })
         ])
     );
 });
@@ -229,16 +280,35 @@ self.addEventListener("fetch", (event) => {
 
 // Listen for message events from the main script
 self.addEventListener('message', async (event) => {
-    if (event.data && event.data.type === 'GET_VERSION') {
+    // Handle SET_APP_VERSION message type
+    if (event.data && event.data.type === 'SET_APP_VERSION') {
+        // Update the cache name with the provided version
+        updateCacheName(event.data.version);
+    }
+    // Handle GET_VERSION message type
+    else if (event.data && event.data.type === 'GET_VERSION') {
         const { existingVersion } = await checkCacheVersion();
+        
+        // If app version was provided in the message, update cache name
+        if (event.data.appVersion) {
+            updateCacheName(event.data.appVersion);
+        }
+        
         // Send the current version to the client
         if (event.ports && event.ports[0]) {
             event.ports[0].postMessage({
                 currentVersion: existingVersion,
-                newVersion: CACHE_VERSION
+                newVersion: APP_VERSION
             });
         }
-    } else if (event.data && event.data.type === 'PERFORM_UPDATE') {
+    }
+    // Handle PERFORM_UPDATE message type
+    else if (event.data && event.data.type === 'PERFORM_UPDATE') {
+        // If version was provided with the update message, use it
+        if (event.data.version) {
+            updateCacheName(event.data.version);
+        }
+        
         // First check and clean up any old caches
         await cleanOldCaches();
         
@@ -249,11 +319,13 @@ self.addEventListener('message', async (event) => {
             clients.forEach(client => {
                 client.postMessage({
                     type: 'UPDATE_COMPLETE',
-                    version: CACHE_VERSION
+                    version: APP_VERSION
                 });
             });
         });
-    } else if (event.data && event.data.type === 'LIST_CACHED_URLS') {
+    } 
+    // Handle LIST_CACHED_URLS message type
+    else if (event.data && event.data.type === 'LIST_CACHED_URLS') {
         // Return a list of all cached URLs for debugging
         try {
             const cache = await caches.open(CACHE_NAME);

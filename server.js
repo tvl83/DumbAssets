@@ -21,6 +21,7 @@ const { sendNotification } = require('./src/services/notifications/appriseNotifi
 const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
 const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
 const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
+const packageJson = require('./package.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true';
 const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)` : (process.env.SITE_TITLE || 'DumbAssets');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const VERSION = packageJson.version;
 
 generatePWAManifest(SITE_TITLE);
 // Set timezone from environment variable or default to America/Chicago
@@ -64,7 +66,7 @@ const BASE_PATH = (() => {
         return path;
     }
 })();
-const projectName = require('./package.json').name.toUpperCase().replace(/-/g, '_');
+const projectName = packageJson.name.toUpperCase().replace(/-/g, '_');
 const PIN = process.env.DUMBASSETS_PIN;
 console.log('PIN:', PIN);
 if (!PIN || PIN.trim() === '') {
@@ -200,7 +202,8 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
         window.appConfig = {
             basePath: '${BASE_PATH}',
             debug: ${DEBUG},
-            siteTitle: '${SITE_TITLE}'
+            siteTitle: '${SITE_TITLE}',
+            version: '${VERSION}',
         };
     `);
     
@@ -213,6 +216,30 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
     }
     
     res.end();
+});
+
+// Dynamic service worker with correct version
+app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
+    debugLog('Serving service-worker.js with version:', VERSION);
+    
+    // Set proper MIME type
+    res.setHeader('Content-Type', 'application/javascript');
+    
+    try {
+        let swContent = await fs.promises.readFile(path.join(__dirname, 'public', 'service-worker.js'), 'utf8');
+        
+        // Replace the version initialization with the actual version from package.json
+        swContent = swContent.replace(
+            /let APP_VERSION = ".*?";/,
+            `let APP_VERSION = "${VERSION}";`
+        );
+        
+        res.write(swContent);
+        res.end();
+    } catch (error) {
+        console.error('Error reading service-worker.js:', error);
+        res.status(500).send('Error loading service worker');
+    }
 });
 
 // Serve static files for public assets
@@ -1050,8 +1077,9 @@ app.listen(PORT, () => {
         basePath: BASE_PATH,
         pinProtection: !!PIN,
         nodeEnv: NODE_ENV,
-        debug: DEBUG
+        debug: DEBUG,
+        version: VERSION,
     });
     console.log(`Server running on: ${BASE_URL}`);
 }); 
-// --- END --- 
+// --- END ---
