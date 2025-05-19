@@ -598,7 +598,10 @@ app.delete('/api/asset/:id', (req, res) => {
                 sendNotification('asset_deleted', {
                     name: deletedAsset.name,
                     modelNumber: deletedAsset.modelNumber,
-                    description: deletedAsset.description
+                    serialNumber: deletedAsset.serialNumber,
+                    purchaseDate: deletedAsset.purchaseDate,
+                    price: deletedAsset.price,
+                    warranty: deletedAsset.warranty
                 }, {
                     appriseUrl
                 });

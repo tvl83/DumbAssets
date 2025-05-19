@@ -14,6 +14,16 @@ function formatNotification(eventType, assetData) {
     lines.push('✅ Asset Added');
   } else if (eventType === 'asset_deleted') {
     lines.push('❌ Asset Deleted');
+    // Add detailed asset information for deletion
+    if (assetData.name) lines.push(`Name: ${assetData.name}`);
+    if (assetData.modelNumber) lines.push(`Model #: ${assetData.modelNumber}`);
+    if (assetData.serialNumber) lines.push(`Serial #: ${assetData.serialNumber}`);
+    if (assetData.purchaseDate) lines.push(`Purchase Date: ${assetData.purchaseDate}`);
+    if (assetData.price) lines.push(`Price: ${assetData.price}`);
+    if (assetData.warranty) {
+      if (assetData.warranty.scope) lines.push(`Warranty: ${assetData.warranty.scope}`);
+      if (assetData.warranty.expirationDate) lines.push(`Warranty Expiration: ${assetData.warranty.expirationDate}`);
+    }
   } else if (eventType === 'asset_edited') {
     lines.push('✏️ Asset Edited');
   } else if (eventType === 'warranty_expiring') {
@@ -23,9 +33,14 @@ function formatNotification(eventType, assetData) {
   } else {
     lines.push('🔔 Notification');
   }
-  if (assetData.name) lines.push(assetData.name);
-  if (assetData.modelNumber) lines.push(assetData.modelNumber);
-  if (assetData.description) lines.push(assetData.description);
+  
+  // Add basic info for other event types
+  if (eventType !== 'asset_deleted') {
+    if (assetData.name) lines.push(assetData.name);
+    if (assetData.modelNumber) lines.push(assetData.modelNumber);
+    if (assetData.description) lines.push(assetData.description);
+  }
+  
   return lines.join('\n');
 }
 
