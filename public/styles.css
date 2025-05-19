@@ -99,6 +99,10 @@ form {
     transform: none;
 }
 
+#siteTitle:hover {
+    cursor: pointer;
+}
+
 /* ELEMENT STYLES */
 h1 {
     font-size: 2rem;

@@ -1860,21 +1860,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up home button
     const homeBtn = document.getElementById('homeBtn');
     if (homeBtn) {
-        homeBtn.addEventListener('click', () => {
-            // Clear selected asset
-            updateSelectedIds(null, null);
-            
-            // Remove active class from all asset items
-            document.querySelectorAll('.asset-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Render dashboard
-            renderEmptyState();
-            
-            // Close sidebar on mobile
-            handleSidebarNav();
+        homeBtn.addEventListener('click', () => goHome());
+    }
+
+    function goHome() {
+        // Clear selected asset
+        updateSelectedIds(null, null);
+        
+        // Remove active class from all asset items
+        document.querySelectorAll('.asset-item').forEach(item => {
+            item.classList.remove('active');
         });
+        
+        // Render dashboard
+        renderEmptyState();
+        
+        // Close sidebar on mobile
+        handleSidebarNav();
     }
     
     // Set up add asset button
@@ -1902,8 +1904,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pageTitleElem) {
             pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
         }
+        siteTitleElem.addEventListener('click', () => goHome());
     }
     
+
     // Set up sort buttons
     const sortNameBtn = document.getElementById('sortNameBtn');
     const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
