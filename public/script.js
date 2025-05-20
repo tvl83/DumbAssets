@@ -787,10 +787,7 @@ function openAssetModal(asset = null) {
         
         // Preview existing files using our utility function
         if (asset.photoPath) {
-            // Extract filename from path
-            const photoFileName = asset.photoPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~200 KB'; 
+            const photoInfo = asset.photoInfo?.[0] || {};
             setupFilePreview(
                 photoPreview, 
                 'photo', 
@@ -798,16 +795,13 @@ function openAssetModal(asset = null) {
                 photoInput, 
                 { deletePhoto }, 
                 'deletePhoto',
-                photoFileName,
-                estimatedSize
+                photoInfo.originalName || asset.photoPath.split('/').pop(),
+                photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
             );
         }
         
         if (asset.receiptPath) {
-            // Extract filename from path
-            const receiptFileName = asset.receiptPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~150 KB';
+            const receiptInfo = asset.receiptInfo?.[0] || {};
             setupFilePreview(
                 receiptPreview, 
                 'receipt', 
@@ -815,16 +809,13 @@ function openAssetModal(asset = null) {
                 receiptInput, 
                 { deleteReceipt }, 
                 'deleteReceipt',
-                receiptFileName,
-                estimatedSize
+                receiptInfo.originalName || asset.receiptPath.split('/').pop(),
+                receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
             );
         }
         
         if (asset.manualPath) {
-            // Extract filename from path
-            const manualFileName = asset.manualPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~500 KB';
+            const manualInfo = asset.manualInfo?.[0] || {};
             setupFilePreview(
                 manualPreview, 
                 'manual', 
@@ -832,8 +823,8 @@ function openAssetModal(asset = null) {
                 manualInput, 
                 { deleteManual }, 
                 'deleteManual',
-                manualFileName,
-                estimatedSize
+                manualInfo.originalName || asset.manualPath.split('/').pop(),
+                manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size'
             );
             manualPreview.querySelector('.delete-preview-btn').onclick = () => {
                 if (confirm('Are you sure you want to delete this manual?')) {
@@ -1022,10 +1013,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         
         // Preview existing images if available
         if (subAsset.photoPath) {
-            // Extract filename from path
-            const photoFileName = subAsset.photoPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~200 KB';
+            const photoInfo = subAsset.photoInfo?.[0] || {};
             setupFilePreview(
                 photoPreview, 
                 'photo', 
@@ -1033,16 +1021,13 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 photoInput, 
                 { deleteSubPhoto }, 
                 'deleteSubPhoto',
-                photoFileName,
-                estimatedSize
+                photoInfo.originalName || subAsset.photoPath.split('/').pop(),
+                photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
             );
         }
         
         if (subAsset.receiptPath) {
-            // Extract filename from path
-            const receiptFileName = subAsset.receiptPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~150 KB';
+            const receiptInfo = subAsset.receiptInfo?.[0] || {};
             setupFilePreview(
                 receiptPreview, 
                 'receipt', 
@@ -1050,16 +1035,22 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 receiptInput, 
                 { deleteSubReceipt }, 
                 'deleteSubReceipt',
-                receiptFileName,
-                estimatedSize
+                receiptInfo.originalName || subAsset.receiptPath.split('/').pop(),
+                receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
             );
         }
         
         if (subAsset.manualPath) {
-            // Extract filename from path
-            const manualFileName = subAsset.manualPath.split('/').pop();
-            // Use estimate file size since we don't have actual size
-            const estimatedSize = '~500 KB';
+            const manualInfo = subAsset.manualInfo?.[0] || {};
+            setupFilePreview(
+                manualPreview, 
+                'manual', 
+                formatFilePath(subAsset.manualPath), 
+                manualInput, 
+                { deleteSubManual }, 
+                'deleteSubManual',
+                manualInfo.originalName || subAsset.manualPath.split('/').pop(),
+                manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size');
             setupFilePreview(
                 manualPreview, 
                 'manual', 

@@ -741,31 +741,28 @@ app.delete('/api/subasset/:id', (req, res) => {
 // File upload endpoints
 const imageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Images');
+        cb(null, path.join(__dirname, 'data', 'Images'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
 const receiptStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Receipts');
+        cb(null, path.join(__dirname, 'data', 'Receipts'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
 const manualStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Manuals');
+        cb(null, path.join(__dirname, 'data', 'Manuals'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
@@ -808,30 +805,51 @@ const uploadManual = multer({
 });
 
 app.post('/api/upload/image', uploadImage.single('photo'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const photoPath = `/Images/${req.file.filename}`;
-    res.json({ path: photoPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Images/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 app.post('/api/upload/receipt', uploadReceipt.single('receipt'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const receiptPath = `/Receipts/${req.file.filename}`;
-    res.json({ path: receiptPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Receipts/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 app.post('/api/upload/manual', uploadManual.single('manual'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const manualPath = `/Manuals/${req.file.filename}`;
-    res.json({ path: manualPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Manuals/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 // Delete a file (image, receipt, or manual)

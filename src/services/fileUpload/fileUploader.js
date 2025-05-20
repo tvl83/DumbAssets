@@ -30,7 +30,7 @@ function getDeleteFlags() {
  * @param {File} file - The file to upload
  * @param {string} type - The type of file ('image', 'receipt', or 'manual')
  * @param {string} id - The ID of the associated asset
- * @returns {Promise<string|null>} - The path of the uploaded file, or null if the upload failed
+ * @returns {Promise<{path: string, fileInfo: Object}|null>} - The path and info of the uploaded file, or null if the upload failed
  */
 async function uploadFile(file, type, id) {
     let fieldName;
@@ -58,7 +58,7 @@ async function uploadFile(file, type, id) {
         });
         if (!response.ok) throw new Error('Upload failed');
         const data = await response.json();
-        return data.path;
+        return data;
     } catch (err) {
         console.error('File upload failed:', err);
         return null;
@@ -228,18 +228,10 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         parentId: assetCopy.parentId || null
     });
     
-    console.log('Initial file paths:', {
-        photoPath: assetCopy.photoPath,
-        receiptPath: assetCopy.receiptPath,
-        manualPath: assetCopy.manualPath
-    });
-    
-    // Also log the delete flags
-    console.log('Delete flags:', {
-        deletePhoto: isSubAsset ? deleteSubPhoto : deletePhoto,
-        deleteReceipt: isSubAsset ? deleteSubReceipt : deleteReceipt,
-        deleteManual: isSubAsset ? deleteSubManual : deleteManual
-    });
+    // Initialize file info arrays if they don't exist
+    assetCopy.photoInfo = assetCopy.photoInfo || [];
+    assetCopy.receiptInfo = assetCopy.receiptInfo || [];
+    assetCopy.manualInfo = assetCopy.manualInfo || [];
     
     // Get file inputs
     const photoInput = document.getElementById(isSubAsset ? 'subAssetPhoto' : 'assetPhoto');
@@ -253,7 +245,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
             receiptInput: !!receiptInput,
             manualInput: !!manualInput
         });
-        return assetCopy; // Return unmodified asset if inputs are missing
+        return assetCopy;
     }
     
     // Initialize arrays for multiple files
@@ -264,105 +256,71 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     // Handle photo uploads
     if (photoInput.files && photoInput.files.length > 0) {
         console.log(`Uploading ${photoInput.files.length} photo(s)`);
-        assetCopy.photoPaths = []; // Reset paths when uploading new files
-        
+        assetCopy.photoPaths = [];
+        assetCopy.photoInfo = [];
         for (const file of photoInput.files) {
-            console.log(`Uploading photo: ${file.name}`);
-            const photoPath = await uploadFile(file, 'image', assetCopy.id);
-            if (photoPath) {
-                console.log(`Photo uploaded successfully, path: ${photoPath}`);
-                assetCopy.photoPaths.push(photoPath);
+            const result = await uploadFile(file, 'image', assetCopy.id);
+            if (result) {
+                assetCopy.photoPaths.push(result.path);
+                assetCopy.photoInfo.push(result.fileInfo);
             }
         }
         // Set the first photo as the main photo
         assetCopy.photoPath = assetCopy.photoPaths[0] || null;
         console.log(`Setting main photoPath to: ${assetCopy.photoPath}`);
     } else if (isEditMode) {
-        // Check if photo is being deleted
-        const isPhotoBeingDeleted = isSubAsset ? deleteSubPhoto : deletePhoto;
-        
-        if (isPhotoBeingDeleted) {
-            console.log('Photo marked for deletion, setting photoPath to null');
+        if ((isSubAsset ? deleteSubPhoto : deletePhoto) && assetCopy.photoPath) {
             assetCopy.photoPath = null;
             assetCopy.photoPaths = [];
-        } else {
-            // If editing and no new photos, preserve existing photo paths
-            console.log(`Editing mode, no new photos uploaded. Preserving existing paths.`);
-            assetCopy.photoPath = asset.photoPath;
-            assetCopy.photoPaths = asset.photoPaths || [];
+            assetCopy.photoInfo = [];
         }
     }
     
     // Handle receipt uploads
     if (receiptInput.files && receiptInput.files.length > 0) {
         console.log(`Uploading ${receiptInput.files.length} receipt(s)`);
-        assetCopy.receiptPaths = []; // Reset paths when uploading new files
-        
+        assetCopy.receiptPaths = [];
+        assetCopy.receiptInfo = [];
         for (const file of receiptInput.files) {
-            console.log(`Uploading receipt: ${file.name}`);
-            const receiptPath = await uploadFile(file, 'receipt', assetCopy.id);
-            if (receiptPath) {
-                console.log(`Receipt uploaded successfully, path: ${receiptPath}`);
-                assetCopy.receiptPaths.push(receiptPath);
+            const result = await uploadFile(file, 'receipt', assetCopy.id);
+            if (result) {
+                assetCopy.receiptPaths.push(result.path);
+                assetCopy.receiptInfo.push(result.fileInfo);
             }
         }
         // Set the first receipt as the main receipt
         assetCopy.receiptPath = assetCopy.receiptPaths[0] || null;
         console.log(`Setting main receiptPath to: ${assetCopy.receiptPath}`);
     } else if (isEditMode) {
-        // Check if receipt is being deleted
-        const isReceiptBeingDeleted = isSubAsset ? deleteSubReceipt : deleteReceipt;
-        
-        if (isReceiptBeingDeleted) {
-            console.log('Receipt marked for deletion, setting receiptPath to null');
+        if ((isSubAsset ? deleteSubReceipt : deleteReceipt) && assetCopy.receiptPath) {
             assetCopy.receiptPath = null;
             assetCopy.receiptPaths = [];
-        } else {
-            // If editing and no new receipts, preserve existing receipt paths
-            console.log(`Editing mode, no new receipts uploaded. Preserving existing paths.`);
-            assetCopy.receiptPath = asset.receiptPath;
-            assetCopy.receiptPaths = asset.receiptPaths || [];
+            assetCopy.receiptInfo = [];
         }
     }
 
     // Handle manual uploads
     if (manualInput.files && manualInput.files.length > 0) {
         console.log(`Uploading ${manualInput.files.length} manual(s)`);
-        assetCopy.manualPaths = []; // Reset paths when uploading new files
-        
+        assetCopy.manualPaths = [];
+        assetCopy.manualInfo = [];
         for (const file of manualInput.files) {
-            console.log(`Uploading manual: ${file.name}`);
-            const manualPath = await uploadFile(file, 'manual', assetCopy.id);
-            if (manualPath) {
-                console.log(`Manual uploaded successfully, path: ${manualPath}`);
-                assetCopy.manualPaths.push(manualPath);
+            const result = await uploadFile(file, 'manual', assetCopy.id);
+            if (result) {
+                assetCopy.manualPaths.push(result.path);
+                assetCopy.manualInfo.push(result.fileInfo);
             }
         }
         // Set the first manual as the main manual
         assetCopy.manualPath = assetCopy.manualPaths[0] || null;
         console.log(`Setting main manualPath to: ${assetCopy.manualPath}`);
     } else if (isEditMode) {
-        // Check if manual is being deleted
-        const isManualBeingDeleted = isSubAsset ? deleteSubManual : deleteManual;
-        
-        if (isManualBeingDeleted) {
-            console.log('Manual marked for deletion, setting manualPath to null');
+        if ((isSubAsset ? deleteSubManual : deleteManual) && assetCopy.manualPath) {
             assetCopy.manualPath = null;
             assetCopy.manualPaths = [];
-        } else {
-            // If editing and no new manuals, preserve existing manual paths
-            console.log(`Editing mode, no new manuals uploaded. Preserving existing paths.`);
-            assetCopy.manualPath = asset.manualPath;
-            assetCopy.manualPaths = asset.manualPaths || [];
+            assetCopy.manualInfo = [];
         }
     }
-    
-    // Log final state of file paths
-    console.log('Final file paths after uploads:', {
-        photoPath: assetCopy.photoPath,
-        receiptPath: assetCopy.receiptPath,
-        manualPath: assetCopy.manualPath
-    });
     
     return assetCopy;
 }
