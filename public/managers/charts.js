@@ -71,11 +71,11 @@ export class ChartManager {
             data: {
                 labels: ['Expired', 'Expiring in 30 days', 'Expiring in 60 days', 'Active'],
                 datasets: [{
-                    data: [expired, within30, within60 - within30, active - within60],
+                    data: [expired, within30, within60, active],
                     backgroundColor: [
                         '#ef4444', // Red for expired
-                        '#f59e0b', // Orange for 30 days
-                        '#3b82f6', // Blue for 60 days
+                        '#f59e0b', // Orange for 60 days
+                        '#fbbf24', // Yellow for 30 days
                         '#10b981'  // Green for active
                     ],
                     borderWidth: 1,
@@ -85,6 +85,7 @@ export class ChartManager {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // aspectRatio: 1.5,
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -110,7 +111,8 @@ export class ChartManager {
                     }
                 },
                 cutout: '65%',
-                animation: { duration: 1000 }
+                animation: { duration: 1000 },
+                
             }
         });
 
@@ -164,6 +166,7 @@ export class ChartManager {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                aspectRatio: 1.5,
                 layout: {
                     padding: {
                         top: 5,

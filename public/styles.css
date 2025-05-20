@@ -1709,15 +1709,14 @@ a:hover {
 /* Chart section styling */
 .dashboard-charts-section {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: space-between;
     min-width: calc(100% - 1rem);
     flex-wrap: wrap;
     gap: 1.5rem;
     margin-top: 1.5rem;
     width: 100%;
     max-width: 100%;
-    justify-content: space-between;
 }
 
 .chart-container {
@@ -1726,9 +1725,9 @@ a:hover {
     padding: 1.5rem;
     box-shadow: var(--shadow);
     border: var(--app-border);
-    flex: 1 1 400px;
+    flex: 1 1 calc(50% - 0.75rem); /* 50% width minus half of the gap */
+    min-width: 300px; /* Minimum width before wrapping */
     height: 350px;
-    max-height: 350px;
     position: relative;
 }
 
@@ -1740,8 +1739,8 @@ a:hover {
 }
 
 .chart-canvas {
-    width: 100%;
-    height: calc(100% - 40px);
+    width: 100% !important; /* Force Chart.js to respect container width */
+    height: calc(100% - 40px) !important; /* Subtract space for title */
     max-height: 290px;
 }
 
@@ -1835,6 +1834,17 @@ a:hover {
         // make sure the text is responsive and not too big
         line-height: 2rem;
         
+    }
+}
+
+@media (max-width: 1100px) {
+    .dashboard-charts-section {
+        flex-direction: column;
+    }
+    
+    .chart-container {
+        flex: 1 1 100%;
+        margin-bottom: 1rem;
     }
 }
 

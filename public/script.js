@@ -529,6 +529,19 @@ function renderDashboard() {
                     </div>
                 </div>
             </div>
+            <div class="dashboard-section">
+                <div class="section-title">Analytics</div>
+                <div class="dashboard-charts-section">
+                    <div class="chart-container">
+                        <h3>Warranty Status</h3>
+                        <canvas id="warrantyPieChart" class="chart-canvas"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Warranties Expiring Over Time</h3>
+                        <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
             <div class="dashboard-section dashboard-warranty-section">
                 <div class="section-title">Warranties</div>
                 <div class="dashboard-cards warranty-cards">
@@ -551,19 +564,6 @@ function renderDashboard() {
                     <div class="dashboard-card active-status${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
                         <div class="card-label">Active</div>
                         <div class="card-value">${active}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="dashboard-section">
-                <div class="section-title">Warranty Analytics</div>
-                <div class="dashboard-charts-section">
-                    <div class="chart-container">
-                        <h3>Warranty Status</h3>
-                        <canvas id="warrantyPieChart" class="chart-canvas"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h3>Warranties Expiring Over Time</h3>
-                        <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
                     </div>
                 </div>
             </div>
