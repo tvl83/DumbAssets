@@ -1682,8 +1682,7 @@ function createSubAssetElement(subAsset) {
     const editBtn = header.querySelector('.edit-sub-btn');
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const subToEdit = subAssets.find(sa => sa.id === subAsset.id);
-        openSubAssetModal(subToEdit);
+        openSubAssetModal(subAsset);
     });
     
     const deleteBtn = header.querySelector('.delete-sub-btn');
