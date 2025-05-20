@@ -1224,9 +1224,10 @@ input[type="date"][data-has-value="true"] {
     padding: 10px;
     border-bottom: var(--app-border);
     background-color: var(--background-color);
+    flex-wrap: wrap;
 }
 
-.sort-button {
+.sort-button, .clear-filters-button {
     flex: 1;
     padding: 8px 16px;
     border: var(--app-border);
@@ -1249,26 +1250,28 @@ input[type="date"][data-has-value="true"] {
     color: white;
     border-color: var(--primary-color);
 }
-
 .sort-button.active .sort-icon {
     stroke: white;
 }
-
 .sort-icon {
     width: 16px;
     height: 16px;
     transition: transform 0.2s;
 }
-
 .sort-button[data-direction="desc"] .sort-icon {
     transform: rotate(180deg);
+}
+.sort-button.clear-filters:hover {
+    background-color: var(--hover-color);
+}
+.sort-button.clear-filters svg {
+    stroke: var(--error-color);
 }
 
 .calendar-icon {
     width: 16px;
     height: 16px;
 }
-
 
 .file-preview {
     margin-top: 8px;
@@ -1684,6 +1687,7 @@ a:hover {
     color: var(--secondary-color);
     margin-bottom: 1.1rem;
     letter-spacing: 0.1px;
+    text-align: center;
 }
 
 /* Dashboard cards grid layouts */
@@ -1727,7 +1731,7 @@ a:hover {
     border: var(--app-border);
     flex: 1 1 calc(50% - 0.75rem); /* 50% width minus half of the gap */
     min-width: 300px; /* Minimum width before wrapping */
-    height: 350px;
+    max-height: 375px;
     position: relative;
 }
 

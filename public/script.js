@@ -529,19 +529,6 @@ function renderDashboard() {
                     </div>
                 </div>
             </div>
-            <div class="dashboard-section">
-                <div class="section-title">Analytics</div>
-                <div class="dashboard-charts-section">
-                    <div class="chart-container">
-                        <h3>Warranty Status</h3>
-                        <canvas id="warrantyPieChart" class="chart-canvas"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h3>Warranties Expiring Over Time</h3>
-                        <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
-                    </div>
-                </div>
-            </div>
             <div class="dashboard-section dashboard-warranty-section">
                 <div class="section-title">Warranties</div>
                 <div class="dashboard-cards warranty-cards">
@@ -567,12 +554,42 @@ function renderDashboard() {
                     </div>
                 </div>
             </div>
+            <div class="dashboard-section">
+                <div class="section-title">Analytics</div>
+                <div class="dashboard-charts-section">
+                    <div class="chart-container">
+                        <h3>Warranty Status</h3>
+                        <canvas id="warrantyPieChart" class="chart-canvas"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Warranties Expiring Over Time</h3>
+                        <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
     // Create charts after the HTML has been added to the DOM
     chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active });
     
+    // Add click handler for clear filters button
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            // Remove active class from all cards
+            assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
+                c.classList.remove('active');
+            });
+            
+            // Reset filter
+            dashboardFilter = null;
+            updateDashboardFilter(null);
+            renderAssetList(searchInput.value);
+            if (!selectedAssetId) renderDashboard();
+        });
+    }
+
     // Add click handlers for filtering (except value card)
     assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
         if (card.getAttribute('data-filter') === 'value') return;
