@@ -24,6 +24,11 @@ import {
     setupFilePreview
 } from '/src/services/render/index.js';
 
+import { ChartManager } from '/managers/charts.js';
+
+// Initialize chart manager
+const chartManager = new ChartManager();
+
 // Use setupFilePreview from the render index.js
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 // Import collapsible sections functionality
@@ -566,7 +571,7 @@ function renderDashboard() {
     `;
     
     // Create charts after the HTML has been added to the DOM
-    createWarrantyCharts(allWarranties, expired, within30, within60, active);
+    chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active });
     
     // Add click handlers for filtering (except value card)
     assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
@@ -598,227 +603,7 @@ function renderDashboard() {
 // In renderAssetList, only call renderDashboard if no asset is selected
 // function renderAssetList has been moved to the listRenderer module
 
-// Create warranty charts using Chart.js
-function createWarrantyCharts(allWarranties, expired, within30, within60, active) {
-    // Safely destroy existing charts if they exist to prevent memory leaks
-    if (window.warrantyPieChart instanceof Chart) {
-        window.warrantyPieChart.destroy();
-    }
-    if (window.warrantyLineChart instanceof Chart) {
-        window.warrantyLineChart.destroy();
-    }
-    
-    // Get pie chart context
-    const pieCtx = document.getElementById('warrantyPieChart');
-    if (!pieCtx) return;
-    
-    // Get line chart context
-    const lineCtx = document.getElementById('warrantyLineChart');
-    if (!lineCtx) return;
-    
-    // Create the pie chart
-    try {
-        window.warrantyPieChart = new Chart(pieCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Expired', 'Expiring in 30 days', 'Expiring in 60 days', 'Active'],
-                datasets: [{
-                    data: [expired, within30, within60 - within30, active - within60],
-                    backgroundColor: [
-                        '#ef4444', // Red for expired
-                        '#f59e0b', // Orange for 30 days
-                        '#3b82f6', // Blue for 60 days
-                        '#10b981'  // Green for active
-                    ],
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.5)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15,
-                            boxWidth: 10,
-                            boxHeight: 10,
-                            font: {
-                                size: 11
-                            },
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color')
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.raw || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((value / total) * 100);
-                                return `${label}: ${value} (${percentage}%)`;
-                            }
-                        }
-                    }
-                },
-                cutout: '65%',
-                animation: {
-                    duration: 1000 // Control animation duration to prevent excessive repaints
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Error creating pie chart:', error);
-    }
-    
-    // Now let's prepare data for the line chart
-    // Group warranties by month of expiration
-    const now = new Date();
-    const sixMonthsLater = new Date();
-    sixMonthsLater.setMonth(now.getMonth() + 6);
-    
-    // Create array of months for the next 6 months
-    const months = [];
-    const monthData = new Array(6).fill(0);
-    
-    for (let i = 0; i < 6; i++) {
-        const date = new Date();
-        date.setMonth(now.getMonth() + i);
-        months.push(date.toLocaleString('default', { month: 'short' }));
-    }
-    
-    // Count warranties expiring in each month
-    allWarranties.forEach(item => {
-        if (!item.warranty || !item.warranty.expirationDate) return;
-        
-        const expDate = new Date(item.warranty.expirationDate);
-        if (isNaN(expDate)) return;
-        
-        if (expDate >= now && expDate <= sixMonthsLater) {
-            const monthDiff = (expDate.getFullYear() - now.getFullYear()) * 12 + expDate.getMonth() - now.getMonth();
-            if (monthDiff >= 0 && monthDiff < 6) {
-                monthData[monthDiff]++;
-            }
-        }
-    });
-    
-    // Create the line chart
-    try {
-        window.warrantyLineChart = new Chart(lineCtx, {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'Warranties Expiring',
-                    data: monthData,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.3,
-                    fill: true,
-                    pointBackgroundColor: '#3b82f6',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: {
-                        top: 5,
-                        right: 10,
-                        bottom: 10,
-                        left: 10
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color'),
-                            font: {
-                                size: 10
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(160, 160, 160, 0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color'),
-                            font: {
-                                size: 10
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(160, 160, 160, 0.1)'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(context) {
-                                return `${context[0].label}`;
-                            },
-                            label: function(context) {
-                                return `${context.raw} warranties expiring`;
-                            }
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1000 // Control animation duration to prevent excessive repaints
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Error creating line chart:', error);
-    }
-    
-    // Create a variable to track if an update is already scheduled
-    let chartUpdateTimeout = null;
-    
-    // Update chart colors when theme changes with throttling
-    document.getElementById('themeToggle')?.addEventListener('click', function() {
-        // Clear any pending updates
-        if (chartUpdateTimeout) {
-            clearTimeout(chartUpdateTimeout);
-        }
-        
-        // Schedule a new update
-        chartUpdateTimeout = setTimeout(() => {
-            try {
-                if (window.warrantyPieChart instanceof Chart) {
-                    window.warrantyPieChart.options.plugins.legend.labels.color = 
-                        getComputedStyle(document.documentElement).getPropertyValue('--text-color');
-                    window.warrantyPieChart.update('none'); // Use 'none' animation mode to prevent repaints
-                }
-                
-                if (window.warrantyLineChart instanceof Chart) {
-                    window.warrantyLineChart.options.scales.x.ticks.color = 
-                        getComputedStyle(document.documentElement).getPropertyValue('--text-color');
-                    window.warrantyLineChart.options.scales.y.ticks.color = 
-                        getComputedStyle(document.documentElement).getPropertyValue('--text-color');
-                    window.warrantyLineChart.update('none'); // Use 'none' animation mode to prevent repaints
-                }
-                
-                // Reset timeout tracker
-                chartUpdateTimeout = null;
-            } catch (error) {
-                console.error('Error updating chart colors:', error);
-            }
-        }, 300);
-    });
-}
+// Chart functionality has been moved to /public/managers/charts.js
 
 function renderEmptyState() {
     // Always render dashboard when showing empty state
