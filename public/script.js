@@ -512,7 +512,7 @@ function renderDashboard() {
                     <div class="card-label">Total Assets</div>
                     <div class="card-value">${totalAssets}</div>
                 </div>
-                <div class="dashboard-card components" data-filter="components">
+                <div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
                     <div class="card-label">Total Components</div>
                     <div class="card-value">${totalComponents}</div>
                 </div>
@@ -548,12 +548,22 @@ function renderDashboard() {
             </div>
         </div>
     `;
+    
     // Add click handlers for filtering (except value card)
     assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
         if (card.getAttribute('data-filter') === 'value') return;
         card.addEventListener('click', (e) => {
             e.stopPropagation();
             const filter = card.getAttribute('data-filter');
+            
+            // Remove active class from all cards
+            assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
+                c.classList.remove('active');
+            });
+            
+            // Add active class to clicked card
+            card.classList.add('active');
+            
             if (filter === 'all') {
                 dashboardFilter = null;
             } else {
