@@ -658,6 +658,7 @@ function openAssetModal(asset = null) {
     if (isEditMode && asset) {
         document.getElementById('assetName').value = asset.name || '';
         document.getElementById('assetModel').value = asset.modelNumber || '';
+        document.getElementById('assetManufacturer').value = asset.manufacturer || '';
         document.getElementById('assetSerial').value = asset.serialNumber || '';
         document.getElementById('assetPurchaseDate').value = asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : '';
         document.getElementById('assetPrice').value = asset.price || '';
@@ -764,6 +765,7 @@ function openAssetModal(asset = null) {
         const newAsset = {
             name: document.getElementById('assetName').value,
             modelNumber: document.getElementById('assetModel').value,
+            manufacturer: document.getElementById('assetManufacturer').value,
             serialNumber: document.getElementById('assetSerial').value,
             purchaseDate: document.getElementById('assetPurchaseDate').value,
             price: parseFloat(document.getElementById('assetPrice').value) || null,
@@ -901,6 +903,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
     if (isEditMode && subAsset) {
         const idInput = document.getElementById('subAssetId');
         const nameInput = document.getElementById('subAssetName');
+        const manufacturerInput = document.getElementById('subAssetManufacturer');
         const modelInput = document.getElementById('subAssetModel');
         const serialInput = document.getElementById('subAssetSerial');
         const purchaseDateInput = document.getElementById('subAssetPurchaseDate');
@@ -911,6 +914,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         
         if (idInput) idInput.value = subAsset.id;
         if (nameInput) nameInput.value = subAsset.name || '';
+        if (manufacturerInput) manufacturerInput.value = subAsset.manufacturer || '';
         if (modelInput) modelInput.value = subAsset.modelNumber || '';
         if (serialInput) serialInput.value = subAsset.serialNumber || '';
         if (purchaseDateInput) purchaseDateInput.value = subAsset.purchaseDate || '';
@@ -1013,6 +1017,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         const newSubAsset = {
             id: idInput && idInput.value ? idInput.value : generateId(), // Generate new ID if not editing
             name: nameInput ? nameInput.value : '',
+            manufacturer: document.getElementById('subAssetManufacturer').value,
             modelNumber: modelInput ? modelInput.value : '',
             serialNumber: serialInput ? serialInput.value : '',
             purchaseDate: purchaseDateInput ? purchaseDateInput.value : '',
@@ -1279,6 +1284,7 @@ startImportBtn.addEventListener('click', async () => {
     const mappings = {
         name: document.getElementById('nameColumn').value,
         model: document.getElementById('modelColumn').value,
+        manufacturer: document.getElementById('manufacturerColumn').value,
         serial: document.getElementById('serialColumn').value,
         purchaseDate: document.getElementById('purchaseDateColumn').value,
         purchasePrice: document.getElementById('purchasePriceColumn').value,
@@ -1345,6 +1351,7 @@ function autoMapColumns(headers) {
     const mappingRules = {
         nameColumn: ["name"],
         modelColumn: ["model", "model #", "model number", "model num"],
+        manufacturerColumn: ["manufacturer", "make", "brand", "company"],
         serialColumn: ["serial", "serial #", "serial number", "serial num"],
         purchaseDateColumn: ["purchase date", "date purchased", "bought date"],
         purchasePriceColumn: ["purchase price", "price", "cost", "amount"],

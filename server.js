@@ -924,6 +924,7 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
         const columnMappings = {
             name: mappings.name !== '' ? headers[parseInt(mappings.name, 10)] : '',
             model: mappings.model !== '' ? headers[parseInt(mappings.model, 10)] : '',
+            manufacturer: mappings.manufacturer !== '' ? headers[parseInt(mappings.manufacturer, 10)] : '',
             serial: mappings.serial !== '' ? headers[parseInt(mappings.serial, 10)] : '',
             purchaseDate: mappings.purchaseDate !== '' ? headers[parseInt(mappings.purchaseDate, 10)] : '',
             purchasePrice: mappings.purchasePrice !== '' ? headers[parseInt(mappings.purchasePrice, 10)] : '',
@@ -945,6 +946,7 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 id: assetId,
                 name: columnMappings.name ? (row[columnMappings.name] || '') : '',
                 modelNumber: columnMappings.model ? (row[columnMappings.model] || '') : '',
+                manufacturer: columnMappings.manufacturer ? (row[columnMappings.manufacturer] || '') : '',
                 serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
                 purchaseDate: columnMappings.purchaseDate ? parseExcelDate(row[columnMappings.purchaseDate]) : '',
                 price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',

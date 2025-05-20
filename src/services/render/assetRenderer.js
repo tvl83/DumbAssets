@@ -188,6 +188,10 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         </div>
         <div class="asset-info">
             <div class="info-item">
+                <div class="info-label">Manufacturer</div>
+                <div>${asset.manufacturer || 'N/A'}</div>
+            </div>
+            <div class="info-item">
                 <div class="info-label">Model Number</div>
                 <div>${asset.modelNumber || 'N/A'}</div>
             </div>
