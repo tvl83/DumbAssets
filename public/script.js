@@ -505,14 +505,14 @@ async function handleComponentNavigation(component, isDeleted = false) {
     // Case 1: If the component was being viewed when deleted
     // Or if it's a new/updated component and we want to show it
     if (!isDeleted && (component.id === selectedSubAssetId || !parentSubId)) {
-        updateSelectedIds(selectedAssetId, component.id);
+        updateSelectedIds(parentAssetId, component.id);
         await refreshAssetDetails(component.id, true);
         return;
     }
 
     // Case 2: Navigate to parent sub-asset if this was a sub-sub-asset
     if (parentSubId) {
-        updateSelectedIds(selectedAssetId, parentSubId);
+        updateSelectedIds(parentAssetId, parentSubId);
         await refreshAssetDetails(parentSubId, true);
         return;
     }
