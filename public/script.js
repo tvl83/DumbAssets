@@ -1051,16 +1051,6 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 'deleteSubManual',
                 manualInfo.originalName || subAsset.manualPath.split('/').pop(),
                 manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size');
-            setupFilePreview(
-                manualPreview, 
-                'manual', 
-                formatFilePath(subAsset.manualPath), 
-                manualInput, 
-                { deleteSubManual }, 
-                'deleteSubManual',
-                manualFileName,
-                estimatedSize
-            );
             manualPreview.querySelector('.delete-preview-btn').onclick = () => {
                 if (confirm('Are you sure you want to delete this manual?')) {
                     manualPreview.innerHTML = '';
@@ -1688,7 +1678,7 @@ function createSubAssetElement(subAsset) {
         </div>
     `;
     
-    // Add event listeners
+    // Add edit button event listener
     const editBtn = header.querySelector('.edit-sub-btn');
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1707,15 +1697,73 @@ function createSubAssetElement(subAsset) {
     // Add summary info
     const info = document.createElement('div');
     info.className = 'sub-asset-info';
+
+    // Create file previews container
+    const filePreviewsContainer = document.createElement('div');
+    filePreviewsContainer.className = 'sub-asset-files';
+    
+    // Add file previews if available
+    if (subAsset.photoPath || subAsset.receiptPath || subAsset.manualPath) {
+        const files = document.createElement('div');
+        files.className = 'compact-files-grid';
+        
+        if (subAsset.photoPath) {
+            files.innerHTML += `
+                <div class="compact-file-item photo">
+                    <a href="${formatFilePath(subAsset.photoPath)}" target="_blank">
+                        <img src="${formatFilePath(subAsset.photoPath)}" alt="${subAsset.name}" class="compact-asset-image">
+                    </a>
+                </div>
+            `;
+        }
+        
+        if (subAsset.receiptPath) {
+            files.innerHTML += `
+                <div class="compact-file-item receipt">
+                    <a href="${formatFilePath(subAsset.receiptPath)}" target="_blank">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2"/>
+                            <path d="M14 8h-8"/>
+                            <path d="M15 12h-9"/>
+                            <path d="M15 16h-9"/>
+                        </svg>
+                    </a>
+                </div>
+            `;
+        }
+        
+        if (subAsset.manualPath) {
+            files.innerHTML += `
+                <div class="compact-file-item manual">
+                    <a href="${formatFilePath(subAsset.manualPath)}" target="_blank">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 2v6h6"/>
+                            <path d="M16 13H8"/>
+                            <path d="M16 17H8"/>
+                            <path d="M10 9H8"/>
+                        </svg>
+                    </a>
+                </div>
+            `;
+        }
+        
+        filePreviewsContainer.appendChild(files);
+    }
+    
     info.innerHTML = `
         ${subAsset.modelNumber ? `<span>${subAsset.modelNumber}</span>` : ''}
         ${subAsset.serialNumber ? `<span>#${subAsset.serialNumber}</span>` : ''}
     `;
+    
     element.appendChild(info);
+    element.appendChild(filePreviewsContainer);
     
     // Check for children (only for first level sub-assets)
     if (!subAsset.parentSubId) {
         const children = subAssets.filter(sa => sa.parentSubId === subAsset.id);
+        
         if (children.length > 0) {
             const childrenContainer = document.createElement('div');
             childrenContainer.className = 'sub-asset-children';
@@ -1784,6 +1832,7 @@ function createSubAssetElement(subAsset) {
         }
     }
     
+    // Make the component clickable to show details
     element.addEventListener('click', (e) => {
         // Prevent click if clicking on an action button
         if (e.target.closest('button')) return;
