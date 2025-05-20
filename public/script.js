@@ -112,6 +112,17 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
+// Button loading state handler
+function setButtonLoading(button, loading) {
+    if (loading) {
+        button.classList.add('loading');
+        button.disabled = true;
+    } else {
+        button.classList.remove('loading');
+        button.disabled = false;
+    }
+}
+
 // Data Functions
 async function loadAssets() {
     try {
@@ -187,6 +198,9 @@ function getApiBaseUrl() {
 }
 
 async function saveAsset(asset) {
+    const saveBtn = assetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, true);
+
     try {
         const apiBaseUrl = getApiBaseUrl();
         
@@ -301,13 +315,18 @@ async function saveAsset(asset) {
         
         // Show success message
         showToast(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
+        setButtonLoading(saveBtn, false);
     } catch (error) {
         console.error('Error saving asset:', error);
         alert('Error saving asset. Please try again.');
+        setButtonLoading(saveBtn, false);
     }
 }
 
 async function saveSubAsset(subAsset) {
+    const saveBtn = subAssetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, true);
+
     try {
         const apiBaseUrl = getApiBaseUrl();
         
@@ -398,9 +417,11 @@ async function saveSubAsset(subAsset) {
         
         // Show success message
         showToast(isEditMode ? "Component updated successfully!" : "Component added successfully!");
+        setButtonLoading(saveBtn, false);
     } catch (error) {
         console.error('Error saving sub-asset:', error);
         alert('Error saving component. Please try again.');
+        setButtonLoading(saveBtn, false);
     }
 }
 
@@ -654,6 +675,10 @@ function openAssetModal(asset = null) {
     document.getElementById('addAssetTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
     assetForm.reset();
     
+    // Reset loading state of save button
+    const saveBtn = assetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, false);
+
     // Reset delete flags both locally and on window
     deletePhoto = window.deletePhoto = false;
     deleteReceipt = window.deleteReceipt = false;
@@ -901,6 +926,10 @@ function openAssetModal(asset = null) {
 function closeAssetModal() {
     if (!assetModal) return;
     
+    // Reset loading state of save button
+    const saveBtn = assetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, false);
+
     // Clear file inputs and previews
     const photoInput = document.getElementById('assetPhoto');
     const receiptInput = document.getElementById('assetReceipt');
@@ -925,6 +954,10 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
     document.getElementById('addComponentTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
     subAssetForm.reset();
     
+    // Reset loading state of save button
+    const saveBtn = subAssetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, false);
+
     // Reset delete flags both locally and on window
     deleteSubPhoto = window.deleteSubPhoto = false;
     deleteSubReceipt = window.deleteSubReceipt = false;
@@ -1154,6 +1187,10 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
 function closeSubAssetModal() {
     if (!subAssetModal) return;
     
+    // Reset loading state of save button
+    const saveBtn = subAssetForm.querySelector('.save-btn');
+    setButtonLoading(saveBtn, false);
+
     // Clear file inputs and previews
     const photoInput = document.getElementById('subAssetPhoto');
     const receiptInput = document.getElementById('subAssetReceipt');
@@ -1339,6 +1376,8 @@ importFile.addEventListener('change', async (e) => {
 
 // Handle import
 startImportBtn.addEventListener('click', async () => {
+    setButtonLoading(startImportBtn, true);
+    
     const file = importFile.files[0];
     if (!file) return;
 
@@ -1395,6 +1434,7 @@ startImportBtn.addEventListener('click', async () => {
         importFile.value = '';
         // selectedFileName.textContent = 'No file chosen';
         startImportBtn.disabled = true;
+        setButtonLoading(startImportBtn, false);
         columnSelects.forEach(select => {
             select.innerHTML = '<option value="">Select Column</option>';
         });
@@ -1405,6 +1445,7 @@ startImportBtn.addEventListener('click', async () => {
     } catch (error) {
         console.error('Import error:', error);
         alert('Failed to import assets: ' + error.message);
+        setButtonLoading(startImportBtn, false);
     }
 });
 
@@ -1509,6 +1550,8 @@ function showToast(message) {
 }
 
 saveNotificationSettings.addEventListener('click', async () => {
+    setButtonLoading(saveNotificationSettings, true);
+    
     const settings = {
         notifyAdd: notificationForm.notifyAdd.checked,
         notifyDelete: notificationForm.notifyDelete.checked,
@@ -1530,11 +1573,14 @@ saveNotificationSettings.addEventListener('click', async () => {
         showToast('Settings saved');
     } catch (err) {
         alert('Failed to save notification settings.');
+    } finally {
+        setButtonLoading(saveNotificationSettings, false);
     }
 });
 
 testNotificationSettings.addEventListener('click', async () => {
-    testNotificationSettings.disabled = true;
+    setButtonLoading(testNotificationSettings, true);
+    
     try {
         const response = await fetch('/api/notification-test', {
             method: 'POST',
@@ -1545,7 +1591,7 @@ testNotificationSettings.addEventListener('click', async () => {
     } catch (err) {
         showToast('Failed to send test notification');
     } finally {
-        setTimeout(() => { testNotificationSettings.disabled = false; }, 1500);
+        setButtonLoading(testNotificationSettings, false);
     }
 });
 
