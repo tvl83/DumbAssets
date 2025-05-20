@@ -415,8 +415,8 @@ async function saveSubAsset(subAsset) {
             // If we're editing the currently viewed sub-asset
             refreshAssetDetails(subAsset.id, true);
         } else {
-            // Otherwise, go to the parent asset view
-            refreshAssetDetails(subAsset.parentId, false);
+            // Navigate based on the saved component's context
+            await handleComponentNavigation(savedSubAsset);
         }
         
         // Show success message
@@ -460,7 +460,7 @@ async function deleteSubAsset(subAssetId) {
     try {
         const apiBaseUrl = getApiBaseUrl();
         
-        // Find the sub-asset to get parent info before deleting
+        // Find the sub-asset and its parent info before deleting
         const subAsset = subAssets.find(s => s.id === subAssetId);
         if (!subAsset) {
             throw new Error('Sub-asset not found');
@@ -469,24 +469,25 @@ async function deleteSubAsset(subAssetId) {
         // Store parent info for later
         const parentAssetId = subAsset.parentId;
         const parentSubId = subAsset.parentSubId;
-        
+
         const response = await fetch(`${apiBaseUrl}/api/subasset/${subAssetId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
         
         if (!response.ok) throw new Error('Failed to delete component');
-        
-        updateSelectedIds(selectedAssetId, null);
+
+        // Refresh all data first to ensure we have the latest state
         await refreshAllData();
-        
-        // Refresh the view of the parent
-        if (parentSubId) {
-            // If this was a sub-sub-asset, go back to the parent sub-asset view
-            refreshAssetDetails(parentSubId, true);
-        } else if (parentAssetId) {
-            // Otherwise go back to the parent asset view
-            refreshAssetDetails(parentAssetId, false);
+
+        // Handle navigation and refresh views based on deleted component's context
+        await handleComponentNavigation({ id: subAssetId, parentId: parentAssetId, parentSubId }, true);
+
+        // If viewing the parent sub-asset or asset, refresh the current view
+        if (selectedSubAssetId === parentSubId) {
+            await refreshAssetDetails(parentSubId, true);
+        } else if (selectedAssetId === parentAssetId && !selectedSubAssetId) {
+            await refreshAssetDetails(parentAssetId, false);
         }
         
         showToast("Component deleted successfully!");
@@ -494,6 +495,31 @@ async function deleteSubAsset(subAssetId) {
         console.error('Error deleting component:', error);
         alert('Error deleting component. Please try again.');
     }
+}
+
+// Utility function to handle component navigation and rendering logic
+async function handleComponentNavigation(component, isDeleted = false) {
+    const parentAssetId = component.parentId;
+    const parentSubId = component.parentSubId;
+
+    // Case 1: If the component was being viewed when deleted
+    // Or if it's a new/updated component and we want to show it
+    if (!isDeleted && (component.id === selectedSubAssetId || !parentSubId)) {
+        updateSelectedIds(selectedAssetId, component.id);
+        await refreshAssetDetails(component.id, true);
+        return;
+    }
+
+    // Case 2: Navigate to parent sub-asset if this was a sub-sub-asset
+    if (parentSubId) {
+        updateSelectedIds(selectedAssetId, parentSubId);
+        await refreshAssetDetails(parentSubId, true);
+        return;
+    }
+
+    // Case 3: Navigate to parent asset
+    updateSelectedIds(parentAssetId, null);
+    await refreshAssetDetails(parentAssetId, false);
 }
 
 // Rendering Functions
@@ -1943,7 +1969,7 @@ function createSubAssetElement(subAsset) {
 }
 
 // Add/enhance function to render asset details properly
-function refreshAssetDetails(assetId, isSubAsset = false) {
+async function refreshAssetDetails(assetId, isSubAsset = false) {
     console.log(`Refreshing ${isSubAsset ? 'sub-asset' : 'asset'} details for ID: ${assetId}`);
     
     if (!assetId) {
@@ -1951,16 +1977,25 @@ function refreshAssetDetails(assetId, isSubAsset = false) {
         return;
     }
     
-    // Select correct collection based on whether this is a sub-asset
+    // Ensure we have fresh data before proceeding
     const collection = isSubAsset ? subAssets : assets;
     const item = collection.find(a => a.id === assetId);
     
     if (!item) {
         console.error(`Could not find ${isSubAsset ? 'sub-asset' : 'asset'} with ID: ${assetId}`);
+        // If item not found and we're refreshing a sub-asset, try to refresh the parent asset instead
+        if (isSubAsset) {
+            const parentAssetId = collection.find(a => a.id === assetId)?.parentId;
+            if (parentAssetId) {
+                console.log('Falling back to parent asset view');
+                refreshAssetDetails(parentAssetId, false);
+                return;
+            }
+        }
         return;
     }
     
-    // Log all the item's properties to help debug
+    // Log item details for debugging
     console.log(`Found ${isSubAsset ? 'sub-asset' : 'asset'} data:`, {
         id: item.id,
         name: item.name,

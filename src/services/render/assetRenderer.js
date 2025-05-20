@@ -191,6 +191,8 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         selectedSubAssetId = null;
     } else {
         selectedSubAssetId = assetId;
+        // Make sure we maintain the parent asset ID
+        selectedAssetId = asset.parentId;
     }
     
     // Update active class in list using dataset.id instead of name
@@ -311,14 +313,15 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             else deleteAsset(asset.id);
         });
     }
+    
     // Only render sub-assets if viewing a main asset
     if (!isSub) {
         renderSubAssets(assetId);
     } else {
         subAssetContainer.classList.add('hidden');
-        // If this is a first-level sub-asset (not a sub-sub-asset), show sub-sub-assets and add sub-component button at bottom
+        // If this is a first-level sub-asset (not a sub-sub-asset), show sub-sub-assets
         if (!asset.parentSubId) {
-            // Components & Attachments section
+            // Get fresh list of sub-sub-assets after potential changes
             const subSubAssets = subAssets.filter(sa => sa.parentSubId === asset.id);
             const section = document.createElement('div');
             section.className = 'sub-asset-section';
@@ -338,6 +341,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                 });
             }
             section.appendChild(list);
+            
             // Add Sub-Component button
             const addSubBtn = document.createElement('button');
             addSubBtn.className = 'add-sub-asset-btn';

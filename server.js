@@ -694,21 +694,36 @@ app.delete('/api/subasset/:id', (req, res) => {
     // Get the sub-asset to delete
     const deletedSubAsset = subAssets[subAssetIndex];
     
-    // Find all child sub-assets (recursively)
-    const subAssetIdsToDelete = [subAssetId];
-    let childrenToCheck = subAssets.filter(sa => sa.parentSubId === subAssetId);
+    // Ensure we don't delete a component that still has other parents
+    const subAssetIdsToDelete = new Set([subAssetId]);
+    let childrenToProcess = [deletedSubAsset];
     
-    while (childrenToCheck.length > 0) {
-        const currentChild = childrenToCheck.shift();
-        subAssetIdsToDelete.push(currentChild.id);
+    while (childrenToProcess.length > 0) {
+        const current = childrenToProcess.shift();
         
-        // Find any children of this child
-        const grandchildren = subAssets.filter(sa => sa.parentSubId === currentChild.id);
-        childrenToCheck = [...childrenToCheck, ...grandchildren];
+        // Find all direct children of this component
+        const directChildren = subAssets.filter(sa => 
+            // Only include components where this is the direct parent
+            sa.parentSubId === current.id && 
+            // Don't include already processed components
+            !subAssetIdsToDelete.has(sa.id) &&
+            // Ensure the component isn't a child of any component we're not deleting
+            !subAssets.some(other => 
+                other.id !== current.id && 
+                !subAssetIdsToDelete.has(other.id) && 
+                sa.parentSubId === other.id
+            )
+        );
+        
+        // Add valid children to deletion set and processing queue
+        directChildren.forEach(child => {
+            subAssetIdsToDelete.add(child.id);
+            childrenToProcess.push(child);
+        });
     }
     
     // Filter out all sub-assets that need to be deleted
-    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.includes(sa.id));
+    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.has(sa.id));
     
     // Write updated sub-assets
     if (writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
@@ -725,6 +740,13 @@ app.delete('/api/subasset/:id', (req, res) => {
                 const receiptPath = path.join(__dirname, deletedSubAsset.receiptPath.substring(1));
                 if (fs.existsSync(receiptPath)) {
                     fs.unlinkSync(receiptPath);
+                }
+            }
+            
+            if (deletedSubAsset.manualPath) {
+                const manualPath = path.join(__dirname, deletedSubAsset.manualPath.substring(1));
+                if (fs.existsSync(manualPath)) {
+                    fs.unlinkSync(manualPath);
                 }
             }
         } catch (error) {
