@@ -507,22 +507,25 @@ function renderDashboard() {
     assetDetails.innerHTML = `
         <div class="dashboard">
             <h2 class="dashboard-title">Asset Overview</h2>
-            <div class="dashboard-top-row">
-                <div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
-                    <div class="card-label">Total Assets</div>
-                    <div class="card-value">${totalAssets}</div>
-                </div>
-                <div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
-                    <div class="card-label">Total Components</div>
-                    <div class="card-value">${totalComponents}</div>
-                </div>
-                <div class="dashboard-card value" data-filter="value">
-                    <div class="card-label">Total Value</div>
-                    <div class="card-value">${formatCurrency(totalValue)}</div>
+            <div class="dashboard-section">
+                <div class="section-title">Totals</div>
+                <div class="dashboard-cards totals-cards">
+                    <div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
+                        <div class="card-label">Assets</div>
+                        <div class="card-value">${totalAssets}</div>
+                    </div>
+                    <div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
+                        <div class="card-label">Components</div>
+                        <div class="card-value">${totalComponents}</div>
+                    </div>
+                    <div class="dashboard-card value" data-filter="value">
+                        <div class="card-label">Value</div>
+                        <div class="card-value">${formatCurrency(totalValue)}</div>
+                    </div>
                 </div>
             </div>
-            <div class="dashboard-warranty-section">
-                <div class="warranty-title">Warranties</div>
+            <div class="dashboard-section dashboard-warranty-section">
+                <div class="section-title">Warranties</div>
                 <div class="dashboard-cards warranty-cards">
                     <div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                         <div class="card-label">Total</div>

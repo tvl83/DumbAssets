@@ -1645,6 +1645,7 @@ a:hover {
     font-weight: 700;
     color: var(--primary-color);
     letter-spacing: -1px;
+    line-height: 2.5rem;
 }
 .dashboard-card.total .card-value {
     color: var(--primary-color);
@@ -1664,33 +1665,45 @@ a:hover {
 .dashboard-card.active-status .card-value {
     color: var(--success-color);
 }
-.dashboard-top-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
+/* Dashboard section shared styles */
+.dashboard-section {
     width: 100%;
-    margin-bottom: 2.2rem;
+    margin-bottom: 1.5rem;
 }
-.dashboard-card.value .card-value {
-    color: var(--primary-color);
-}
-.dashboard-warranty-section {
-    width: 100%;
+
+.dashboard-section:not(:first-of-type) {
     margin-top: 1.5rem;
     padding-top: 1.2rem;
     border-top: var(--app-border);
     background: none;
 }
-.warranty-title {
+
+.section-title {
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--secondary-color);
     margin-bottom: 1.1rem;
     letter-spacing: 0.1px;
 }
+
+/* Dashboard cards grid layouts */
+.dashboard-cards {
+    display: grid;
+    gap: 1.2rem;
+    width: 100%;
+}
+
+.dashboard-cards.totals-cards {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 .dashboard-cards.warranty-cards {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 1.1rem;
+}
+
+.dashboard-card.value .card-value {
+    color: var(--primary-color);
 }
 
 /* Collapsible section styling */
@@ -1777,6 +1790,15 @@ a:hover {
 
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
+@media (max-width: 1200px) {
+    .dashboard-card .card-value {
+        font-size: 1rem;
+        // make sure the text is responsive and not too big
+        line-height: 2rem;
+        
+    }
+}
+
 @media (max-width: 853px) {
     .sidebar-toggle {
         display: block !important;
@@ -1825,7 +1847,8 @@ a:hover {
         box-sizing: border-box;
     }
     #assetDetails {
-        width: 100%;
+        /* width: 100%; */
+        max-width: 98%;
         min-width: 0;
         /* margin: 0;
         padding: 0; */
@@ -1913,6 +1936,29 @@ a:hover {
     .asset-info {
         grid-template-columns: 1fr;
     }
+    .dashboard {
+        padding: 1.2rem 0.5rem 1rem 0.5rem;
+    }
+    .dashboard-title {
+        font-size: 1.3rem;
+    }
+    .dashboard-cards {
+        gap: 0.7rem;
+    }
+    .dashboard-cards.totals-cards {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-card {
+        min-height: 80px;
+        padding: 0.7rem 0.5rem 0.5rem 0.5rem;
+    }
+    .dashboard-card .card-value {
+        font-size: 1rem;
+    }
+    .dashboard-warranty-section {
+        padding-top: 0.7rem;
+        margin-top: 1rem;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1945,31 +1991,6 @@ a:hover {
     }
     form {
         padding: 1rem 0.5rem 0.5rem;
-    }
-    .dashboard {
-        padding: 1.2rem 0.5rem 1rem 0.5rem;
-    }
-    .dashboard-title {
-        font-size: 1.3rem;
-    }
-    .dashboard-cards {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.7rem;
-    }
-    .dashboard-card {
-        min-height: 80px;
-        padding: 0.7rem 0.5rem 0.5rem 0.5rem;
-    }
-    .dashboard-card .card-value {
-        font-size: 1rem;
-    }
-    .dashboard-top-row {
-        grid-template-columns: 1fr;
-        gap: 0.7rem;
-    }
-    .dashboard-warranty-section {
-        padding-top: 0.7rem;
-        margin-top: 1rem;
     }
     .warranty-title {
         font-size: 1rem;
@@ -2030,7 +2051,7 @@ a:hover {
     }
 }
 
-@media (max-width: 320px) {
+@media (max-width: 380px) {
     .pin-input-container input.pin-input {
         width: 32px;
         height: 32px;
