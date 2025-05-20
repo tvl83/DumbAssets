@@ -1606,8 +1606,8 @@ a:hover {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     background: #ef4444;
     border-radius: 50%;
     z-index: 2;
@@ -1618,8 +1618,8 @@ a:hover {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     background: #facc15;
     border-radius: 50%;
     z-index: 2;
@@ -1630,8 +1630,8 @@ a:hover {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     z-index: 2;
     display: flex;
     align-items: center;
