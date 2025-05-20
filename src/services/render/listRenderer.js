@@ -229,7 +229,17 @@ function renderAssetList(searchQuery = '') {
                 })
             );
             
-            filteredAssets = [...filteredAssets, ...assetsWithActiveComponents];
+            // Also include assets with sub-assets that have any warranty (since they're all active)
+            const assetsWithWarrantyComponents = assets.filter(a => 
+                !filteredAssets.includes(a) && // Don't duplicate
+                !assetsWithActiveComponents.includes(a) && // Don't duplicate
+                subAssets.some(sa => {
+                    if (sa.parentId !== a.id) return false;
+                    return sa.warranty && sa.warranty.expirationDate;
+                })
+            );
+            
+            filteredAssets = [...filteredAssets, ...assetsWithActiveComponents, ...assetsWithWarrantyComponents];
         }
     }
 
