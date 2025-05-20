@@ -77,7 +77,7 @@ function updateSort(newSort) {
  * Get the appropriate warranty dot type based on expiration date
  * 
  * @param {Object} asset Asset to check for warranty
- * @returns {String|null} Dot type ('red', 'yellow', or null)
+ * @returns {String|null} Dot type ('red', 'yellow', 'expired', or null)
  */
 function getWarrantyDotType(asset) {
     // Check both primary and secondary warranties
@@ -91,18 +91,25 @@ function getWarrantyDotType(asset) {
     const now = new Date();
     let hasExpiring = false;
     let hasWarning = false;
+    let hasExpired = false;
 
     warranties.forEach(warranty => {
         const expDate = new Date(warranty.exp);
         if (isNaN(expDate)) return;
         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
-        if (diff >= 0 && diff <= 30) {
+        if (diff < 0) {
+            // Warranty has expired
+            hasExpired = true;
+        } else if (diff >= 0 && diff <= 30) {
+            // Expiring within 30 days
             hasExpiring = true;
         } else if (diff > 30 && diff <= 60) {
+            // Warning (31-60 days)
             hasWarning = true;
         }
     });
 
+    if (hasExpired) return 'expired';
     if (hasExpiring) return 'red';
     if (hasWarning) return 'yellow';
     return null;
@@ -259,7 +266,7 @@ function renderAssetList(searchQuery = '') {
             assetItem.classList.add('active');
         }
         
-        // Add warranty dot if expiring soon
+        // Add warranty dot or expired icon if needed
         const dotType = getWarrantyDotType(asset);
         if (dotType === 'red') {
             const dot = document.createElement('div');
@@ -269,6 +276,17 @@ function renderAssetList(searchQuery = '') {
             const dot = document.createElement('div');
             dot.className = 'warranty-warning-dot';
             assetItem.appendChild(dot);
+        } else if (dotType === 'expired') {
+            const expiredIcon = document.createElement('div');
+            expiredIcon.className = 'warranty-expired-icon';
+            expiredIcon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+            `;
+            assetItem.appendChild(expiredIcon);
         }
         
         // Format asset item with name, model, and tags

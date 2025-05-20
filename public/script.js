@@ -1704,7 +1704,16 @@ function createSubAssetElement(subAsset) {
         const now = new Date();
         const diff = (expDate - now) / (1000 * 60 * 60 * 24); // difference in days
         
-        if (diff >= 0 && diff <= 30) {
+        if (diff < 0) {
+            // Warranty has expired
+            warrantyDot = `<div class="warranty-expired-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+            </div>`;
+        } else if (diff >= 0 && diff <= 30) {
             warrantyDot = '<div class="warranty-expiring-dot"></div>';
         } else if (diff > 30 && diff <= 60) {
             warrantyDot = '<div class="warranty-warning-dot"></div>';
@@ -1835,7 +1844,16 @@ function createSubAssetElement(subAsset) {
                     const now = new Date();
                     const diff = (expDate - now) / (1000 * 60 * 60 * 24);
                     
-                    if (diff >= 0 && diff <= 30) {
+                    if (diff < 0) {
+                        // Warranty has expired
+                        childWarrantyDot = `<div class="warranty-expired-icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
+                            </svg>
+                        </div>`;
+                    } else if (diff >= 0 && diff <= 30) {
                         childWarrantyDot = '<div class="warranty-expiring-dot"></div>';
                     } else if (diff > 30 && diff <= 60) {
                         childWarrantyDot = '<div class="warranty-warning-dot"></div>';

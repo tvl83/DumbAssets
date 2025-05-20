@@ -1626,6 +1626,20 @@ a:hover {
     box-shadow: 0 0 2px rgba(0,0,0,0.15);
     animation: pulse-warning 2s infinite ease-in-out;
 }
+.warranty-expired-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.warranty-expired-icon svg {
+    color: #ef4444;
+}
 .sub-asset-header > .warranty-expiring-dot {
     right: 0;
     left: 8px;
@@ -1634,12 +1648,15 @@ a:hover {
     right: 0;
     left: 8px;
 }
+.sub-asset-header > .warranty-expired-icon {
+    right: 0;
+    left: 8px;
+}
 @keyframes pulse-danger {
     0% { box-shadow: 0 0 2px rgba(0,0,0,0.15); }
     50% { box-shadow: 0 0 10px rgba(239,68,68,0.6); }
     100% { box-shadow: 0 0 2px rgba(0,0,0,0.15); }
 }
-
 @keyframes pulse-warning {
     0% { box-shadow: 0 0 2px rgba(0,0,0,0.15); }
     50% { box-shadow: 0 0 10px rgba(250,204,21,0.6); }
