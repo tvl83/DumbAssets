@@ -63,6 +63,10 @@ let deleteSubPhoto = window.deleteSubPhoto;
 let deleteSubReceipt = window.deleteSubReceipt;
 let deleteSubManual = window.deleteSubManual;
 
+// Initialize tag managers at the top with other app state variables
+let assetTagManager = null;
+let subAssetTagManager = null;
+
 // DOM Elements
 const subAssetList = document.getElementById('subAssetList');
 const addAssetBtn = document.getElementById('addAssetBtn');
@@ -747,10 +751,15 @@ function openAssetModal(asset = null) {
         document.getElementById('assetModel').value = asset.modelNumber || '';
         document.getElementById('assetManufacturer').value = asset.manufacturer || '';
         document.getElementById('assetSerial').value = asset.serialNumber || '';
-        document.getElementById('assetPurchaseDate').value = asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : '';
+        document.getElementById('assetPurchaseDate').value = asset.purchaseDate || '';
         document.getElementById('assetPrice').value = asset.price || '';
         document.getElementById('assetWarrantyScope').value = asset.warranty?.scope || '';
         document.getElementById('assetWarrantyExpiration').value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
+        document.getElementById('assetDescription').value = asset.description || '';
+        document.getElementById('assetLink').value = asset.link || '';
+        
+        // Set tags
+        assetTagManager.setTags(asset.tags || []);
         
         // Handle secondary warranty
         if (asset.secondaryWarranty) {
@@ -785,6 +794,9 @@ function openAssetModal(asset = null) {
         document.getElementById('assetLink').value = asset.link || '';
         document.getElementById('assetDescription').value = asset.description || '';
         
+        // Set tags
+        assetTagManager.setTags(asset.tags || []);
+
         // Preview existing files using our utility function
         if (asset.photoPath) {
             const photoInfo = asset.photoInfo?.[0] || {};
@@ -834,6 +846,9 @@ function openAssetModal(asset = null) {
                 }
             };
         }
+    } else {
+        assetForm.reset();
+        assetTagManager.setTags([]);
     }
     // Set up form submission
     assetForm.onsubmit = (e) => {
@@ -853,6 +868,7 @@ function openAssetModal(asset = null) {
             },
             link: document.getElementById('assetLink').value,
             description: document.getElementById('assetDescription').value,
+            tags: assetTagManager.getTags(),
             updatedAt: new Date().toISOString()
         };
         
@@ -1011,6 +1027,9 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
         if (warrantyScopeInput) warrantyScopeInput.value = subAsset.warranty?.scope || '';
         if (warrantyExpirationInput) warrantyExpirationInput.value = subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : '';
         
+        // Set tags
+        subAssetTagManager.setTags(subAsset.tags || []);
+
         // Preview existing images if available
         if (subAsset.photoPath) {
             const photoInfo = subAsset.photoInfo?.[0] || {};
@@ -1059,6 +1078,9 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
                 }
             };
         }
+    } else {
+        subAssetForm.reset();
+        subAssetTagManager.setTags([]);
     }
     
     // Set up form submission
@@ -1101,6 +1123,7 @@ function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null)
             parentId: parentIdInput ? parentIdInput.value : '',
             parentSubId: parentSubIdInput ? parentSubIdInput.value : '',
             notes: notesInput ? notesInput.value : '',
+            tags: subAssetTagManager.getTags(),
             warranty: {
                 scope: warrantyScopeInput ? warrantyScopeInput.value : '',
                 expirationDate: warrantyExpirationInput ? warrantyExpirationInput.value : ''
@@ -1678,7 +1701,7 @@ function createSubAssetElement(subAsset) {
         </div>
     `;
     
-    // Add edit button event listener
+    // Set up button event listeners
     const editBtn = header.querySelector('.edit-sub-btn');
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1696,8 +1719,22 @@ function createSubAssetElement(subAsset) {
     // Add summary info
     const info = document.createElement('div');
     info.className = 'sub-asset-info';
-
-    // Create file previews container
+    
+    // Create model/serial info and tags section
+    info.innerHTML = `
+        <div>
+            ${subAsset.modelNumber ? `<span>${subAsset.modelNumber}</span>` : ''}
+            ${subAsset.serialNumber ? `<span>#${subAsset.serialNumber}</span>` : ''}
+        </div>
+        ${subAsset.tags && subAsset.tags.length > 0 ? `
+        <div class="tag-list">
+            ${subAsset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+        </div>`: ''}
+    `;
+    
+    element.appendChild(info);
+    
+    // Add file previews
     const filePreviewsContainer = document.createElement('div');
     filePreviewsContainer.className = 'sub-asset-files';
     
@@ -1751,12 +1788,6 @@ function createSubAssetElement(subAsset) {
         filePreviewsContainer.appendChild(files);
     }
     
-    info.innerHTML = `
-        ${subAsset.modelNumber ? `<span>${subAsset.modelNumber}</span>` : ''}
-        ${subAsset.serialNumber ? `<span>#${subAsset.serialNumber}</span>` : ''}
-    `;
-    
-    element.appendChild(info);
     element.appendChild(filePreviewsContainer);
     
     // Check for children (only for first level sub-assets)
@@ -1785,6 +1816,7 @@ function createSubAssetElement(subAsset) {
                     }
                 }
                 
+                // Create child header
                 const childHeader = document.createElement('div');
                 childHeader.className = 'sub-asset-header';
                 childHeader.innerHTML = `
@@ -1800,24 +1832,30 @@ function createSubAssetElement(subAsset) {
                     </div>
                 `;
                 childElement.appendChild(childHeader);
-
-                // Add info section
+                
+                // Add child info section with tags
                 const childInfo = document.createElement('div');
                 childInfo.className = 'sub-asset-info';
                 childInfo.innerHTML = `
-                    ${child.modelNumber ? `<span>${child.modelNumber}</span>` : ''}
-                    ${child.serialNumber ? `<span>#${child.serialNumber}</span>` : ''}
+                    <div>
+                        ${child.modelNumber ? `<span>${child.modelNumber}</span>` : ''}
+                        ${child.serialNumber ? `<span>#${child.serialNumber}</span>` : ''}
+                    </div>
+                    ${child.tags && child.tags.length > 0 ? `
+                    <div class="tag-list">
+                        ${child.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>`: ''}
                 `;
                 childElement.appendChild(childInfo);
-
+                
                 // Add file previews container for the child
                 const childFilePreviewsContainer = document.createElement('div');
                 childFilePreviewsContainer.className = 'sub-asset-files';
-
+                
                 if (child.photoPath || child.receiptPath || child.manualPath) {
                     const childFiles = document.createElement('div');
                     childFiles.className = 'compact-files-grid';
-
+                    
                     if (child.photoPath) {
                         childFiles.innerHTML += `
                             <div class="compact-file-item photo">
@@ -1827,7 +1865,7 @@ function createSubAssetElement(subAsset) {
                             </div>
                         `;
                     }
-
+                    
                     if (child.receiptPath) {
                         childFiles.innerHTML += `
                             <div class="compact-file-item receipt">
@@ -1843,7 +1881,7 @@ function createSubAssetElement(subAsset) {
                             </div>
                         `;
                     }
-
+                    
                     if (child.manualPath) {
                         childFiles.innerHTML += `
                             <div class="compact-file-item manual">
@@ -1870,6 +1908,7 @@ function createSubAssetElement(subAsset) {
                     e.stopPropagation();
                     openSubAssetModal(child);
                 });
+                
                 const childDeleteBtn = childElement.querySelector('.delete-sub-btn');
                 childDeleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -2000,6 +2039,77 @@ function initializeDOMElements() {
         searchInput: !!searchInput,
         clearSearchBtn: !!clearSearchBtn
     });
+    
+    // Initialize tag managers
+    assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
+    subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
+}
+
+// Tag management functions
+function setupTagInput(inputId, containerId) {
+    const tags = new Set();
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(containerId);
+
+    function renderTags() {
+        if (!container) return;
+        container.innerHTML = Array.from(tags).map(tag => `
+            <span class="tag">
+                ${tag}
+                <button class="remove-tag" data-tag="${tag}" title="Remove tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </span>
+        `).join('');
+
+        // Add click handlers to remove buttons
+        container.querySelectorAll('.remove-tag').forEach(btn => {
+            btn.onclick = (e) => {
+                e.preventDefault();
+                const tagToRemove = btn.dataset.tag;
+                tags.delete(tagToRemove);
+                renderTags();
+            };
+        });
+    }
+
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const tag = input.value.trim();
+                if (tag && !tags.has(tag)) {
+                    tags.add(tag);
+                    input.value = '';
+                    renderTags();
+                }
+            }
+        });
+    }
+
+    return {
+        getTags: () => Array.from(tags),
+        setTags: (newTags) => {
+            tags.clear();
+            newTags.forEach(tag => tags.add(tag));
+            renderTags();
+        },
+        addTag: (tag) => {
+            tags.add(tag);
+            renderTags();
+        },
+        removeTag: (tag) => {
+            tags.delete(tag);
+            renderTags();
+        },
+        clearTags: () => {
+            tags.clear();
+            renderTags();
+        }
+    };
 }
 
 // Keep at the end

@@ -103,6 +103,56 @@ function formatFilePath(path) {
 }
 
 /**
+ * Generate HTML for asset info section
+ * @param {Object} asset - The asset object
+ * @returns {string} HTML string for asset info section
+ */
+function generateAssetInfoHTML(asset) {
+    return `
+        <div class="info-item">
+            <div class="info-label">Manufacturer</div>
+            <div>${asset.manufacturer || 'N/A'}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Model Number</div>
+            <div>${asset.modelNumber || 'N/A'}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Serial Number</div>
+            <div>${asset.serialNumber || 'N/A'}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Purchase Date</div>
+            <div>${formatDate(asset.purchaseDate)}</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Price</div>
+            <div>${formatCurrency(asset.price)}</div>
+        </div>
+        ${asset.warranty?.scope ? `
+        <div class="info-item">
+            <div class="info-label">Warranty</div>
+            <div>${asset.warranty.scope}</div>
+            <div>${formatDate(asset.warranty.expirationDate)}</div>
+        </div>
+        ` : ''}
+        ${asset.tags && asset.tags.length > 0 ? `
+        <div class="info-item">
+            <div class="info-label">Tags</div>
+            <div class="tag-list">
+                ${asset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            </div>
+        </div>
+        ` : ''}
+        ${asset.link ? `
+        <div class="info-item">
+            <div class="info-label">Link</div>
+            <div><a href="${asset.link}" target="_blank" rel="noopener noreferrer">${asset.link}</a></div>
+        </div>` : ''}
+    `;
+}
+
+/**
  * Render asset details in the UI
  * 
  * @param {String} assetId ID of the asset to render
@@ -187,40 +237,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             </div>
         </div>
         <div class="asset-info">
-            <div class="info-item">
-                <div class="info-label">Manufacturer</div>
-                <div>${asset.manufacturer || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Model Number</div>
-                <div>${asset.modelNumber || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Serial Number</div>
-                <div>${asset.serialNumber || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Purchase Date</div>
-                <div>${formatDate(asset.purchaseDate)}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Price</div>
-                <div>${formatCurrency(asset.price)}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Warranty</div>
-                <div>${asset.warranty?.scope || 'N/A'}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Warranty Expiration</div>
-                <div>${formatDate(asset.warranty?.expirationDate)}</div>
-            </div>
-            ${asset.link ? `
-            <div class="info-item">
-                <div class="info-label">Link</div>
-                <div><a href="${asset.link}" target="_blank" rel="noopener noreferrer">${asset.link}</a></div>
-            </div>
-            ` : ''}
+            ${generateAssetInfoHTML(asset)}
         </div>
         ${asset.description ? `
         <div class="asset-description">
@@ -341,4 +358,4 @@ export {
     updateSelectedIds,
     renderAssetDetails,
     formatFilePath
-}; 
+};

@@ -127,7 +127,8 @@ function renderAssetList(searchQuery = '') {
             asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
             asset.modelNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             asset.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            asset.location?.toLowerCase().includes(searchQuery.toLowerCase()))
+            asset.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            asset.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
         : assets;
 
     // Apply dashboard filter
@@ -270,10 +271,15 @@ function renderAssetList(searchQuery = '') {
             assetItem.appendChild(dot);
         }
         
-        // Format asset item with name and model only
+        // Format asset item with name, model, and tags
         assetItem.innerHTML += `
             <div class="asset-item-name">${asset.name || 'Unnamed Asset'}</div>
             ${asset.modelNumber ? `<div class="asset-item-model">${asset.modelNumber}</div>` : ''}
+            ${asset.tags && asset.tags.length > 0 ? `
+                <div class="asset-item-tags">
+                    ${asset.tags.map(tag => `<span class="asset-tag">${tag}</span>`).join('')}
+                </div>
+            ` : ''}
         `;
             
         assetItem.addEventListener('click', () => {
@@ -363,7 +369,7 @@ function sortAssets(assets, field, direction) {
             // Default to sorting by name for unknown fields
             console.warn(`Unknown sort field: ${field}, defaulting to name`);
             valueA = (a.name ? a.name.toLowerCase() : '');
-            valueB = (b.name ? b.name.toLowerCase() : '');
+            valueB = (b.name ? a.name.toLowerCase() : '');
             
             return direction === 'asc'
                 ? valueA.localeCompare(valueB)
@@ -380,4 +386,4 @@ export {
     updateSort,
     renderAssetList,
     sortAssets
-}; 
+};
