@@ -151,6 +151,19 @@ function renderAssetList(searchQuery = '') {
                 if (!exp) return false;
                 return new Date(exp) < now;
             });
+            
+            // Also include assets with sub-assets that have expired warranties
+            const assetsWithExpiredComponents = assets.filter(a => 
+                !filteredAssets.includes(a) && // Don't duplicate
+                subAssets.some(sa => {
+                    if (sa.parentId !== a.id) return false;
+                    const exp = sa.warranty?.expirationDate;
+                    if (!exp) return false;
+                    return new Date(exp) < now;
+                })
+            );
+            
+            filteredAssets = [...filteredAssets, ...assetsWithExpiredComponents];
         } else if (dashboardFilter === 'within30') {
             // Assets with warranties expiring within 30 days
             filteredAssets = filteredAssets.filter(a => {
