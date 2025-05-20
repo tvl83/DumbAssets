@@ -1785,24 +1785,84 @@ function createSubAssetElement(subAsset) {
                     }
                 }
                 
-                childElement.innerHTML = `
-                    <div class="sub-asset-header">
-                        ${childWarrantyDot}
-                        <div class="sub-asset-title">${child.name}</div>
-                        <div class="sub-asset-actions">
-                            <button class="edit-sub-btn" data-id="${child.id}" title="Edit">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
-                            </button>
-                            <button class="delete-sub-btn" data-id="${child.id}" title="Delete">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="sub-asset-info">
-                        ${child.modelNumber ? `<span>${child.modelNumber}</span>` : ''}
-                        ${child.serialNumber ? `<span>#${child.serialNumber}</span>` : ''}
+                const childHeader = document.createElement('div');
+                childHeader.className = 'sub-asset-header';
+                childHeader.innerHTML = `
+                    ${childWarrantyDot}
+                    <div class="sub-asset-title">${child.name}</div>
+                    <div class="sub-asset-actions">
+                        <button class="edit-sub-btn" data-id="${child.id}" title="Edit">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                        </button>
+                        <button class="delete-sub-btn" data-id="${child.id}" title="Delete">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        </button>
                     </div>
                 `;
+                childElement.appendChild(childHeader);
+
+                // Add info section
+                const childInfo = document.createElement('div');
+                childInfo.className = 'sub-asset-info';
+                childInfo.innerHTML = `
+                    ${child.modelNumber ? `<span>${child.modelNumber}</span>` : ''}
+                    ${child.serialNumber ? `<span>#${child.serialNumber}</span>` : ''}
+                `;
+                childElement.appendChild(childInfo);
+
+                // Add file previews container for the child
+                const childFilePreviewsContainer = document.createElement('div');
+                childFilePreviewsContainer.className = 'sub-asset-files';
+
+                if (child.photoPath || child.receiptPath || child.manualPath) {
+                    const childFiles = document.createElement('div');
+                    childFiles.className = 'compact-files-grid';
+
+                    if (child.photoPath) {
+                        childFiles.innerHTML += `
+                            <div class="compact-file-item photo">
+                                <a href="${formatFilePath(child.photoPath)}" target="_blank">
+                                    <img src="${formatFilePath(child.photoPath)}" alt="${child.name}" class="compact-asset-image">
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    if (child.receiptPath) {
+                        childFiles.innerHTML += `
+                            <div class="compact-file-item receipt">
+                                <a href="${formatFilePath(child.receiptPath)}" target="_blank">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                        <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2"/>
+                                        <path d="M14 8h-8"/>
+                                        <path d="M15 12h-9"/>
+                                        <path d="M15 16h-9"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    if (child.manualPath) {
+                        childFiles.innerHTML += `
+                            <div class="compact-file-item manual">
+                                <a href="${formatFilePath(child.manualPath)}" target="_blank">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <path d="M14 2v6h6"/>
+                                        <path d="M16 13H8"/>
+                                        <path d="M16 17H8"/>
+                                        <path d="M10 9H8"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    childFilePreviewsContainer.appendChild(childFiles);
+                }
+                childElement.appendChild(childFilePreviewsContainer);
                 
                 // Add event listeners to child
                 const childEditBtn = childElement.querySelector('.edit-sub-btn');
