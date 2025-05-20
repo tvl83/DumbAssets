@@ -1706,6 +1706,45 @@ a:hover {
     color: var(--primary-color);
 }
 
+/* Chart section styling */
+.dashboard-charts-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: calc(100% - 1rem);
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+}
+
+.chart-container {
+    background: var(--background-color);
+    border-radius: var(--app-border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    border: var(--app-border);
+    flex: 1 1 400px;
+    height: 350px;
+    max-height: 350px;
+    position: relative;
+}
+
+.chart-container h3 {
+    font-size: 1rem;
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.chart-canvas {
+    width: 100%;
+    height: calc(100% - 40px);
+    max-height: 290px;
+}
+
 /* Collapsible section styling */
 .collapsible-section {
     margin-top: 1rem;
@@ -1995,6 +2034,14 @@ a:hover {
     .warranty-title {
         font-size: 1rem;
         margin-bottom: 0.7rem;
+    }
+
+    .dashboard-charts-section {
+        flex-direction: column;
+    }
+    .chart-container {
+        flex: 1 1 100%;
+        margin-bottom: 1.5rem;
     }
 }
 

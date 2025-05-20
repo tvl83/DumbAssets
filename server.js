@@ -333,6 +333,9 @@ app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
 app.use(BASE_PATH + '/src/services/fileUpload', express.static('src/services/fileUpload'));
 app.use(BASE_PATH + '/src/services/render', express.static('src/services/render'));
 
+// Serve Chart.js from node_modules
+app.use(BASE_PATH + '/js/chart.js', express.static('node_modules/chart.js/dist/chart.umd.js'));
+
 // Serve uploaded files
 app.use(BASE_PATH + '/Images', express.static('data/Images'));
 app.use(BASE_PATH + '/Receipts', express.static('data/Receipts'));
