@@ -581,12 +581,31 @@ function renderDashboard() {
             assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
                 c.classList.remove('active');
             });
+
+            // Reset all sort buttons to default state
+            document.querySelectorAll('.sort-button').forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('data-direction', 'asc');
+                const sortIcon = btn.querySelector('.sort-icon');
+                if (sortIcon) {
+                    sortIcon.style.transform = '';
+                }
+            });
             
-            // Reset filter
+            // Reset filter and sort
             dashboardFilter = null;
+            currentSort = { field: 'updatedAt', direction: 'desc' };
             updateDashboardFilter(null);
+            updateSort(currentSort);
+
+            // Reset selected asset and hide components section
+            selectedAssetId = null;
+            updateSelectedIds(null, null);
+            
+            // Re-render list and dashboard
+            searchInput.value = '';
             renderAssetList(searchInput.value);
-            if (!selectedAssetId) renderDashboard();
+            renderEmptyState();
         });
     }
 
