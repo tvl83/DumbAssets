@@ -1204,8 +1204,9 @@ input[type="date"][data-has-value="true"] {
     padding-top: 0.5rem;
 }
 #settingsModal .modal-content {
-    max-width: 500px;
+    max-width: 600px;
     padding: 0;
+    width: 100%;
 }
 #settingsModal .modal-header h2 {
     font-size: 1.3rem;
@@ -1263,30 +1264,46 @@ input[type="date"][data-has-value="true"] {
 #settingsModal fieldset {
     border: var(--app-border);
     border-radius: var(--app-border-radius);
-    padding: 0.75em 1em 0.5em 1.5em;
+    padding: 0.75em 1.5em 0.75em 1.5em;
     margin-bottom: 1em;
     min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 #settingsModal legend {
     font-weight: 600;
     font-size: 1.05em;
     color: var(--primary-color);
+    margin-bottom: 0.5em;
+}
+#settingsModal .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8em 1.5em;
 }
 #settingsModal .toggle-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.8em;
-    padding-right: 0.5em;
+    padding-right: 0;
+    overflow: visible; /* Ensures toggle doesn't get clipped */
 }
 #settingsModal .toggle-row span {
-    font-size: 0.95em;
+    font-size: 0.9em;
+    /* margin-right: 8px; */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
 }
 #settingsModal .toggle-switch {
     position: relative;
     display: inline-block;
-    width: 40px;
-    height: 20px;
+    width: 40px; /* Increased width */
+    height: 20px; /* Increased height */
+    min-width: 40px;
+    flex-shrink: 0; /* Prevents the switch from shrinking */
+    margin-right: 2px; /* Small right margin to prevent cutting off */
 }
 #settingsModal .toggle-switch input {
     opacity: 0;
@@ -1322,13 +1339,29 @@ input[type="date"][data-has-value="true"] {
     box-shadow: 0 0 1px var(--primary-color);
 }
 #settingsModal input:checked + .slider:before {
-    transform: translateX(20px);
+    transform: translateX(20px); /* Adjusted for new toggle width */
 }
 #settingsModal .modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 1.2em;
+}
+
+/* Responsive behavior for settings grid */
+@media (max-width: 600px) {
+    #settingsModal .settings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #settingsModal .modal-content {
+        max-width: 95%;
+        width: 450px;
+    }
+    
+    #settingsModal .toggle-row {
+        margin-bottom: 4px;
+    }
 }
 
 .toast {
@@ -2357,6 +2390,17 @@ a:hover {
     .chart-container {
         flex: 1 1 100%;
         margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 500px) {
+    /* Responsive behavior for settings grid */
+    #settingsModal .settings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #settingsModal .modal-content {
+        max-width: 90%;
     }
 }
 
