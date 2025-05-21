@@ -512,16 +512,58 @@
                                     <form id="notificationForm">
                                         <fieldset>
                                             <legend>Events</legend>
-                                            <label><input type="checkbox" name="notifyAdd" id="notifyAdd"> Asset Added</label><br>
-                                            <label><input type="checkbox" name="notifyDelete" id="notifyDelete"> Asset Deleted</label><br>
-                                            <label><input type="checkbox" name="notifyEdit" id="notifyEdit"> Asset Edited</label>
+                                            <div class="toggle-row">
+                                                <span>Asset Added</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notifyAdd" id="notifyAdd">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
+                                            <div class="toggle-row">
+                                                <span>Asset Deleted</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notifyDelete" id="notifyDelete">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
+                                            <div class="toggle-row">
+                                                <span>Asset Edited</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notifyEdit" id="notifyEdit">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
                                         </fieldset>
                                         <fieldset style="margin-top:1em;">
                                             <legend>Warranty Expirations</legend>
-                                            <label><input type="checkbox" name="notify1Month" id="notify1Month"> 1 Mo</label><br>
-                                            <label><input type="checkbox" name="notify2Week" id="notify2Week"> 2 wk</label><br>
-                                            <label><input type="checkbox" name="notify7Day" id="notify7Day"> 1 wk</label><br>
-                                            <label><input type="checkbox" name="notify3Day" id="notify3Day"> 3 d</label>
+                                            <div class="toggle-row">
+                                                <span>1 Mo</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notify1Month" id="notify1Month">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
+                                            <div class="toggle-row">
+                                                <span>2 wk</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notify2Week" id="notify2Week">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
+                                            <div class="toggle-row">
+                                                <span>1 wk</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notify7Day" id="notify7Day">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
+                                            <div class="toggle-row">
+                                                <span>3 d</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" name="notify3Day" id="notify3Day">
+                                                    <span class="slider"></span>
+                                                </label>
+                                            </div>
                                         </fieldset>
                                         <div class="modal-actions">
                                             <button type="button" id="saveNotificationSettings" class="action-button">Save<div class="spinner"></div></button>
