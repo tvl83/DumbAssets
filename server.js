@@ -1050,6 +1050,9 @@ app.get('/api/settings', authMiddleware, (req, res) => {
                     notify2Week: false,
                     notify7Day: true,
                     notify3Day: false
+                },
+                interfaceSettings: {
+                    dashboardOrder: ["totals", "warranties", "analytics"]
                 }
                 // Add other default settings sections here as needed
             });

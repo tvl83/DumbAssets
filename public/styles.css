@@ -2146,6 +2146,129 @@ a:hover {
     font-size: 0.75rem;
 }
 
+/* Settings - Sortable List Styles */
+.settings-hint {
+    margin-bottom: 15px;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.sortable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 50%;
+    padding: 10px 0;
+    position: relative;
+}
+
+.sortable-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--file-label-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--app-border-radius);
+    color: var(--text-color);
+    cursor: grab;
+    user-select: none;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    z-index: 1;
+}
+
+.sortable-item:hover {
+    background-color: var(--hover-color);
+}
+
+.sortable-item.dragging {
+    opacity: 0.9;
+    background-color: var(--primary-color);
+    transform: scale(1.03);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    transition: none; /* Disable transition during drag for responsive movement */
+    pointer-events: none; /* Prevent hover effects during drag */
+}
+
+.sortable-handle {
+    margin-right: 15px;
+    color: var(--text-color);
+    cursor: grab;
+    padding: 0 5px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.sortable-handle svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--text-color);
+}
+
+.sortable-handle:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sortable-item.dragging {
+    cursor: grabbing !important;
+}
+
+.sortable-item.dragging .sortable-handle {
+    cursor: grabbing;
+}
+
+/* When the sortable list is being dragged over */
+.sortable-list.dragover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Placeholder for drag target - styling to match the dragged item */
+.sortable-placeholder {
+    border: 2px dashed var(--primary-color);
+    background-color: rgba(37, 100, 235, 0.1);
+    border-radius: var(--app-border-radius);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin: 0.25rem 0;
+    transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+    position: relative;
+    opacity: 0.7;
+}
+
+/* Non-dragged items should animate when changing position */
+.sortable-item:not(.dragging) {
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), 
+                box-shadow 0.3s ease,
+                margin 0.3s ease;
+    will-change: transform, margin;
+}
+
+/* Add animation for items being shifted up or down */
+.sortable-item.shift-up {
+    animation: shiftUp 0.3s forwards cubic-bezier(0.2, 0, 0, 1);
+}
+
+.sortable-item.shift-down {
+    animation: shiftDown 0.3s forwards cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes shiftUp {
+    0% { transform: translateY(0); }
+    20% { transform: translateY(-2px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes shiftDown {
+    0% { transform: translateY(0); }
+    20% { transform: translateY(2px); }
+    100% { transform: translateY(0); }
+}
+
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
 @media (max-width: 1200px) {

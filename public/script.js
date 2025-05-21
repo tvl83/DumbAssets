@@ -92,7 +92,7 @@ const startImportBtn = document.getElementById('startImportBtn');
 const columnSelects = document.querySelectorAll('.column-select');
 
 // Settings UI Logic
-const notificationBtn = document.getElementById('notificationBtn');
+const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const notificationForm = document.getElementById('notificationForm');
 const saveSettings = document.getElementById('saveSettings');
@@ -539,6 +539,9 @@ function renderDashboard() {
     const totalSubAssetsValue = subAssets.reduce((sum, sa) => sum + (parseFloat(sa.purchasePrice) || 0), 0);
     const totalValue = totalAssetsValue + totalSubAssetsValue;
     
+    // Get dashboard section order
+    const sectionOrder = getDashboardOrder();
+    
     // Get all assets with warranties (both main assets and sub-assets)
     const assetWarranties = assets.filter(a => a.warranty && a.warranty.expirationDate);
     const subAssetWarranties = subAssets.filter(sa => sa.warranty && sa.warranty.expirationDate);
@@ -564,9 +567,8 @@ function renderDashboard() {
         }
     });
     
-    assetDetails.innerHTML = `
-        <div class="dashboard">
-            <h2 class="dashboard-title">Asset Overview</h2>
+    // Prepare HTML sections for each dashboard component
+    const totalsSection = `
             <div class="dashboard-section">
                 <div class="section-title">Totals</div>
                 <div class="dashboard-cards totals-cards">
@@ -583,7 +585,9 @@ function renderDashboard() {
                         <div class="card-value">${formatCurrency(totalValue)}</div>
                     </div>
                 </div>
-            </div>
+            </div>`;
+            
+    const warrantiesSection = `
             <div class="dashboard-section dashboard-warranty-section">
                 <div class="section-title">Warranties</div>
                 <div class="dashboard-cards warranty-cards">
@@ -608,7 +612,9 @@ function renderDashboard() {
                         <div class="card-value">${active}</div>
                     </div>
                 </div>
-            </div>
+            </div>`;
+            
+    const analyticsSection = `
             <div class="dashboard-section">
                 <div class="section-title">Analytics</div>
                 <div class="dashboard-charts-section">
@@ -621,7 +627,28 @@ function renderDashboard() {
                         <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
                     </div>
                 </div>
-            </div>
+            </div>`;
+    
+    // Map of section names to their HTML
+    const sectionMap = {
+        'totals': totalsSection,
+        'warranties': warrantiesSection,
+        'analytics': analyticsSection
+    };
+    
+    // Build the sections in the custom order
+    let orderedSections = '';
+    sectionOrder.forEach(sectionName => {
+        if (sectionMap[sectionName]) {
+            orderedSections += sectionMap[sectionName];
+        }
+    });
+    
+    // Set the dashboard HTML with ordered sections
+    assetDetails.innerHTML = `
+        <div class="dashboard">
+            <h2 class="dashboard-title">Asset Overview</h2>
+            ${orderedSections}
         </div>
     `;
     
@@ -1297,6 +1324,29 @@ if (sidebarOverlay) {
     });
 }
 
+// Get dashboard section order from settings or use default
+function getDashboardOrder() {
+    // Default order
+    let order = ['totals', 'warranties', 'analytics'];
+    
+    try {
+        // Try to get from localStorage as a quick cache
+        const cachedSettings = localStorage.getItem('dumbAssetSettings');
+        if (cachedSettings) {
+            const settings = JSON.parse(cachedSettings);
+            if (settings.interfaceSettings?.dashboardOrder && 
+                Array.isArray(settings.interfaceSettings.dashboardOrder) && 
+                settings.interfaceSettings.dashboardOrder.length === 3) {
+                order = settings.interfaceSettings.dashboardOrder;
+            }
+        }
+    } catch (err) {
+        console.error('Error getting dashboard order', err);
+    }
+    
+    return order;
+}
+
 // Handle window resize events to update sidebar overlay
 window.addEventListener('resize', () => {
     // If we're now in desktop mode but overlay is visible, hide it
@@ -1538,8 +1588,8 @@ function resetImportForm() {
 window.resetImportForm = resetImportForm;
 
 // Open modal
-notificationBtn.addEventListener('click', async () => {
-    await loadNotificationSettings();
+settingsBtn.addEventListener('click', async () => {
+    await loadSettings();
     settingsModal.style.display = 'block';
     // Default to notifications tab
     showSettingsTab('notifications');
@@ -1553,30 +1603,23 @@ cancelSettings.addEventListener('click', closeSettingsModal);
 
 // Tab switching functionality
 function showSettingsTab(tabId) {
-    // Hide all tab panes
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-    });
-    // Deactivate all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
     });
     
-    // Show selected tab pane
-    const selectedPane = document.getElementById(tabId + '-tab');
-    if (selectedPane) {
-        selectedPane.classList.add('active');
-        // if selected pane is notifications, then show test button else hide test button
-        if (tabId === 'notifications') {
-            testNotificationSettings.style.display = 'block';
-        } else {
-            testNotificationSettings.style.display = 'none';
-        }
-    }
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `${tabId}-tab`);
+    });
     
-    // Activate selected tab button
-    const selectedBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-    if (selectedBtn) selectedBtn.classList.add('active');
+    if (tabId === 'notifications') {
+        testNotificationSettings.style.display = 'block';
+    } else {
+        testNotificationSettings.style.display = 'none';
+    }
+    // Initialize drag and drop when interface tab is shown
+    if (tabId === 'interface') {
+        initSortable();
+    }
 }
 
 // Add event listeners for tab buttons
@@ -1587,8 +1630,283 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
+// Initialize drag and drop functionality for sortable lists
+function initSortable() {
+    const container = document.getElementById('dashboardSections');
+    if (!container) return;
+    
+    let draggedItem = null;
+    let placeholder = null;
+    let initialX, initialY, startClientX, startClientY;
+    let itemHeight, itemWidth;
+    
+    // Clean up any leftover placeholders from previous sessions
+    cleanupPlaceholders();
+    
+    // Add event listeners to each sortable item
+    const items = container.querySelectorAll('.sortable-item');
+    items.forEach(item => {
+        // Mouse events
+        item.addEventListener('mousedown', function(e) {
+            // If clicking on handle OR clicking anywhere on the item (except buttons or other interactive elements)
+            const isInteractiveElement = e.target.closest('button') || e.target.closest('a') || 
+                                         e.target.closest('input') || e.target.closest('select');
+                                         
+            if (e.target.closest('.sortable-handle') || (!isInteractiveElement)) {
+                e.preventDefault();
+                startDrag(this, e.clientX, e.clientY);
+                
+                // Add global mouse move and up handlers
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+        });
+        
+        // // Touch events for mobile
+        // item.addEventListener('touchstart', function(e) {
+        //     // If touching handle OR touching anywhere on the item (except buttons or other interactive elements)
+        //     const touch = e.touches[0];
+        //     const targetAtTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+        //     const isInteractiveElement = targetAtTouch && (
+        //         targetAtTouch.closest('button') || targetAtTouch.closest('a') || 
+        //         targetAtTouch.closest('input') || targetAtTouch.closest('select')
+        //     );
+                                        
+        //     if (e.target.closest('.sortable-handle') || (!isInteractiveElement)) {
+        //         e.preventDefault();
+        //         const touch = e.touches[0];
+        //         startDrag(this, touch.clientX, touch.clientY);
+                
+        //         // Add global touch handlers
+        //         document.addEventListener('touchmove', onTouchMove, { passive: false });
+        //         document.addEventListener('touchend', onTouchEnd);
+        //     }
+        // }, { passive: false }); // Prevent default to allow touch cancellation
+    });
+    
+    // Function to clean up any leftover placeholders
+    function cleanupPlaceholders() {
+        // Remove all placeholder elements that might be left over
+        const oldPlaceholders = container.querySelectorAll('.sortable-placeholder');
+        oldPlaceholders.forEach(el => el.parentNode.removeChild(el));
+    }
+    
+    // Function to start dragging
+    function startDrag(item, clientX, clientY) {
+        // Clean up any leftover placeholders first
+        cleanupPlaceholders();
+        
+        draggedItem = item;
+        draggedItem.classList.add('dragging');
+        
+        // Store initial item dimensions before any transformation
+        const rect = draggedItem.getBoundingClientRect();
+        itemHeight = rect.height;
+        itemWidth = rect.width;
+        
+        // Create placeholder with style and content similar to dragged item
+        placeholder = document.createElement('div');
+        placeholder.classList.add('sortable-placeholder');
+        placeholder.style.height = `${itemHeight}px`;
+        placeholder.style.width = `${itemWidth}px`;
+        
+        // Copy some visual elements from the dragged item to the placeholder
+        const itemContent = draggedItem.textContent.trim();
+        if (itemContent) {
+            const ghostContent = document.createElement('span');
+            ghostContent.textContent = itemContent;
+            ghostContent.style.opacity = '0.5';
+            ghostContent.style.padding = '10px 15px';
+            ghostContent.style.display = 'flex';
+            ghostContent.style.alignItems = 'center';
+            placeholder.appendChild(ghostContent);
+        }
+        
+        // Store initial positions
+        initialX = rect.left;
+        initialY = rect.top;
+        startClientX = clientX;
+        startClientY = clientY;
+        
+        // Insert placeholder
+        draggedItem.parentNode.insertBefore(placeholder, draggedItem);
+        
+        // Set dragged item to absolute positioning
+        draggedItem.style.position = 'fixed';
+        draggedItem.style.zIndex = '1000';
+        draggedItem.style.width = `${itemWidth}px`;
+        draggedItem.style.left = `${initialX}px`;
+        draggedItem.style.top = `${initialY}px`;
+    }
+    
+    // Mouse move handler
+    function onMouseMove(e) {
+        if (!draggedItem) return;
+        
+        e.preventDefault();
+        moveDraggedItem(e.clientX, e.clientY);
+    }
+    
+    // Touch move handler
+    function onTouchMove(e) {
+        if (!draggedItem) return;
+        
+        e.preventDefault(); // Prevent scrolling
+        const touch = e.touches[0];
+        moveDraggedItem(touch.clientX, touch.clientY);
+    }
+    
+    // Unified function to move the dragged item
+    function moveDraggedItem(clientX, clientY) {
+        // Calculate how much the cursor has moved
+        const deltaX = clientX - startClientX;
+        const deltaY = clientY - startClientY;
+        
+        // Move the dragged element with transform for better performance
+        draggedItem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        
+        // Find position for placeholder
+        const draggingRect = draggedItem.getBoundingClientRect();
+        const draggingMiddleY = draggingRect.top + draggingRect.height / 2;
+        
+        // Get all sortable items except the one being dragged
+        const siblings = Array.from(container.querySelectorAll('.sortable-item:not(.dragging)'));
+        
+        if (siblings.length === 0) return;
+        
+        // Get first and last items for edge case handling
+        const firstItem = siblings[0];
+        const lastItem = siblings[siblings.length - 1];
+        const firstRect = firstItem.getBoundingClientRect();
+        const lastRect = lastItem.getBoundingClientRect();
+        
+        // Clear all shift classes first
+        siblings.forEach(item => item.classList.remove('shift-up', 'shift-down'));
+        
+        // Check if we should place at the top
+        if (draggingMiddleY < firstRect.top + firstRect.height * 0.25) {
+            firstItem.classList.add('shift-down');
+            container.insertBefore(placeholder, firstItem);
+            return;
+        }
+        
+        // Check if we should place at the bottom
+        if (draggingMiddleY > lastRect.bottom - lastRect.height * 0.25) {
+            lastItem.classList.add('shift-up');
+            container.insertBefore(placeholder, lastItem.nextElementSibling);
+            return;
+        }
+        
+        // Otherwise find the closest item for middle positions
+        let closestItem = null;
+        let closestDistance = Infinity;
+        
+        siblings.forEach(sibling => {
+            const rect = sibling.getBoundingClientRect();
+            const distance = Math.abs(rect.top + rect.height / 2 - draggingMiddleY);
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestItem = sibling;
+            }
+        });
+        
+        // Reposition placeholder and add visual indication
+        if (closestItem) {
+            const rect = closestItem.getBoundingClientRect();
+            // Use a more sensitive threshold (40% of height instead of 50%)
+            const threshold = rect.top + rect.height * 0.4;
+            const isAfter = draggingMiddleY > threshold;
+            
+            // Remove any previous shift classes
+            siblings.forEach(item => {
+                item.classList.remove('shift-up', 'shift-down');
+            });
+            
+            if (isAfter && placeholder.nextElementSibling !== closestItem) {
+                // Moving down - add visual indication
+                closestItem.classList.add('shift-down');
+                container.insertBefore(placeholder, closestItem.nextElementSibling);
+            } else if (!isAfter && placeholder.previousElementSibling !== closestItem) {
+                // Moving up - add visual indication
+                closestItem.classList.add('shift-up');
+                container.insertBefore(placeholder, closestItem);
+            }
+        }
+    }
+    
+    // End drag handlers
+    function onMouseUp() {
+        if (draggedItem) {
+            finishDrag();
+        }
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+    
+    function onTouchEnd() {
+        if (draggedItem) {
+            finishDrag();
+        }
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
+    }
+    
+    function finishDrag() {
+        // Remove all shift classes
+        container.querySelectorAll('.shift-up, .shift-down').forEach(item => {
+            item.classList.remove('shift-up', 'shift-down');
+        });
+        
+        // Insert the dragged item where the placeholder is
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(draggedItem, placeholder);
+            placeholder.parentNode.removeChild(placeholder);
+        }
+        
+        // Clean up any other placeholders that might be left
+        cleanupPlaceholders();
+        
+        // Reset the dragged item
+        draggedItem.classList.remove('dragging');
+        draggedItem.style.position = '';
+        draggedItem.style.top = '';
+        draggedItem.style.left = '';
+        draggedItem.style.width = '';
+        draggedItem.style.transform = '';
+        draggedItem.style.zIndex = '';
+        
+        // Add a small animation to highlight the placed item
+        draggedItem.animate([
+            { transform: 'scale(1.03)', backgroundColor: 'rgba(37, 100, 235, 0.1)' },
+            { transform: 'scale(1)', backgroundColor: 'var(--file-label-color)' }
+        ], {
+            duration: 300,
+            easing: 'ease-out'
+        });
+        
+        draggedItem = null;
+        placeholder = null;
+        
+        // Update the order in localStorage
+        const newOrder = [];
+        document.querySelectorAll('#dashboardSections .sortable-item').forEach(item => {
+            newOrder.push(item.getAttribute('data-section'));
+        });
+        
+        try {
+            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings')) || {};
+            if (!settings.interfaceSettings) settings.interfaceSettings = {};
+            settings.interfaceSettings.dashboardOrder = newOrder;
+            localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+        } catch (err) {
+            console.error('Error updating local storage', err);
+        }
+    }
+}
+
 // Load settings from backend
-async function loadNotificationSettings() {
+async function loadSettings() {
     try {
         const response = await fetch('/api/settings', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to load settings');
@@ -1604,12 +1922,34 @@ async function loadNotificationSettings() {
         notificationForm.notify7Day.checked = !!notificationSettings.notify7Day;
         notificationForm.notify3Day.checked = !!notificationSettings.notify3Day;
         
-        // When adding new settings sections, load them here
-        // Example:
-        // if (settings.generalSettings && document.getElementById('generalSettingsForm')) {
-        //     const generalForm = document.getElementById('generalSettingsForm');
-        //     generalForm.autoRefreshAssets.checked = !!settings.generalSettings.autoRefreshAssets;
-        // }
+        // Load interface settings
+        const interfaceSettings = settings.interfaceSettings || {};
+        if (interfaceSettings.dashboardOrder && Array.isArray(interfaceSettings.dashboardOrder)) {
+            // Reorder the sortable list based on saved settings
+            const dashboardSectionsContainer = document.getElementById('dashboardSections');
+            if (dashboardSectionsContainer) {
+                const sections = dashboardSectionsContainer.querySelectorAll('.sortable-item');
+                const orderedSections = [];
+                
+                // Create an array of elements in the correct order
+                interfaceSettings.dashboardOrder.forEach(sectionName => {
+                    Array.from(sections).forEach(section => {
+                        if (section.getAttribute('data-section') === sectionName) {
+                            orderedSections.push(section);
+                        }
+                    });
+                });
+                
+                // Clear the container and append in the right order
+                dashboardSectionsContainer.innerHTML = '';
+                orderedSections.forEach(section => {
+                    dashboardSectionsContainer.appendChild(section);
+                });
+            }
+        }
+        
+        // Cache settings in localStorage for quick access
+        localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
         
     } catch (err) {
         console.error('Error loading settings:', err);
@@ -1648,14 +1988,19 @@ saveSettings.addEventListener('click', async () => {
             notify2Week: notificationForm.notify2Week.checked,
             notify7Day: notificationForm.notify7Day.checked,
             notify3Day: notificationForm.notify3Day.checked
-        }
+        },
         
-        // When adding new settings sections, add them here
-        // Example:
-        // generalSettings: {
-        //     autoRefreshAssets: document.getElementById('generalSettingsForm')?.autoRefreshAssets.checked
-        // }
+        // Interface settings section
+        interfaceSettings: {
+            dashboardOrder: []
+        }
     };
+    
+    // Get dashboard section order
+    const dashboardSections = document.querySelectorAll('#dashboardSections .sortable-item');
+    dashboardSections.forEach(section => {
+        settings.interfaceSettings.dashboardOrder.push(section.getAttribute('data-section'));
+    });
     
     try {
         const response = await fetch('/api/settings', {
@@ -1665,8 +2010,17 @@ saveSettings.addEventListener('click', async () => {
             credentials: 'include'
         });
         if (!response.ok) throw new Error('Failed to save settings');
+        
+        // Cache settings in localStorage for quick access
+        localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+        
         closeSettingsModal();
         showToast('Settings saved');
+        
+        // Re-render dashboard with new order if we're showing the dashboard
+        if (!selectedAssetId) {
+            renderDashboard();
+        }
     } catch (err) {
         alert('Failed to save settings.');
         console.error(err);
