@@ -74,8 +74,9 @@ const addSubAssetBtn = document.getElementById('addSubAssetBtn');
 const sidebar = document.querySelector('.sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
+const sidebarOpenBtn = document.getElementById('sidebarOpen');
+const sidebarCloseBtn = document.getElementById('sidebarClose');
 const mainContent = document.querySelector('.main-content');
-const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
 const sortNameBtn = document.getElementById('sortNameBtn');
 const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
 
@@ -1242,6 +1243,7 @@ function closeSubAssetModal() {
 function closeSidebar() {
     if (sidebar) sidebar.classList.remove('open');
     if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'none';
+    if (sidebarOpenBtn) sidebarOpenBtn.style.display = 'block';
     if (sidebarToggle) sidebarToggle.style.display = 'block';
     document.querySelector('.app-container').classList.remove('sidebar-active');
     
@@ -1256,7 +1258,7 @@ function closeSidebar() {
 function openSidebar() {
     if (sidebar) sidebar.classList.add('open');
     if (sidebarCloseBtn) sidebarCloseBtn.style.display = 'block';
-    if (sidebarToggle) sidebarToggle.style.display = 'none';
+    if (sidebarOpenBtn) sidebarOpenBtn.style.display = 'none';
     document.querySelector('.app-container').classList.add('sidebar-active');
     
     // Show overlay directly with JavaScript for cross-browser compatibility

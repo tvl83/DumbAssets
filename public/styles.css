@@ -347,8 +347,7 @@ input[type="date"][data-has-value="true"] {
 }
 
 /* Theme toggle */
-.header-btn,
-#themeToggle {
+.header-btn, #sidebarToggle, #themeToggle {
     top: 1rem;
     right: 1rem;
     background: none;
@@ -365,13 +364,11 @@ input[type="date"][data-has-value="true"] {
 
 }
 
-.header-btn:hover,
-#themeToggle:hover {
+.header-btn:hover, #sidebarToggle:hover, #themeToggle:hover {
     background: rgba(128, 128, 128, 0.1);
 }
 
-.header-btn svg,
-#themeToggle svg {
+.header-btn svg, #sidebarToggle svg, #themeToggle svg {
     width: 24px;
     height: 24px;
     stroke: var(--text);
