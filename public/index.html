@@ -491,36 +491,48 @@
                 </div>
             </div>
 
-            <!-- Notification Settings Modal -->
-            <div id="notificationModal" class="modal">
+            <!-- Settings Modal -->
+            <div id="settingsModal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2 id="noficationSettingsTitle" class="modal-title">Notification Settings</h2>
+                        <h2 id="settingsTitle" class="modal-title">Settings</h2>
                         <div class="close-btn">
                             <span>&times;</span>
                         </div>
                     </div>
                     <div class="modal-body">
-                        <form id="notificationForm">
-                            <fieldset>
-                                <legend>Events</legend>
-                                <label><input type="checkbox" name="notifyAdd" id="notifyAdd"> Asset Added</label><br>
-                                <label><input type="checkbox" name="notifyDelete" id="notifyDelete"> Asset Deleted</label><br>
-                                <label><input type="checkbox" name="notifyEdit" id="notifyEdit"> Asset Edited</label>
-                            </fieldset>
-                            <fieldset style="margin-top:1em;">
-                                <legend>Warranty Expirations</legend>
-                                <label><input type="checkbox" name="notify1Month" id="notify1Month"> 1 Mo</label><br>
-                                <label><input type="checkbox" name="notify2Week" id="notify2Week"> 2 wk</label><br>
-                                <label><input type="checkbox" name="notify7Day" id="notify7Day"> 1 wk</label><br>
-                                <label><input type="checkbox" name="notify3Day" id="notify3Day"> 3 d</label>
-                            </fieldset>
-                            <div class="modal-actions">
-                                <button type="button" id="saveNotificationSettings" class="action-button">Save<div class="spinner"></div></button>
-                                <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--success-color);">Test<div class="spinner"></div></button>
-                                <button type="button" id="cancelNotificationSettings" class="action-button" style="background: var(--secondary-color);">Cancel</button>
+                        <div class="settings-tabs">
+                            <div class="tab-nav">
+                                <button class="tab-btn active" data-tab="notifications">Notifications</button>
+                                <!-- Add more tab buttons here in the future -->
                             </div>
-                        </form>
+                            <div class="tab-content">
+                                <!-- Notifications Settings Tab -->
+                                <div class="tab-pane active" id="notifications-tab">
+                                    <form id="notificationForm">
+                                        <fieldset>
+                                            <legend>Events</legend>
+                                            <label><input type="checkbox" name="notifyAdd" id="notifyAdd"> Asset Added</label><br>
+                                            <label><input type="checkbox" name="notifyDelete" id="notifyDelete"> Asset Deleted</label><br>
+                                            <label><input type="checkbox" name="notifyEdit" id="notifyEdit"> Asset Edited</label>
+                                        </fieldset>
+                                        <fieldset style="margin-top:1em;">
+                                            <legend>Warranty Expirations</legend>
+                                            <label><input type="checkbox" name="notify1Month" id="notify1Month"> 1 Mo</label><br>
+                                            <label><input type="checkbox" name="notify2Week" id="notify2Week"> 2 wk</label><br>
+                                            <label><input type="checkbox" name="notify7Day" id="notify7Day"> 1 wk</label><br>
+                                            <label><input type="checkbox" name="notify3Day" id="notify3Day"> 3 d</label>
+                                        </fieldset>
+                                        <div class="modal-actions">
+                                            <button type="button" id="saveNotificationSettings" class="action-button">Save<div class="spinner"></div></button>
+                                            <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--success-color);">Test<div class="spinner"></div></button>
+                                            <button type="button" id="cancelNotificationSettings" class="action-button" style="background: var(--secondary-color);">Cancel</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!-- Add more tab panes here in the future -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

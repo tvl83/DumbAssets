@@ -88,13 +88,13 @@ const importFile = document.getElementById('importFile');
 const startImportBtn = document.getElementById('startImportBtn');
 const columnSelects = document.querySelectorAll('.column-select');
 
-// Notification Settings UI Logic
+// Settings UI Logic
 const notificationBtn = document.getElementById('notificationBtn');
-const notificationModal = document.getElementById('notificationModal');
+const settingsModal = document.getElementById('settingsModal');
 const notificationForm = document.getElementById('notificationForm');
 const saveNotificationSettings = document.getElementById('saveNotificationSettings');
 const cancelNotificationSettings = document.getElementById('cancelNotificationSettings');
-const notificationClose = notificationModal.querySelector('.close-btn');
+const settingsClose = settingsModal.querySelector('.close-btn');
 const testNotificationSettings = document.getElementById('testNotificationSettings');
 
 // Utility Functions
@@ -1537,14 +1537,44 @@ window.resetImportForm = resetImportForm;
 // Open modal
 notificationBtn.addEventListener('click', async () => {
     await loadNotificationSettings();
-    notificationModal.style.display = 'block';
+    settingsModal.style.display = 'block';
+    // Default to notifications tab
+    showSettingsTab('notifications');
 });
 // Close modal
-function closeNotificationModal() {
-    notificationModal.style.display = 'none';
+function closeSettingsModal() {
+    settingsModal.style.display = 'none';
 }
-notificationClose.addEventListener('click', closeNotificationModal);
-cancelNotificationSettings.addEventListener('click', closeNotificationModal);
+settingsClose.addEventListener('click', closeSettingsModal);
+cancelNotificationSettings.addEventListener('click', closeSettingsModal);
+
+// Tab switching functionality
+function showSettingsTab(tabId) {
+    // Hide all tab panes
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+    // Deactivate all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab pane
+    const selectedPane = document.getElementById(tabId + '-tab');
+    if (selectedPane) selectedPane.classList.add('active');
+    
+    // Activate selected tab button
+    const selectedBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    if (selectedBtn) selectedBtn.classList.add('active');
+}
+
+// Add event listeners for tab buttons
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabId = this.getAttribute('data-tab');
+        showSettingsTab(tabId);
+    });
+});
 
 // Load settings from backend
 async function loadNotificationSettings() {
@@ -1601,7 +1631,7 @@ saveNotificationSettings.addEventListener('click', async () => {
             credentials: 'include'
         });
         if (!response.ok) throw new Error('Failed to save notification settings');
-        closeNotificationModal();
+        closeSettingsModal();
         showToast('Settings saved');
     } catch (err) {
         alert('Failed to save notification settings.');
@@ -1646,7 +1676,7 @@ function updateSortButtons(activeButton) {
 }
 
 // Add click-off-to-close for modals
-[assetModal, subAssetModal, importModal, notificationModal].forEach(modal => {
+[assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
     if (modal) {
         modal.addEventListener('mousedown', function(e) {
             if (e.target === modal) {

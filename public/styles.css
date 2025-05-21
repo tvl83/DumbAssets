@@ -1198,16 +1198,16 @@ input[type="date"][data-has-value="true"] {
     text-align: right;
 }
 
-/* Notification Modal Styles */
-#notificationModal .modal-header {
+/* Settings Modal Styles */
+#settingsModal .modal-header {
     padding-bottom: 0.5rem;
     padding-top: 0.5rem;
 }
-#notificationModal .modal-content {
-    max-width: 420px;
+#settingsModal .modal-content {
+    max-width: 500px;
     padding: 0;
 }
-#notificationModal .modal-header h2 {
+#settingsModal .modal-header h2 {
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--text);
@@ -1215,30 +1215,64 @@ input[type="date"][data-has-value="true"] {
     text-align: center;
     flex: 1;
 }
-#notificationModal .modal-body {
+#settingsModal .modal-body {
     padding: 1.5em;
     display: flex;
     flex-direction: column;
-    align-items: center;
 }
-#notificationModal #notificationForm {
+#settingsModal .settings-tabs {
+    width: 100%;
+}
+#settingsModal .tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5em;
+}
+#settingsModal .tab-btn {
+    padding: 0.5em 1.5em;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.2s ease;
+}
+#settingsModal .tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+#settingsModal .tab-btn:hover:not(.active) {
+    border-bottom-color: var(--border-color);
+    color: var(--text);
+}
+#settingsModal .tab-content {
+    margin-top: 0.5em;
+}
+#settingsModal .tab-pane {
+    display: none;
+}
+#settingsModal .tab-pane.active {
+    display: block;
+}
+#settingsModal #notificationForm {
     width: 100%;
     max-width: calc(100% - 1rem);
     margin: 0 auto;
 }
-#notificationModal fieldset {
+#settingsModal fieldset {
     border: var(--app-border);
     border-radius: var(--app-border-radius);
     padding: 0.75em 1em 0.5em 1.5em;
     margin-bottom: 1em;
     min-width: 0;
 }
-#notificationModal legend {
+#settingsModal legend {
     font-weight: 600;
     font-size: 1.05em;
     color: var(--primary-color);
 }
-#notificationModal label {
+#settingsModal label {
     display: flex;
     align-items: center;
     font-size: 1em;
@@ -1247,13 +1281,13 @@ input[type="date"][data-has-value="true"] {
     gap: 0.5em;
     padding-left: 0.1em;
 }
-#notificationModal label input[type="checkbox"] {
+#settingsModal label input[type="checkbox"] {
     margin: 0;
     accent-color: var(--primary-color);
     width: 1.1em;
     height: 1.1em;
 }
-#notificationModal .modal-actions {
+#settingsModal .modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
