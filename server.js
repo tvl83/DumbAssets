@@ -1035,42 +1035,51 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
     }
 });
 
-// Get notification settings
-app.get('/api/notification-settings', authMiddleware, (req, res) => {
+// Get all settings
+app.get('/api/settings', authMiddleware, (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
         if (!fs.existsSync(configPath)) {
             // Default settings if config does not exist
             return res.json({
-                notifyAdd: true,
-                notifyDelete: false,
-                notifyEdit: true,
-                notify1Month: true,
-                notify2Week: false,
-                notify7Day: true,
-                notify3Day: false
+                notificationSettings: {
+                    notifyAdd: true,
+                    notifyDelete: false,
+                    notifyEdit: true,
+                    notify1Month: true,
+                    notify2Week: false,
+                    notify7Day: true,
+                    notify3Day: false
+                }
+                // Add other default settings sections here as needed
             });
         }
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        res.json(config.notificationSettings || {});
+        res.json(config);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to load notification settings' });
+        res.status(500).json({ error: 'Failed to load settings' });
     }
 });
 
-// Save notification settings
-app.post('/api/notification-settings', authMiddleware, express.json(), (req, res) => {
+// Save all settings
+app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
         let config = {};
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }
-        config.notificationSettings = req.body;
+        
+        // Update settings with the new values
+        // This allows for saving multiple setting sections at once
+        Object.keys(req.body).forEach(section => {
+            config[section] = req.body[section];
+        });
+        
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to save notification settings' });
+        res.status(500).json({ error: 'Failed to save settings' });
     }
 });
 
@@ -1087,8 +1096,9 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
         }
         // Use APPRISE_URL from env or config
         const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+        const notificationSettings = config.notificationSettings || {};
         if (DEBUG) {
-            console.log('[DEBUG] Notification settings (test):', config.notificationSettings, 'Apprise URL:', appriseUrl);
+            console.log('[DEBUG] Notification settings (test):', notificationSettings, 'Apprise URL:', appriseUrl);
         }
         if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
         // Send test notification

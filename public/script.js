@@ -92,8 +92,8 @@ const columnSelects = document.querySelectorAll('.column-select');
 const notificationBtn = document.getElementById('notificationBtn');
 const settingsModal = document.getElementById('settingsModal');
 const notificationForm = document.getElementById('notificationForm');
-const saveNotificationSettings = document.getElementById('saveNotificationSettings');
-const cancelNotificationSettings = document.getElementById('cancelNotificationSettings');
+const saveSettings = document.getElementById('saveSettings');
+const cancelSettings = document.getElementById('cancelSettings');
 const settingsClose = settingsModal.querySelector('.close-btn');
 const testNotificationSettings = document.getElementById('testNotificationSettings');
 
@@ -1546,7 +1546,7 @@ function closeSettingsModal() {
     settingsModal.style.display = 'none';
 }
 settingsClose.addEventListener('click', closeSettingsModal);
-cancelNotificationSettings.addEventListener('click', closeSettingsModal);
+cancelSettings.addEventListener('click', closeSettingsModal);
 
 // Tab switching functionality
 function showSettingsTab(tabId) {
@@ -1561,7 +1561,15 @@ function showSettingsTab(tabId) {
     
     // Show selected tab pane
     const selectedPane = document.getElementById(tabId + '-tab');
-    if (selectedPane) selectedPane.classList.add('active');
+    if (selectedPane) {
+        selectedPane.classList.add('active');
+        // if selected pane is notifications, then show test button else hide test button
+        if (tabId === 'notifications') {
+            testNotificationSettings.style.display = 'block';
+        } else {
+            testNotificationSettings.style.display = 'none';
+        }
+    }
     
     // Activate selected tab button
     const selectedBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
@@ -1579,18 +1587,30 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // Load settings from backend
 async function loadNotificationSettings() {
     try {
-        const response = await fetch('/api/notification-settings', { credentials: 'include' });
-        if (!response.ok) throw new Error('Failed to load notification settings');
+        const response = await fetch('/api/settings', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to load settings');
         const settings = await response.json();
-        notificationForm.notifyAdd.checked = !!settings.notifyAdd;
-        notificationForm.notifyDelete.checked = !!settings.notifyDelete;
-        notificationForm.notifyEdit.checked = !!settings.notifyEdit;
-        notificationForm.notify1Month.checked = !!settings.notify1Month;
-        notificationForm.notify2Week.checked = !!settings.notify2Week;
-        notificationForm.notify7Day.checked = !!settings.notify7Day;
-        notificationForm.notify3Day.checked = !!settings.notify3Day;
+        
+        // Load notification settings
+        const notificationSettings = settings.notificationSettings || {};
+        notificationForm.notifyAdd.checked = !!notificationSettings.notifyAdd;
+        notificationForm.notifyDelete.checked = !!notificationSettings.notifyDelete;
+        notificationForm.notifyEdit.checked = !!notificationSettings.notifyEdit;
+        notificationForm.notify1Month.checked = !!notificationSettings.notify1Month;
+        notificationForm.notify2Week.checked = !!notificationSettings.notify2Week;
+        notificationForm.notify7Day.checked = !!notificationSettings.notify7Day;
+        notificationForm.notify3Day.checked = !!notificationSettings.notify3Day;
+        
+        // When adding new settings sections, load them here
+        // Example:
+        // if (settings.generalSettings && document.getElementById('generalSettingsForm')) {
+        //     const generalForm = document.getElementById('generalSettingsForm');
+        //     generalForm.autoRefreshAssets.checked = !!settings.generalSettings.autoRefreshAssets;
+        // }
+        
     } catch (err) {
-        // fallback: uncheck all
+        console.error('Error loading settings:', err);
+        // fallback: set default values for notification settings
         notificationForm.notifyAdd.checked = true;
         notificationForm.notifyDelete.checked = false;
         notificationForm.notifyEdit.checked = true;
@@ -1611,32 +1631,44 @@ function showToast(message) {
     }, 2000);
 }
 
-saveNotificationSettings.addEventListener('click', async () => {
-    setButtonLoading(saveNotificationSettings, true);
+saveSettings.addEventListener('click', async () => {
+    setButtonLoading(saveSettings, true);
     
+    // Create a settings object with all sections
     const settings = {
-        notifyAdd: notificationForm.notifyAdd.checked,
-        notifyDelete: notificationForm.notifyDelete.checked,
-        notifyEdit: notificationForm.notifyEdit.checked,
-        notify1Month: notificationForm.notify1Month.checked,
-        notify2Week: notificationForm.notify2Week.checked,
-        notify7Day: notificationForm.notify7Day.checked,
-        notify3Day: notificationForm.notify3Day.checked
+        // Notification settings section
+        notificationSettings: {
+            notifyAdd: notificationForm.notifyAdd.checked,
+            notifyDelete: notificationForm.notifyDelete.checked,
+            notifyEdit: notificationForm.notifyEdit.checked,
+            notify1Month: notificationForm.notify1Month.checked,
+            notify2Week: notificationForm.notify2Week.checked,
+            notify7Day: notificationForm.notify7Day.checked,
+            notify3Day: notificationForm.notify3Day.checked
+        }
+        
+        // When adding new settings sections, add them here
+        // Example:
+        // generalSettings: {
+        //     autoRefreshAssets: document.getElementById('generalSettingsForm')?.autoRefreshAssets.checked
+        // }
     };
+    
     try {
-        const response = await fetch('/api/notification-settings', {
+        const response = await fetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings),
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to save notification settings');
+        if (!response.ok) throw new Error('Failed to save settings');
         closeSettingsModal();
         showToast('Settings saved');
     } catch (err) {
-        alert('Failed to save notification settings.');
+        alert('Failed to save settings.');
+        console.error(err);
     } finally {
-        setButtonLoading(saveNotificationSettings, false);
+        setButtonLoading(saveSettings, false);
     }
 });
 

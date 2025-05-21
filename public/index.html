@@ -504,6 +504,7 @@
                         <div class="settings-tabs">
                             <div class="tab-nav">
                                 <button class="tab-btn active" data-tab="notifications">Notifications</button>
+                                <button class="tab-btn" data-tab="interface">Interface</button>
                                 <!-- Add more tab buttons here in the future -->
                             </div>
                             <div class="tab-content">
@@ -569,14 +570,52 @@
                                                 </div>
                                             </div>
                                         </fieldset>
-                                        <div class="modal-actions">
-                                            <button type="button" id="saveNotificationSettings" class="action-button">Save<div class="spinner"></div></button>
-                                            <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--success-color);">Test<div class="spinner"></div></button>
-                                            <button type="button" id="cancelNotificationSettings" class="action-button" style="background: var(--secondary-color);">Cancel</button>
-                                        </div>
                                     </form>
                                 </div>
+                                <div class="tab-pane" id="interface-tab">
+                                    <form id="interfaceSettingsForm">
+                                        <fieldset>
+                                            <legend>Dashboard</legend>
+                                            <!-- <div class="settings-grid">
+                                                <div class="toggle-row">
+                                                    <span>Auto-refresh Assets</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" name="autoRefreshAssets" id="autoRefreshAssets">
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                            </div> -->
+                                        </fieldset>
+                                    </form>
+                                </div>
+
                                 <!-- Add more tab panes here in the future -->
+                                
+                                <!-- Example for a future tab -->
+                                <!-- <div class="tab-pane" id="general-tab">
+                                    <form id="generalSettingsForm">
+                                        <fieldset>
+                                            <legend>Application</legend>
+                                            <div class="settings-grid">
+                                                <div class="toggle-row">
+                                                    <span>Auto-refresh Assets</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" name="autoRefreshAssets" id="autoRefreshAssets">
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                    </form>
+                                </div> -->
+                            </div>
+                            
+                            <!-- Settings modal actions - now outside of individual forms -->
+                            <div class="modal-actions">
+                                <button type="button" id="saveSettings" class="action-button">Save<div class="spinner"></div></button>
+                                <button type="button" id="testNotificationSettings" class="action-button" style="background: var(--success-color);">Test<div class="spinner"></div></button>
+                                <button type="button" id="cancelSettings" class="action-button" style="background: var(--secondary-color);">Cancel</button>
+                            </div>
                             </div>
                         </div>
                     </div>

@@ -32,7 +32,8 @@ function startWarrantyCron() {
     cron.schedule('1 12 * * *', () => {
         const assets = readJsonFile(assetsFilePath);
         const now = DateTime.now();
-        const notificationSettings = readJsonFile(notificationSettingsPath);
+        const settings = readJsonFile(notificationSettingsPath);
+        const notificationSettings = settings.notificationSettings || {};
         const appriseUrl = process.env.APPRISE_URL;
 
         // Helper function to check and send warranty notifications
