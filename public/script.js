@@ -728,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Re-render list and dashboard
                 searchInput.value = '';
                 renderAssetList(searchInput.value);
-                renderEmptyState();
+                renderEmptyState(false);
             });
         }
 
@@ -760,9 +760,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderEmptyState() {
+    function renderEmptyState(animateCharts = true) {
         // Always render dashboard and charts when showing empty state
-        renderDashboard(true);
+        renderDashboard(animateCharts);
         subAssetContainer.classList.add('hidden');
     }
 

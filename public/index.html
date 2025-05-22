@@ -590,64 +590,7 @@
                                 <div class="tab-pane" id="interface-tab">
                                     <form id="interfaceSettingsForm">
                                         <fieldset>
-                                            <legend>Dashboard Order</legend>
-                                            <p class="settings-hint">Drag and drop to reorder dashboard sections:</p>
-                                            <div class="sortable-list" id="dashboardSections">
-                                                <div class="sortable-item" data-section="totals">
-                                                    <div class="sortable-handle">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                            <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                                            <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
-                                                            <path d="M3 3l0 .01" />
-                                                            <path d="M7 3l0 .01" />
-                                                            <path d="M11 3l0 .01" />
-                                                            <path d="M15 3l0 .01" />
-                                                            <path d="M3 7l0 .01" />
-                                                            <path d="M3 11l0 .01" />
-                                                            <path d="M3 15l0 .01" />
-                                                        </svg>
-                                                    </div>
-                                                    <span>Totals</span>
-                                                </div>
-                                                <div class="sortable-item" data-section="warranties">
-                                                    <div class="sortable-handle">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                            <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                                            <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
-                                                            <path d="M3 3l0 .01" />
-                                                            <path d="M7 3l0 .01" />
-                                                            <path d="M11 3l0 .01" />
-                                                            <path d="M15 3l0 .01" />
-                                                            <path d="M3 7l0 .01" />
-                                                            <path d="M3 11l0 .01" />
-                                                            <path d="M3 15l0 .01" />
-                                                        </svg>
-                                                    </div>
-                                                    <span>Warranties</span>
-                                                </div>
-                                                <div class="sortable-item" data-section="analytics">
-                                                    <div class="sortable-handle">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                            <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
-                                                            <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
-                                                            <path d="M3 3l0 .01" />
-                                                            <path d="M7 3l0 .01" />
-                                                            <path d="M11 3l0 .01" />
-                                                            <path d="M15 3l0 .01" />
-                                                            <path d="M3 7l0 .01" />
-                                                            <path d="M3 11l0 .01" />
-                                                            <path d="M3 15l0 .01" />
-                                                        </svg>
-                                                    </div>
-                                                    <span>Analytics</span>
-                                                </div>
-                                            </div>
-                                        </fieldset>
-                                        <fieldset>
-                                            <legend>Dashboard View</legend>
+                                            <legend>Dashboard</legend>
                                             <div class="settings-grid">
                                                 <div class="toggle-row">
                                                     <span>Show Totals</span>
@@ -671,6 +614,63 @@
                                                     </label>
                                                 </div>
                                             </div>
+                                            <fieldset>
+                                                <legend>Order</legend>
+                                                <p class="settings-hint">Drag and drop to reorder dashboard sections:</p>
+                                                <div class="sortable-list" id="dashboardSections">
+                                                    <div class="sortable-item" data-section="totals">
+                                                        <div class="sortable-handle">
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                                <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
+                                                                <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
+                                                                <path d="M3 3l0 .01" />
+                                                                <path d="M7 3l0 .01" />
+                                                                <path d="M11 3l0 .01" />
+                                                                <path d="M15 3l0 .01" />
+                                                                <path d="M3 7l0 .01" />
+                                                                <path d="M3 11l0 .01" />
+                                                                <path d="M3 15l0 .01" />
+                                                            </svg>
+                                                        </div>
+                                                        <span>Totals</span>
+                                                    </div>
+                                                    <div class="sortable-item" data-section="warranties">
+                                                        <div class="sortable-handle">
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                                <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
+                                                                <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
+                                                                <path d="M3 3l0 .01" />
+                                                                <path d="M7 3l0 .01" />
+                                                                <path d="M11 3l0 .01" />
+                                                                <path d="M15 3l0 .01" />
+                                                                <path d="M3 7l0 .01" />
+                                                                <path d="M3 11l0 .01" />
+                                                                <path d="M3 15l0 .01" />
+                                                            </svg>
+                                                        </div>
+                                                        <span>Warranties</span>
+                                                    </div>
+                                                    <div class="sortable-item" data-section="analytics">
+                                                        <div class="sortable-handle">
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                                <path d="M19 11v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
+                                                                <path d="M13 13l9 3l-4 2l-2 4l-3 -9" />
+                                                                <path d="M3 3l0 .01" />
+                                                                <path d="M7 3l0 .01" />
+                                                                <path d="M11 3l0 .01" />
+                                                                <path d="M15 3l0 .01" />
+                                                                <path d="M3 7l0 .01" />
+                                                                <path d="M3 11l0 .01" />
+                                                                <path d="M3 15l0 .01" />
+                                                            </svg>
+                                                        </div>
+                                                        <span>Analytics</span>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
                                         </fieldset>
                                     </form>
                                 </div>
