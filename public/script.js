@@ -37,6 +37,11 @@ import { initCollapsibleSections } from './js/collapsible.js';
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 import { ImportManager } from './managers/import.js';
+import {     
+    getMaintenanceScheduleFromModal,
+    setMaintenanceScheduleInModal,
+    setupMaintenanceScheduleFields 
+} from '../src/services/render/assetRenderer.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize global variables for DOM elements
@@ -949,9 +954,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
             }
+            setMaintenanceScheduleInModal('asset', asset.maintenanceSchedule || {});
         } else {
             assetForm.reset();
             assetTagManager.setTags([]);
+            setMaintenanceScheduleInModal('asset', {});
         }
         // Set up form submission
         assetForm.onsubmit = (e) => {
@@ -972,7 +979,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 link: document.getElementById('assetLink').value,
                 description: document.getElementById('assetDescription').value,
                 tags: assetTagManager.getTags(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                maintenanceSchedule: getMaintenanceScheduleFromModal('asset')
             };
             
             // Add secondary warranty if fields are visible and filled
@@ -1054,6 +1062,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (photoPreview) photoPreview.innerHTML = '';
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
+
+        // Reset maintenance schedule inputs to default
+        if (typeof setMaintenanceScheduleInModal === 'function') {
+            setMaintenanceScheduleInModal('asset');
+        }
 
         assetModal.style.display = 'none';
     }
@@ -1181,9 +1194,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
             }
+            setMaintenanceScheduleInModal('subAsset', subAsset.maintenanceSchedule || {});
         } else {
             subAssetForm.reset();
             subAssetTagManager.setTags([]);
+            setMaintenanceScheduleInModal('subAsset', {});
         }
         
         // Set up form submission
@@ -1231,7 +1246,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     scope: warrantyScopeInput ? warrantyScopeInput.value : '',
                     expirationDate: warrantyExpirationInput ? warrantyExpirationInput.value : ''
                 },
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                maintenanceSchedule: getMaintenanceScheduleFromModal('subAsset')
             };
             
             // Debug log the sub-asset data before file uploads
@@ -1312,6 +1328,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (photoPreview) photoPreview.innerHTML = '';
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
+
+        // Reset maintenance schedule inputs to default
+        if (typeof setMaintenanceScheduleInModal === 'function') {
+            setMaintenanceScheduleInModal('subAsset');
+        }
 
         subAssetModal.style.display = 'none';
     }
@@ -1454,31 +1475,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // Get sub-assets for this parent
         const parentSubAssets = subAssets.filter(sa => sa.parentId === parentAssetId && !sa.parentSubId);
         
-        // Show or hide the container
-        subAssetContainer.classList.remove('hidden');
         
+        // Render the sub-asset header (the + Add Component button)
+        const subAssetHeader = subAssetContainer.querySelector('.sub-asset-header');
+        if (subAssetHeader) {
+            subAssetHeader.innerHTML = `
+            <button id="addSubAssetBtn" class="add-sub-asset-btn">+ Add Component</button>
+            `;
+            const addSubAssetBtn = subAssetHeader.querySelector('#addSubAssetBtn');
+            if (addSubAssetBtn) {
+                addSubAssetBtn.onclick = () => openSubAssetModal(null, parentAssetId);
+            }
+        }
+        
+        // Render the sub-asset list
         if (parentSubAssets.length === 0) {
             subAssetList.innerHTML = `
-                <div class="empty-state">
-                    <p>No components found. Add your first component.</p>
-                </div>
+            <div class="empty-state">
+                <p>No components found. Add your first component.</p>
+            </div>
             `;
         } else {
             subAssetList.innerHTML = '';
-            
-            // Render each sub-asset with any children
             parentSubAssets.forEach(subAsset => {
                 const subAssetElement = createSubAssetElement(subAsset);
                 subAssetList.appendChild(subAssetElement);
             });
         }
         
-        // Set up the "Add Sub-Asset" button
-        if (addSubAssetBtn) {
-            addSubAssetBtn.onclick = () => {
-                openSubAssetModal(null, parentAssetId);
-            };
-        }
+        // Show or hide the container
+        subAssetContainer.classList.remove('hidden');
     }
 
     function createSubAssetElement(subAsset) {
@@ -1512,9 +1538,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Create header with name and actions
-        const header = document.createElement('div');
-        header.className = 'sub-asset-header';
-        header.innerHTML = `
+        const details = document.createElement('div');
+        details.className = 'sub-asset-details';
+        details.innerHTML = `
             ${warrantyDot}
             <div class="sub-asset-title">${subAsset.name}</div>
             <div class="sub-asset-actions">
@@ -1528,19 +1554,19 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         
         // Set up button event listeners
-        const editBtn = header.querySelector('.edit-sub-btn');
+        const editBtn = details.querySelector('.edit-sub-btn');
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             openSubAssetModal(subAsset);
         });
         
-        const deleteBtn = header.querySelector('.delete-sub-btn');
+        const deleteBtn = details.querySelector('.delete-sub-btn');
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             deleteSubAsset(subAsset.id);
         });
         
-        element.appendChild(header);
+        element.appendChild(details);
         
         // Add summary info
         const info = document.createElement('div');
@@ -1652,9 +1678,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     // Create child header
-                    const childHeader = document.createElement('div');
-                    childHeader.className = 'sub-asset-header';
-                    childHeader.innerHTML = `
+                    const childDetails = document.createElement('div');
+                    childDetails.className = 'sub-asset-details';
+                    childDetails.innerHTML = `
                         ${childWarrantyDot}
                         <div class="sub-asset-title">${child.name}</div>
                         <div class="sub-asset-actions">
@@ -1666,7 +1692,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                         </div>
                     `;
-                    childElement.appendChild(childHeader);
+                    childElement.appendChild(childDetails);
                     
                     // Add child info section with tags
                     const childInfo = document.createElement('div');

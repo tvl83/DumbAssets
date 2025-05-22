@@ -209,6 +209,20 @@
                             <label for="assetDescription">Description</label>
                             <textarea id="assetDescription" name="description" rows="3"></textarea>
                         </div>
+                        <div class="form-group">
+                            <label for="assetMaintenanceScheduleFrequency">Maintenance Schedule</label>
+                            <div class="maintenance-schedule-row">
+                                <select id="assetMaintenanceScheduleUnit" name="maintenanceScheduleUnit" class="maintenance-schedule-unit">
+                                    <option value="days">Days</option>
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <input type="number" id="assetMaintenanceScheduleFrequency" name="maintenanceScheduleFrequency" min="1" class="maintenance-schedule-frequency" placeholder="Frequency">
+                                <input type="text" id="assetMaintenanceScheduleCustom" name="maintenanceScheduleCustom" class="maintenance-schedule-custom hidden" placeholder="e.g. Every 2nd Monday, 15th of month, etc.">
+                            </div>
+                        </div>
                         <div class="collapsible-section" data-collapsed="true">
                             <div class="collapsible-header">
                                 <h3>File Attachments</h3>
@@ -330,6 +344,20 @@
                             <input type="date" id="subAssetWarrantyExpiration" name="warrantyExpiration">
                         </div>
 
+                        <div class="form-group">
+                            <label for="subAssetMaintenanceScheduleFrequency">Maintenance Schedule</label>
+                            <div class="maintenance-schedule-row">
+                                <select id="subAssetMaintenanceScheduleUnit" name="maintenanceScheduleUnit" class="maintenance-schedule-unit">
+                                    <option value="days">Days</option>
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <input type="number" id="subAssetMaintenanceScheduleFrequency" name="maintenanceScheduleFrequency" min="1" class="maintenance-schedule-frequency" placeholder="Frequency">
+                                <input type="text" id="subAssetMaintenanceScheduleCustom" name="maintenanceScheduleCustom" class="maintenance-schedule-custom hidden" placeholder="e.g. Every 2nd Monday, 15th of month, etc.">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label for="subAssetTags">Tags</label>
                             <div class="tag-input-wrapper">
@@ -551,7 +579,7 @@
                                             </div>
                                         </fieldset>
                                         <fieldset style="margin-top:1em;">
-                                            <legend>Warranty Expirations</legend>
+                                            <legend>Warranty Expirations & Maintenance</legend>
                                             <div class="settings-grid">
                                                 <div class="toggle-row">
                                                     <span>1 Month</span>
@@ -578,6 +606,13 @@
                                                     <span>3 Days</span>
                                                     <label class="toggle-switch">
                                                         <input type="checkbox" name="notify3Day" id="notify3Day">
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Maintenance</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" name="notifyMaintenance" id="notifyMaintenance">
                                                         <span class="slider"></span>
                                                     </label>
                                                 </div>

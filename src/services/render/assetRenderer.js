@@ -55,6 +55,9 @@ function initRenderer(config) {
     assetList = config.assetList;
     assetDetails = config.assetDetails;
     subAssetContainer = config.subAssetContainer;
+
+    setupMaintenanceScheduleFields('asset');
+    setupMaintenanceScheduleFields('subAsset');
 }
 
 /**
@@ -141,14 +144,6 @@ function generateAssetInfoHTML(asset) {
             <div class="info-label">Secondary Warranty</div>
             <div>${asset.secondaryWarranty.scope || 'N/A'}</div>
             <div>${formatDate(asset.secondaryWarranty.expirationDate)}</div>
-        </div>
-        ` : ''}
-        ${asset.tags && asset.tags.length > 0 ? `
-        <div class="info-item">
-            <div class="info-label">Tags</div>
-            <div class="tag-list">
-                ${asset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-            </div>
         </div>
         ` : ''}
         ${asset.link ? `
@@ -260,6 +255,13 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                 <p>${asset.description || asset.notes}</p>
             </div>
             ` : ''}
+            ${asset.tags && asset.tags.length > 0 ? `
+            <div class="info-item" style="margin-bottom: 1rem;">
+                <div class="info-label">Tags</div>
+                <div class="tag-list">
+                    ${asset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                </div>
+            </div>` : ''}
             <div class="asset-files">
                 <div class="files-grid">
                     ${photoPath ? `
@@ -364,11 +366,88 @@ function renderAssetDetails(assetId, isSubAsset = false) {
     handleSidebarNav();
 }
 
+// Display maintenance schedule in asset details
+if (typeof asset !== 'undefined' && asset.maintenanceSchedule) {
+    let scheduleText = '';
+    if (asset.maintenanceSchedule.unit === 'custom') {
+        scheduleText = asset.maintenanceSchedule.custom;
+    } else if (asset.maintenanceSchedule.frequency && asset.maintenanceSchedule.unit) {
+        scheduleText = `Every ${asset.maintenanceSchedule.frequency} ${asset.maintenanceSchedule.unit}`;
+    }
+    if (scheduleText) {
+        html += `<div class="asset-detail-row"><strong>Maintenance Schedule:</strong> ${scheduleText}</div>`;
+    }
+}
+
+// For sub-assets, similar logic:
+if (typeof subAsset !== 'undefined' && subAsset.maintenanceSchedule) {
+    let scheduleText = '';
+    if (subAsset.maintenanceSchedule.unit === 'custom') {
+        scheduleText = subAsset.maintenanceSchedule.custom;
+    } else if (subAsset.maintenanceSchedule.frequency && subAsset.maintenanceSchedule.unit) {
+        scheduleText = `Every ${subAsset.maintenanceSchedule.frequency} ${subAsset.maintenanceSchedule.unit}`;
+    }
+    if (scheduleText) {
+        html += `<div class="asset-detail-row"><strong>Maintenance Schedule:</strong> ${scheduleText}</div>`;
+    }
+}
+
+/**
+ * Maintenance Schedule helpers
+ */
+function getMaintenanceScheduleFromModal(prefix) {
+    const freq = document.getElementById(prefix + 'MaintenanceScheduleFrequency').value;
+    const unit = document.getElementById(prefix + 'MaintenanceScheduleUnit').value;
+    const custom = document.getElementById(prefix + 'MaintenanceScheduleCustom').value;
+    if (unit === 'custom') {
+        return { frequency: '', unit, custom };
+    }
+    return { frequency: freq, unit, custom: '' };
+}
+
+function setMaintenanceScheduleInModal(prefix, schedule) {
+    const freqInput = document.getElementById(prefix + 'MaintenanceScheduleFrequency');
+    const unitSelect = document.getElementById(prefix + 'MaintenanceScheduleUnit');
+    const customInput = document.getElementById(prefix + 'MaintenanceScheduleCustom');
+    // Default to days if not set
+    const unit = schedule?.unit || 'days';
+    unitSelect.value = unit;
+    freqInput.value = schedule?.frequency || '';
+    customInput.value = schedule?.custom || '';
+    // Always update visibility based on unit value
+    if (unitSelect.value === 'custom') {
+        freqInput.classList.add('hidden');
+        customInput.classList.remove('hidden');
+    } else {
+        customInput.classList.add('hidden');
+        freqInput.classList.remove('hidden');
+    }
+}
+
+function setupMaintenanceScheduleFields(prefix) {
+    const freqInput = document.getElementById(prefix + 'MaintenanceScheduleFrequency');
+    const unitSelect = document.getElementById(prefix + 'MaintenanceScheduleUnit');
+    const customInput = document.getElementById(prefix + 'MaintenanceScheduleCustom');
+    if (!freqInput || !unitSelect || !customInput) return;
+    unitSelect.addEventListener('change', function() {
+        if (unitSelect.value === 'custom') {
+            freqInput.classList.add('hidden');
+            customInput.classList.remove('hidden');
+        } else {
+            freqInput.classList.remove('hidden');
+            customInput.classList.add('hidden');
+        }
+    });
+}
+
 // Export the module functions
 export {
     initRenderer,
     updateState,
     updateSelectedIds,
     renderAssetDetails,
-    formatFilePath
+    formatFilePath,
+    getMaintenanceScheduleFromModal,
+    setMaintenanceScheduleInModal,
+    setupMaintenanceScheduleFields
 };

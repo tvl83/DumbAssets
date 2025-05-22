@@ -85,6 +85,10 @@ export class SettingsManager {
             this.notificationForm.notify2Week.checked = !!notificationSettings.notify2Week;
             this.notificationForm.notify7Day.checked = !!notificationSettings.notify7Day;
             this.notificationForm.notify3Day.checked = !!notificationSettings.notify3Day;
+            this.notificationForm.notifyMaintenance.checked = (typeof notificationSettings.notifyMaintenance !== 'undefined')
+                ? !!notificationSettings.notifyMaintenance
+                : (settings.notifyMaintenance !== false);
+                
             const interfaceSettings = settings.interfaceSettings || {};
             // Dashboard order
             if (interfaceSettings.dashboardOrder && Array.isArray(interfaceSettings.dashboardOrder)) {
@@ -137,7 +141,8 @@ export class SettingsManager {
                 notify1Month: this.notificationForm.notify1Month.checked,
                 notify2Week: this.notificationForm.notify2Week.checked,
                 notify7Day: this.notificationForm.notify7Day.checked,
-                notify3Day: this.notificationForm.notify3Day.checked
+                notify3Day: this.notificationForm.notify3Day.checked,
+                notifyMaintenance: this.notificationForm.notifyMaintenance.checked // Ensure this is always present
             },
             interfaceSettings: {
                 dashboardOrder: [],
@@ -170,7 +175,9 @@ export class SettingsManager {
                 credentials: 'include'
             });
             if (!response.ok) throw new Error('Failed to save settings');
-            localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+            // Merge notifyMaintenance to root for legacy/compatibility
+            const mergedSettings = { ...settings, notifyMaintenance: settings.notificationSettings.notifyMaintenance };
+            localStorage.setItem('dumbAssetSettings', JSON.stringify(mergedSettings));
             this.closeSettingsModal();
             this.showToast('Settings saved');
             if (!this.selectedAssetId && typeof this.renderDashboard === 'function') {

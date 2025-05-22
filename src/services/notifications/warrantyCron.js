@@ -98,4 +98,60 @@ function startWarrantyCron() {
     });
 }
 
-module.exports = { startWarrantyCron }; 
+// Maintenance Schedule notification logic
+async function checkMaintenanceSchedules() {
+    const settings = getSettings();
+    if (!settings.notifyMaintenance) return;
+    const assets = getAssets();
+    const now = new Date();
+    const appriseUrl = process.env.APPRISE_URL;
+    for (const asset of assets) {
+        if (asset.maintenanceSchedule) {
+            let shouldNotify = false;
+            let desc = '';
+            if (asset.maintenanceSchedule.unit === 'custom' && asset.maintenanceSchedule.custom) {
+                shouldNotify = true;
+                desc = asset.maintenanceSchedule.custom;
+            } else if (asset.maintenanceSchedule.frequency && asset.maintenanceSchedule.unit) {
+                shouldNotify = true;
+                desc = `Every ${asset.maintenanceSchedule.frequency} ${asset.maintenanceSchedule.unit}`;
+            }
+            if (shouldNotify) {
+                sendNotification('maintenance_schedule', {
+                    name: asset.name,
+                    modelNumber: asset.modelNumber,
+                    schedule: desc,
+                    type: 'Asset'
+                }, { appriseUrl });
+                debugLog(`[DEBUG] Maintenance schedule notification sent for asset: ${asset.name}`);
+            }
+        }
+        if (asset.subAssets) {
+            for (const sub of asset.subAssets) {
+                if (sub.maintenanceSchedule) {
+                    let shouldNotify = false;
+                    let desc = '';
+                    if (sub.maintenanceSchedule.unit === 'custom' && sub.maintenanceSchedule.custom) {
+                        shouldNotify = true;
+                        desc = sub.maintenanceSchedule.custom;
+                    } else if (sub.maintenanceSchedule.frequency && sub.maintenanceSchedule.unit) {
+                        shouldNotify = true;
+                        desc = `Every ${sub.maintenanceSchedule.frequency} ${sub.maintenanceSchedule.unit}`;
+                    }
+                    if (shouldNotify) {
+                        sendNotification('maintenance_schedule', {
+                            name: sub.name,
+                            modelNumber: sub.modelNumber,
+                            schedule: desc,
+                            type: 'Sub-Asset',
+                            parentAsset: asset.name
+                        }, { appriseUrl });
+                        debugLog(`[DEBUG] Maintenance schedule notification sent for sub-asset: ${sub.name}`);
+                    }
+                }
+            }
+        }
+    }
+}
+
+module.exports = { startWarrantyCron, checkMaintenanceSchedules };

@@ -420,6 +420,9 @@ app.get('/api/subassets', (req, res) => {
 app.post('/api/asset', async (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const newAsset = req.body;
+
+    // Ensure maintenanceSchedule is always present (even if empty)
+    newAsset.maintenanceSchedule = newAsset.maintenanceSchedule || {};
     
     // Ensure required fields
     if (!newAsset.name) {
@@ -478,6 +481,9 @@ app.post('/api/asset', async (req, res) => {
 app.put('/api/asset', (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const updatedAsset = req.body;
+
+    // Ensure maintenanceSchedule is always present (even if empty)
+    updatedAsset.maintenanceSchedule = updatedAsset.maintenanceSchedule || {};
     
     // Ensure required fields
     if (!updatedAsset.id || !updatedAsset.name) {
@@ -625,6 +631,10 @@ app.delete('/api/asset/:id', (req, res) => {
 app.post('/api/subasset', (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const newSubAsset = req.body;
+    // Remove legacy maintenanceReminder if present
+    if (newSubAsset.maintenanceReminder) delete newSubAsset.maintenanceReminder;
+    // Ensure maintenanceSchedule is always present (even if empty)
+    newSubAsset.maintenanceSchedule = newSubAsset.maintenanceSchedule || {};
     
     // Ensure required fields
     if (!newSubAsset.name || !newSubAsset.parentId) {
@@ -653,6 +663,10 @@ app.post('/api/subasset', (req, res) => {
 app.put('/api/subasset', (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const updatedSubAsset = req.body;
+    // Remove legacy maintenanceReminder if present
+    if (updatedSubAsset.maintenanceReminder) delete updatedSubAsset.maintenanceReminder;
+    // Ensure maintenanceSchedule is always present (even if empty)
+    updatedSubAsset.maintenanceSchedule = updatedSubAsset.maintenanceSchedule || {};
     
     // Ensure required fields
     if (!updatedSubAsset.id || !updatedSubAsset.name || !updatedSubAsset.parentId) {
@@ -1020,7 +1034,8 @@ app.get('/api/settings', authMiddleware, (req, res) => {
                     notify1Month: true,
                     notify2Week: false,
                     notify7Day: true,
-                    notify3Day: false
+                    notify3Day: false,
+                    notifyMaintenance: false
                 },
                 interfaceSettings: {
                     dashboardOrder: ["totals", "warranties", "analytics"],

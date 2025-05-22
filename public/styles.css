@@ -762,6 +762,17 @@ input[type="date"][data-has-value="true"] {
 /* Sub-asset container */
 .sub-asset-header {
     display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    max-width: 99vw;
+    min-width: 0;
+    overflow-x: auto;
+    gap: 0.2rem;
+}
+
+.sub-asset-details {
+    display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
@@ -1735,15 +1746,15 @@ a:hover {
 .warranty-expired-icon svg {
     color: #ef4444;
 }
-.sub-asset-header > .warranty-expiring-dot {
+.sub-asset-details > .warranty-expiring-dot {
     right: 0;
     left: 8px;
 }
-.sub-asset-header > .warranty-warning-dot {
+.sub-asset-details > .warranty-warning-dot {
     right: 0;
     left: 8px;
 }
-.sub-asset-header > .warranty-expired-icon {
+.sub-asset-details > .warranty-expired-icon {
     right: 0;
     left: 8px;
 }
@@ -1759,7 +1770,7 @@ a:hover {
 }
 
 .sub-asset-title {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
 }
 
 #photoPreview img,
@@ -2011,6 +2022,37 @@ a:hover {
     border: var(--app-border);
     border-radius: var(--app-border-radius);
     /* background: var(--hover-color); */
+}
+
+/* Maintenance schedule styles */
+.maintenance-schedule-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5em;
+    justify-content: flex-start;
+    margin-top: 0.25em;
+}
+.maintenance-schedule-unit
+{
+    margin: 0;
+    /* Use default form input styles */
+    min-width: 0;
+    max-width: 95px;
+    text-align: center;
+}
+.maintenance-schedule-frequency
+{
+    margin: 0;
+    /* Use default form input styles */
+    min-width: 0;
+    max-width: 150px;
+}
+.maintenance-schedule-custom {
+    margin: 0;
+    /* Use default form input styles */
+    min-width: 0;
+    max-width: 300px;
 }
 
 /* Sub-asset file grid */
