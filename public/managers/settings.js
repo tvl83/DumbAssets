@@ -224,7 +224,7 @@ export class SettingsManager {
         let placeholder = null;
         let initialX, initialY, startClientX, startClientY;
         let itemHeight, itemWidth;
-        // Use the instance method directly
+        let isTouch = false;
         this.cleanupPlaceholders(container);
         // Remove all old event listeners by cloning each sortable-item
         const oldItems = Array.from(container.querySelectorAll('.sortable-item'));
@@ -234,15 +234,29 @@ export class SettingsManager {
         });
         // Now select the fresh clones
         const items = container.querySelectorAll('.sortable-item');
-        const self = this; // capture 'this' for use in inner functions
+        const self = this;
         items.forEach(item => {
+            // Desktop (mouse)
             item.addEventListener('mousedown', (e) => {
                 const isInteractiveElement = e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select');
                 if (e.target.closest('.sortable-handle') || (!isInteractiveElement)) {
                     e.preventDefault();
+                    isTouch = false;
                     startDrag(item, e.clientX, e.clientY);
                     document.addEventListener('mousemove', onMouseMove);
                     document.addEventListener('mouseup', onMouseUp);
+                }
+            });
+            // Mobile (touch)
+            item.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const isInteractiveElement = e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select');
+                if (e.target.closest('.sortable-handle') || (!isInteractiveElement)) {
+                    e.preventDefault();
+                    isTouch = true;
+                    startDrag(item, touch.clientX, touch.clientY);
+                    document.addEventListener('touchmove', onTouchMove, { passive: false });
+                    document.addEventListener('touchend', onTouchEnd);
                 }
             });
         });
@@ -282,6 +296,12 @@ export class SettingsManager {
             if (!draggedItem) return;
             e.preventDefault();
             moveDraggedItem(e.clientX, e.clientY);
+        }
+        function onTouchMove(e) {
+            if (!draggedItem) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            moveDraggedItem(touch.clientX, touch.clientY);
         }
         function moveDraggedItem(clientX, clientY) {
             const deltaX = clientX - startClientX;
@@ -333,11 +353,14 @@ export class SettingsManager {
             }
         }
         function onMouseUp() {
-            if (draggedItem) {
-                finishDrag();
-            }
+            if (draggedItem) finishDrag();
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+        }
+        function onTouchEnd() {
+            if (draggedItem) finishDrag();
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
         }
         function finishDrag() {
             container.querySelectorAll('.shift-up, .shift-down').forEach(item => {
