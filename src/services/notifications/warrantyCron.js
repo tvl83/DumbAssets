@@ -28,7 +28,7 @@ function readJsonFile(filePath) {
     }
 }
 
-function startWarrantyCron() {
+async function startWarrantyCron() {
     cron.schedule('1 12 * * *', () => {
         const assets = readJsonFile(assetsFilePath);
         const now = DateTime.now();
@@ -100,9 +100,9 @@ function startWarrantyCron() {
 
 // Maintenance Schedule notification logic
 async function checkMaintenanceSchedules() {
-    const settings = getSettings();
+    const settings = settings.notificationSettings || {};
     if (!settings.notifyMaintenance) return;
-    const assets = getAssets();
+    const assets = readJsonFile(assetsFilePath);
     const now = new Date();
     const appriseUrl = process.env.APPRISE_URL;
     for (const asset of assets) {

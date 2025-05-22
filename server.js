@@ -1114,19 +1114,34 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
         }
         // Use APPRISE_URL from env or config
         const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
-        const notificationSettings = config.notificationSettings || {};
+        // Get notification settings from request body
+        const notificationSettings = req.body || {};
+        // Ensure notification settings are present
+        if (!notificationSettings) {
+            return res.status(400).json({ error: 'No notification settings provided.' });
+        }
+        // Ensure notification settings are valid
+        if (!notificationSettings.enabledTypes || !Array.isArray(notificationSettings.enabledTypes)) {
+            return res.status(400).json({ error: 'Invalid notification settings provided.' });
+        }
+        // Ensure APPRISE_URL is present
+        if (!appriseUrl) {
+            return res.status(400).json({ error: 'No Apprise URL configured.' });
+        }
+        // Log the notification settings and Apprise URL for debugging
         if (DEBUG) {
             console.log('[DEBUG] Notification settings (test):', notificationSettings, 'Apprise URL:', appriseUrl);
         }
         if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
 
         // Get enabled notification types from request body
-        const { enabledTypes } = req.body;
+        const { enabledTypes } = notificationSettings;;
         if (!enabledTypes || !Array.isArray(enabledTypes)) {
             return res.status(400).json({ error: 'No enabled notification types provided.' });
         }
 
         // Send test notifications for each enabled type
+        console.log('Enabled notification types:', enabledTypes);
         for (const type of enabledTypes) {
             let notificationData = {};
             let message = '';
@@ -1134,66 +1149,75 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
             switch (type) {
                 case 'notifyAdd':
                     notificationData = {
-                        name: 'Quantum Router',
+                        name: 'Quantum Router (notifyAdd Test)',
                         modelNumber: 'Q-Bit-9000',
                         serialNumber: '0xDEADBEEF',
-                        description: "It's in a superposition of working and not working."
+                        description: "✅ It's in a superposition of working and not working."
                     };
                     message = `Test: Asset Added Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been added to your inventory. ${notificationData.description}`;
                     break;
                 case 'notifyDelete':
                     notificationData = {
-                        name: 'Stack Overflow Generator',
+                        name: 'Stack Overflow Generator (notifyDelete Test)',
                         modelNumber: 'SO-404',
                         serialNumber: 'NULL-PTR',
-                        description: 'It finally found the answer it was looking for.'
+                        description: '❌ It finally found the answer it was looking for.'
                     };
                     message = `Test: Asset Deleted Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been removed from your inventory. ${notificationData.description}`;
                     break;
                 case 'notifyEdit':
                     notificationData = {
-                        name: 'Recursive Coffee Maker',
+                        name: 'Recursive Coffee Maker (notifyEdit Test)',
                         modelNumber: 'Java-8',
                         serialNumber: 'Stack-Overflow',
-                        description: 'It now makes coffee while making coffee.'
+                        description: '✏️ It now makes coffee while making coffee.'
                     };
                     message = `Test: Asset Edited Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been updated. ${notificationData.description}`;
                     break;
                 case 'notify1Month':
                     notificationData = {
-                        name: 'Infinite Loop Detector',
+                        name: 'Infinite Loop Detector (notify1Month Test)',
                         modelNumber: 'Break-1',
                         serialNumber: 'While-True',
-                        description: 'Without it, you might be stuck in an endless cycle of debugging.'
+                        description: '⏳ Without it, you might be stuck in an endless cycle of debugging.'
                     };
                     message = `Test: Warranty Expiring in 1 Month\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 1 month. ${notificationData.description}`;
                     break;
                 case 'notify2Week':
                     notificationData = {
-                        name: 'Memory Leak Plug',
+                        name: 'Memory Leak Plug (notify2Week Test)',
                         modelNumber: 'GC-2023',
                         serialNumber: 'OutOfMemory',
-                        description: 'Without warranty, it might forget to forget things.'
+                        description: '⏳ Without warranty, it might forget to forget things.'
                     };
                     message = `Test: Warranty Expiring in 2 Weeks\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 2 weeks. ${notificationData.description}`;
                     break;
                 case 'notify7Day':
                     notificationData = {
-                        name: 'Binary Clock',
+                        name: 'Binary Clock (notify7Day Test)',
                         modelNumber: '0x10',
                         serialNumber: '0b1010',
-                        description: 'Without warranty, it might start counting in hexadecimal.'
+                        description: '⏳ Without warranty, it might start counting in hexadecimal.'
                     };
                     message = `Test: Warranty Expiring in 7 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 7 days. ${notificationData.description}`;
                     break;
                 case 'notify3Day':
                     notificationData = {
-                        name: 'Cache Warmer',
+                        name: 'Cache Warmer (notify3Day Test)',
                         modelNumber: 'L1-L2-L3',
                         serialNumber: 'Miss-Rate',
-                        description: 'Without warranty, your data might get cold feet.'
+                        description: '⏳ Without warranty, your data might get cold feet.'
                     };
                     message = `Test: Warranty Expiring in 3 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 3 days. ${notificationData.description}`;
+                    break;
+                case 'notifyMaintenance':
+                    notificationData = {
+                        name: 'Entropy Reducer (notifyMaintenance Test)',
+                        modelNumber: 'MTN-42',
+                        serialNumber: 'SCH-2025',
+                        description: '🛠️ Scheduled maintenance is due soon. Keep your assets running smoothly!'
+                    };
+                    message = `Test: Maintenance Schedule Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) is due for scheduled maintenance. ${notificationData.description}`;
                     break;
             }
 

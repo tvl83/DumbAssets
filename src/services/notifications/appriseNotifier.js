@@ -27,15 +27,27 @@ function formatNotification(eventType, assetData) {
   } else if (eventType === 'asset_edited') {
     lines.push('✏️ Asset Edited');
   } else if (eventType === 'warranty_expiring') {
-    lines.push(`⏰ Warranty Expiring in ${assetData.time || ''}`);
+    lines.push(`⏰ Warranty Expiring in ${assetData.days ? assetData.days + ' days' : assetData.time || ''}`);
+    if (assetData.warrantyType) lines.push(assetData.warrantyType);
+    if (assetData.expirationDate) lines.push(`Expires: ${assetData.expirationDate}`);
+  } else if (eventType === 'maintenance_schedule') {
+    lines.push('🛠️ Maintenance Schedule');
+    if (assetData.type === 'Sub-Asset') {
+      lines.push(`Component: ${assetData.name}`);
+      if (assetData.parentAsset) lines.push(`Parent Asset: ${assetData.parentAsset}`);
+    } else {
+      lines.push(`Asset: ${assetData.name}`);
+    }
+    if (assetData.modelNumber) lines.push(`Model #: ${assetData.modelNumber}`);
+    if (assetData.schedule) lines.push(`Schedule: ${assetData.schedule}`);
   } else if (eventType === 'test') {
-    lines.push('🔔 Test Notification');
+    lines.push('🧪🔔 Test Notification');
   } else {
     lines.push('🔔 Notification');
   }
   
   // Add basic info for other event types
-  if (eventType !== 'asset_deleted') {
+  if (!['asset_deleted','maintenance_schedule','warranty_expiring'].includes(eventType)) {
     if (assetData.name) lines.push(assetData.name);
     if (assetData.modelNumber) lines.push(assetData.modelNumber);
     if (assetData.description) lines.push(assetData.description);
@@ -75,7 +87,7 @@ async function sendNotification(eventType, assetData, config) {
       });
     }
 
-    await new Promise((resolve, reject) => {
+    new Promise((resolve, reject) => {
       const appriseProcess = spawn('apprise', [appriseUrl, '-b', message]);
       appriseProcess.stdout.on('data', (data) => {
         console.info(`Apprise Output: ${data.toString().trim()}`);
@@ -102,4 +114,4 @@ async function sendNotification(eventType, assetData, config) {
 
 module.exports = {
   sendNotification,
-}; 
+};

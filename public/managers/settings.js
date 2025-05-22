@@ -206,6 +206,7 @@ export class SettingsManager {
             if (f.notify2Week.checked) enabledTypes.push('notify2Week');
             if (f.notify7Day.checked) enabledTypes.push('notify7Day');
             if (f.notify3Day.checked) enabledTypes.push('notify3Day');
+            if (f.notifyMaintenance.checked) enabledTypes.push('notifyMaintenance');
             if (enabledTypes.length === 0) enabledTypes.push('notifyAdd');
             const response = await fetch('/api/notification-test', {
                 method: 'POST',
