@@ -2291,9 +2291,9 @@ a:hover {
     font-size: 1.2rem;
     font-weight: 500;
     color: var(--primary-color);
-    padding: 0 1.2rem;
+    padding: 0 1rem;
     background: var(--container);
-    border-radius: 1.2rem;
+    border-radius: var(--app-border-radius);
     position: absolute;
     top: -1.1rem;
     left: 50%;
@@ -2347,7 +2347,8 @@ a:hover {
         margin-top: 0.5rem;
     }
     .dashboard-legend-title {
-        font-size: 1.1rem;
+        font-size: 1rem;
+        padding: 0.5rem 0.5rem;
     }
     .header-actions {
         margin-right: 1rem;
@@ -2368,6 +2369,7 @@ a:hover {
         gap: 0;
         grid-template-columns: none;
         overflow: auto;
+        position: relative;
         /* position: relative; */
         /* display: block; */
         /* min-height: calc(100vh - 7rem); */
@@ -2430,10 +2432,6 @@ a:hover {
         pointer-events: auto; /* Allow clicks when visible */
     }
 
-    /* Ensure app container has position relative for proper overlay positioning */
-    .app-container {
-        position: relative;
-    }
     .sidebar-toggle {
         display: block !important;
         position: fixed;
