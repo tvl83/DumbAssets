@@ -33,7 +33,9 @@ export class SettingsManager {
         this.settingsBtn.addEventListener('click', async () => {
             await this.loadSettings();
             this.settingsModal.style.display = 'block';
-            this.showSettingsTab('notifications');
+            // Use last opened tab if available
+            const lastTab = localStorage.getItem('dumbAssetSettingsLastOpenedPane') || 'notifications';
+            this.showSettingsTab(lastTab);
         });
         this.settingsClose.addEventListener('click', () => this.closeSettingsModal());
         this.cancelSettings.addEventListener('click', () => this.closeSettingsModal());
@@ -42,6 +44,8 @@ export class SettingsManager {
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tabId = btn.getAttribute('data-tab');
+                // Save last opened tab to localStorage
+                localStorage.setItem('dumbAssetSettingsLastOpenedPane', tabId);
                 this.showSettingsTab(tabId);
             });
         });
