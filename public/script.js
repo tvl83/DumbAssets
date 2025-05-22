@@ -2106,6 +2106,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Add event listener for escape key to close all modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+                if (modal && modal.style.display !== 'none') {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    });
+
+    // Add click-off-to-close for all modals on overlay click
+    [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+        if (modal) {
+            modal.addEventListener('mousedown', function(e) {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    });
+
     // Add event listener for escape key to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
