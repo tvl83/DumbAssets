@@ -954,9 +954,9 @@ input[type="date"][data-has-value="true"] {
     justify-content: center;
     align-items: center;
     text-align: center;
-    padding: 2rem;
+    padding: 0.2rem;
     color: var(--secondary-color);
-    min-height: 100px;
+    min-height: 10px;
 }
 
 .header-row > #themeToggle {
