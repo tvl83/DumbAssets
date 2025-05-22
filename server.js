@@ -1101,17 +1101,102 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
             console.log('[DEBUG] Notification settings (test):', notificationSettings, 'Apprise URL:', appriseUrl);
         }
         if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
-        // Send test notification
-        await sendNotification('test', { name: 'Test Notification', eventType: 'test' }, {
-            appriseUrl,
-            appriseMessage: 'This is a test notification from DumbAssets.'
-        });
+
+        // Get enabled notification types from request body
+        const { enabledTypes } = req.body;
+        if (!enabledTypes || !Array.isArray(enabledTypes)) {
+            return res.status(400).json({ error: 'No enabled notification types provided.' });
+        }
+
+        // Send test notifications for each enabled type
+        for (const type of enabledTypes) {
+            let notificationData = {};
+            let message = '';
+
+            switch (type) {
+                case 'notifyAdd':
+                    notificationData = {
+                        name: 'Quantum Router',
+                        modelNumber: 'Q-Bit-9000',
+                        serialNumber: '0xDEADBEEF',
+                        description: "It's in a superposition of working and not working."
+                    };
+                    message = `Test: Asset Added Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been added to your inventory. ${notificationData.description}`;
+                    break;
+                case 'notifyDelete':
+                    notificationData = {
+                        name: 'Stack Overflow Generator',
+                        modelNumber: 'SO-404',
+                        serialNumber: 'NULL-PTR',
+                        description: 'It finally found the answer it was looking for.'
+                    };
+                    message = `Test: Asset Deleted Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been removed from your inventory. ${notificationData.description}`;
+                    break;
+                case 'notifyEdit':
+                    notificationData = {
+                        name: 'Recursive Coffee Maker',
+                        modelNumber: 'Java-8',
+                        serialNumber: 'Stack-Overflow',
+                        description: 'It now makes coffee while making coffee.'
+                    };
+                    message = `Test: Asset Edited Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been updated. ${notificationData.description}`;
+                    break;
+                case 'notify1Month':
+                    notificationData = {
+                        name: 'Infinite Loop Detector',
+                        modelNumber: 'Break-1',
+                        serialNumber: 'While-True',
+                        description: 'Without it, you might be stuck in an endless cycle of debugging.'
+                    };
+                    message = `Test: Warranty Expiring in 1 Month\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 1 month. ${notificationData.description}`;
+                    break;
+                case 'notify2Week':
+                    notificationData = {
+                        name: 'Memory Leak Plug',
+                        modelNumber: 'GC-2023',
+                        serialNumber: 'OutOfMemory',
+                        description: 'Without warranty, it might forget to forget things.'
+                    };
+                    message = `Test: Warranty Expiring in 2 Weeks\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 2 weeks. ${notificationData.description}`;
+                    break;
+                case 'notify7Day':
+                    notificationData = {
+                        name: 'Binary Clock',
+                        modelNumber: '0x10',
+                        serialNumber: '0b1010',
+                        description: 'Without warranty, it might start counting in hexadecimal.'
+                    };
+                    message = `Test: Warranty Expiring in 7 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 7 days. ${notificationData.description}`;
+                    break;
+                case 'notify3Day':
+                    notificationData = {
+                        name: 'Cache Warmer',
+                        modelNumber: 'L1-L2-L3',
+                        serialNumber: 'Miss-Rate',
+                        description: 'Without warranty, your data might get cold feet.'
+                    };
+                    message = `Test: Warranty Expiring in 3 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 3 days. ${notificationData.description}`;
+                    break;
+            }
+
+            // Send the notification
+            await sendNotification('test', notificationData, {
+                appriseUrl,
+                appriseMessage: message
+            });
+
+            // Add a 3-second delay between notifications
+            if (type !== enabledTypes[enabledTypes.length - 1]) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        }
+
         if (DEBUG) {
-            console.log('[DEBUG] Test notification sent.');
+            console.log('[DEBUG] Test notifications sent.');
         }
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to send test notification.' });
+        res.status(500).json({ error: 'Failed to send test notifications.' });
     }
 });
 

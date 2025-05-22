@@ -1672,18 +1672,44 @@ saveSettings.addEventListener('click', async () => {
     }
 });
 
+// Test notification settings button click handler
 testNotificationSettings.addEventListener('click', async () => {
+    if (DEBUG) {
+        console.log('[DEBUG] Test notification settings button clicked');
+    }
     setButtonLoading(testNotificationSettings, true);
-    
     try {
+        // Get all enabled notification types
+        const enabledTypes = [];
+        if (notifyAdd.checked) enabledTypes.push('notifyAdd');
+        if (notifyDelete.checked) enabledTypes.push('notifyDelete');
+        if (notifyEdit.checked) enabledTypes.push('notifyEdit');
+        if (notify1Month.checked) enabledTypes.push('notify1Month');
+        if (notify2Week.checked) enabledTypes.push('notify2Week');
+        if (notify7Day.checked) enabledTypes.push('notify7Day');
+        if (notify3Day.checked) enabledTypes.push('notify3Day');
+
+        // If no notifications are enabled, send a simple test notification
+        if (enabledTypes.length === 0) {
+            enabledTypes.push('notifyAdd'); // Use notifyAdd as default test
+        }
+
         const response = await fetch('/api/notification-test', {
             method: 'POST',
-            credentials: 'include'
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ enabledTypes })
         });
-        if (!response.ok) throw new Error('Failed to send test notification');
-        showToast('Test notification sent');
-    } catch (err) {
-        showToast('Failed to send test notification');
+
+        if (!response.ok) {
+            throw new Error('Failed to send test notifications');
+        }
+
+        showToast('Test notifications sent successfully!', 'success');
+    } catch (error) {
+        console.error('Error sending test notifications:', error);
+        showToast('Failed to send test notifications', 'error');
     } finally {
         setButtonLoading(testNotificationSettings, false);
     }
