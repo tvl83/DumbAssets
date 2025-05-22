@@ -1052,12 +1052,17 @@ app.get('/api/settings', authMiddleware, (req, res) => {
                     notify3Day: false
                 },
                 interfaceSettings: {
-                    dashboardOrder: ["totals", "warranties", "analytics"]
+                    dashboardOrder: ["totals", "warranties", "analytics"],
+                    dashboardVisibility: { totals: true, warranties: true, analytics: true }
                 }
-                // Add other default settings sections here as needed
             });
         }
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        // Ensure dashboardVisibility always present
+        if (!config.interfaceSettings) config.interfaceSettings = {};
+        if (!config.interfaceSettings.dashboardVisibility) {
+            config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
+        }
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load settings' });
@@ -1072,13 +1077,21 @@ app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }
-        
         // Update settings with the new values
-        // This allows for saving multiple setting sections at once
         Object.keys(req.body).forEach(section => {
-            config[section] = req.body[section];
+            if (section === 'interfaceSettings') {
+                if (!config.interfaceSettings) config.interfaceSettings = {};
+                // Merge dashboardOrder and dashboardVisibility
+                if (req.body.interfaceSettings.dashboardOrder) {
+                    config.interfaceSettings.dashboardOrder = req.body.interfaceSettings.dashboardOrder;
+                }
+                if (req.body.interfaceSettings.dashboardVisibility) {
+                    config.interfaceSettings.dashboardVisibility = req.body.interfaceSettings.dashboardVisibility;
+                }
+            } else {
+                config[section] = req.body[section];
+            }
         });
-        
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         res.json({ success: true });
     } catch (err) {

@@ -545,6 +545,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Rendering Functions
+    function getDashboardSectionVisibility() {
+        // Default: all visible
+        const defaultState = { totals: true, warranties: true, analytics: true };
+        try {
+            const cachedSettings = localStorage.getItem('dumbAssetSettings');
+            if (cachedSettings) {
+                const settings = JSON.parse(cachedSettings);
+                if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
+                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
+                }
+            }
+        } catch (e) {}
+        return defaultState;
+    }
+
     function renderDashboard(shouldAnimateCharts = true) {
         // Calculate stats
         const totalAssets = assets.length;
@@ -585,10 +600,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        const sectionVisibility = getDashboardSectionVisibility();
+
+        // Prepare HTML sections for each dashboard component, NO toggle-switch in header
+        function sectionHeader(title) {
+            return `<div class="section-title">${title}</div>`;
+        }
+
         // Prepare HTML sections for each dashboard component
         const totalsSection = `
-                <div class="dashboard-section">
-                    <div class="section-title">Totals</div>
+                <div class="dashboard-section" data-section="totals" style="${!sectionVisibility.totals ? 'display:none;' : ''}">
+                    ${sectionHeader('Totals')}
                     <div class="dashboard-cards totals-cards">
                         <div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
                             <div class="card-label">Assets</div>
@@ -606,8 +628,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
                 
         const warrantiesSection = `
-                <div class="dashboard-section dashboard-warranty-section">
-                    <div class="section-title">Warranties</div>
+                <div class="dashboard-section dashboard-warranty-section" data-section="warranties" style="${!sectionVisibility.warranties ? 'display:none;' : ''}">
+                    ${sectionHeader('Warranties')}
                     <div class="dashboard-cards warranty-cards">
                         <div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                             <div class="card-label">Total</div>
@@ -633,8 +655,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
                 
         const analyticsSection = `
-                <div class="dashboard-section">
-                    <div class="section-title">Analytics</div>
+                <div class="dashboard-section" data-section="analytics" style="${!sectionVisibility.analytics ? 'display:none;' : ''}">
+                    ${sectionHeader('Analytics')}
                     <div class="dashboard-charts-section">
                         <div class="chart-container">
                             <h3>Warranty Status</h3>

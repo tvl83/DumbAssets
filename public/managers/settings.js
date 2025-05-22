@@ -82,6 +82,7 @@ export class SettingsManager {
             this.notificationForm.notify7Day.checked = !!notificationSettings.notify7Day;
             this.notificationForm.notify3Day.checked = !!notificationSettings.notify3Day;
             const interfaceSettings = settings.interfaceSettings || {};
+            // Dashboard order
             if (interfaceSettings.dashboardOrder && Array.isArray(interfaceSettings.dashboardOrder)) {
                 const dashboardSectionsContainer = document.getElementById('dashboardSections');
                 if (dashboardSectionsContainer) {
@@ -100,6 +101,11 @@ export class SettingsManager {
                     });
                 }
             }
+            // Dashboard visibility
+            const vis = interfaceSettings.dashboardVisibility || { totals: true, warranties: true, analytics: true };
+            document.getElementById('toggleTotals').checked = !!vis.totals;
+            document.getElementById('toggleWarranties').checked = !!vis.warranties;
+            document.getElementById('toggleAnalytics').checked = !!vis.analytics;
             localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
         } catch (err) {
             console.error('Error loading settings:', err);
@@ -126,7 +132,12 @@ export class SettingsManager {
                 notify3Day: this.notificationForm.notify3Day.checked
             },
             interfaceSettings: {
-                dashboardOrder: []
+                dashboardOrder: [],
+                dashboardVisibility: {
+                    totals: document.getElementById('toggleTotals').checked,
+                    warranties: document.getElementById('toggleWarranties').checked,
+                    analytics: document.getElementById('toggleAnalytics').checked
+                }
             }
         };
         const dashboardSections = document.querySelectorAll('#dashboardSections .sortable-item');
