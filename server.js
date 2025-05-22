@@ -1034,6 +1034,19 @@ app.get('/api/settings', authMiddleware, (req, res) => {
         if (!config.interfaceSettings.dashboardVisibility) {
             config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
         }
+        // Ensure cardVisibility is present in interfaceSettings
+        if (!config.interfaceSettings.cardVisibility) {
+            config.interfaceSettings.cardVisibility = {
+                assets: true,
+                components: true,
+                value: true,
+                warranties: true,
+                within60: true,
+                within30: true,
+                expired: true,
+                active: true
+            };
+        }
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load settings' });
@@ -1058,6 +1071,9 @@ app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
                 }
                 if (req.body.interfaceSettings.dashboardVisibility) {
                     config.interfaceSettings.dashboardVisibility = req.body.interfaceSettings.dashboardVisibility;
+                }
+                if (req.body.interfaceSettings.cardVisibility) {
+                    config.interfaceSettings.cardVisibility = req.body.interfaceSettings.cardVisibility;
                 }
             } else {
                 config[section] = req.body[section];

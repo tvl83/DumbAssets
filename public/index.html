@@ -590,8 +590,26 @@
                                 <div class="tab-pane" id="interface-tab">
                                     <form id="interfaceSettingsForm">
                                         <fieldset>
-                                            <legend>Dashboard</legend>
-                                            <div class="settings-grid">
+                                            <legend>Reorder Sections</legend>
+                                            <p class="settings-hint">Drag and drop to reorder dashboard sections:</p>
+                                            <div class="sortable-list" id="dashboardSections">
+                                                <div class="sortable-item" data-section="totals">
+                                                    <div class="sortable-handle"></div>
+                                                    <span>Totals</span>
+                                                </div>
+                                                <div class="sortable-item" data-section="warranties">
+                                                    <div class="sortable-handle"></div>
+                                                    <span>Warranties</span>
+                                                </div>
+                                                <div class="sortable-item" data-section="analytics">
+                                                    <div class="sortable-handle"></div>
+                                                    <span>Analytics</span>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                        <fieldset>
+                                            <legend>Toggle Sections</legend>
+                                            <div id="dashboardSectionToggles" class="settings-grid">
                                                 <div class="toggle-row">
                                                     <span>Show Totals</span>
                                                     <label class="toggle-switch">
@@ -614,24 +632,67 @@
                                                     </label>
                                                 </div>
                                             </div>
-                                            <fieldset>
-                                                <legend>Order</legend>
-                                                <p class="settings-hint">Drag and drop to reorder dashboard sections:</p>
-                                                <div class="sortable-list" id="dashboardSections">
-                                                    <div class="sortable-item" data-section="totals">
-                                                        <div class="sortable-handle"></div>
-                                                        <span>Totals</span>
-                                                    </div>
-                                                    <div class="sortable-item" data-section="warranties">
-                                                        <div class="sortable-handle"></div>
-                                                        <span>Warranties</span>
-                                                    </div>
-                                                    <div class="sortable-item" data-section="analytics">
-                                                        <div class="sortable-handle"></div>
-                                                        <span>Analytics</span>
-                                                    </div>
+                                        </fieldset>
+                                        <fieldset>
+                                            <legend>Toggle Cards</legend>
+                                            <div id="dashboardCardToggles" class="settings-grid">
+                                                <div class="toggle-row">
+                                                    <span>Total Assets</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardTotalAssets" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
                                                 </div>
-                                            </fieldset>
+                                                <div class="toggle-row">
+                                                    <span>Total Components</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardTotalComponents" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Total Value</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardTotalValue" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Warranties Total</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardWarrantiesTotal" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Warranties In 60</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardWarrantiesWithin60" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Warranties In 30</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardWarrantiesWithin30" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Warranties Expired</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardWarrantiesExpired" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="toggle-row">
+                                                    <span>Warranties Active</span>
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" id="toggleCardWarrantiesActive" checked>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </fieldset>
                                     </form>
                                 </div>

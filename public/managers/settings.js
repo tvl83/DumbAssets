@@ -106,6 +106,10 @@ export class SettingsManager {
             document.getElementById('toggleTotals').checked = !!vis.totals;
             document.getElementById('toggleWarranties').checked = !!vis.warranties;
             document.getElementById('toggleAnalytics').checked = !!vis.analytics;
+            // Card visibility toggles
+            if (typeof window.renderCardVisibilityToggles === 'function') {
+                window.renderCardVisibilityToggles(settings);
+            }
             localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
         } catch (err) {
             console.error('Error loading settings:', err);
@@ -137,6 +141,16 @@ export class SettingsManager {
                     totals: document.getElementById('toggleTotals').checked,
                     warranties: document.getElementById('toggleWarranties').checked,
                     analytics: document.getElementById('toggleAnalytics').checked
+                },
+                cardVisibility: {
+                    assets: document.getElementById('toggleCardTotalAssets')?.checked !== false,
+                    components: document.getElementById('toggleCardTotalComponents')?.checked !== false,
+                    value: document.getElementById('toggleCardTotalValue')?.checked !== false,
+                    warranties: document.getElementById('toggleCardWarrantiesTotal')?.checked !== false,
+                    within60: document.getElementById('toggleCardWarrantiesWithin60')?.checked !== false,
+                    within30: document.getElementById('toggleCardWarrantiesWithin30')?.checked !== false,
+                    expired: document.getElementById('toggleCardWarrantiesExpired')?.checked !== false,
+                    active: document.getElementById('toggleCardWarrantiesActive')?.checked !== false
                 }
             }
         };

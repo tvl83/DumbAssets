@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelSettings = document.getElementById('cancelSettings');
     const settingsClose = settingsModal.querySelector('.close-btn');
     const testNotificationSettings = document.getElementById('testNotificationSettings');
+
     // Instantiate SettingsManager
     const settingsManager = new SettingsManager({
         settingsBtn,
@@ -608,23 +609,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<div class="section-title">${title}</div>`;
         }
 
+        // Prepare per-card visibility
+        const cardVisibility = (typeof getDashboardCardVisibility === 'function') ? getDashboardCardVisibility() : {};
         // Prepare HTML sections for each dashboard component
         const totalsSection = `
                 <div class="dashboard-section" data-section="totals" style="${!sectionVisibility.totals ? 'display:none;' : ''}">
                     ${sectionHeader('Totals')}
                     <div class="dashboard-cards totals-cards">
-                        <div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
+                        ${cardVisibility.assets !== false ? `<div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
                             <div class="card-label">Assets</div>
                             <div class="card-value">${totalAssets}</div>
-                        </div>
-                        <div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
+                        </div>` : ''}
+                        ${cardVisibility.components !== false ? `<div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
                             <div class="card-label">Components</div>
                             <div class="card-value">${totalComponents}</div>
-                        </div>
-                        <div class="dashboard-card value" data-filter="value">
+                        </div>` : ''}
+                        ${cardVisibility.value !== false ? `<div class="dashboard-card value" data-filter="value">
                             <div class="card-label">Value</div>
                             <div class="card-value">${formatCurrency(totalValue)}</div>
-                        </div>
+                        </div>` : ''}
                     </div>
                 </div>`;
                 
@@ -632,26 +635,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="dashboard-section dashboard-warranty-section" data-section="warranties" style="${!sectionVisibility.warranties ? 'display:none;' : ''}">
                     ${sectionHeader('Warranties')}
                     <div class="dashboard-cards warranty-cards">
-                        <div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
+                        ${cardVisibility.warranties !== false ? `<div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                             <div class="card-label">Total</div>
                             <div class="card-value">${allWarranties.length}</div>
-                        </div>
-                        <div class="dashboard-card within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
+                        </div>` : ''}
+                        ${cardVisibility.within60 !== false ? `<div class="dashboard-card within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
                             <div class="card-label">In 60 days</div>
                             <div class="card-value">${within60}</div>
-                        </div>
-                        <div class="dashboard-card within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
+                        </div>` : ''}
+                        ${cardVisibility.within30 !== false ? `<div class="dashboard-card within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
                             <div class="card-label">In 30 days</div>
                             <div class="card-value">${within30}</div>
-                        </div>
-                        <div class="dashboard-card expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
+                        </div>` : ''}
+                        ${cardVisibility.expired !== false ? `<div class="dashboard-card expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
                             <div class="card-label">Expired</div>
                             <div class="card-value">${expired}</div>
-                        </div>
-                        <div class="dashboard-card active-status${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
+                        </div>` : ''}
+                        ${cardVisibility.active !== false ? `<div class="dashboard-card active-status${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
                             <div class="card-label">Active</div>
                             <div class="card-value">${active}</div>
-                        </div>
+                        </div>` : ''}
                     </div>
                 </div>`;
                 
@@ -1967,6 +1970,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTags();
             }
         };
+    }
+
+    // Add per-card visibility toggles in the settings modal (interface tab)
+    // This should be called when rendering the settings modal tabs
+    function renderCardVisibilityToggles(settings) {
+        // Set initial state from settings
+        const vis = (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
+        document.getElementById('toggleCardTotalAssets').checked = vis.assets !== false;
+        document.getElementById('toggleCardTotalComponents').checked = vis.components !== false;
+        document.getElementById('toggleCardTotalValue').checked = vis.value !== false;
+        document.getElementById('toggleCardWarrantiesTotal').checked = vis.warranties !== false;
+        document.getElementById('toggleCardWarrantiesWithin60').checked = vis.within60 !== false;
+        document.getElementById('toggleCardWarrantiesWithin30').checked = vis.within30 !== false;
+        document.getElementById('toggleCardWarrantiesExpired').checked = vis.expired !== false;
+        document.getElementById('toggleCardWarrantiesActive').checked = vis.active !== false;
+    }
+    window.renderCardVisibilityToggles = renderCardVisibilityToggles;
+
+    // Helper for per-card visibility
+    function getDashboardCardVisibility() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings'));
+            return (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
+        } catch {
+            return {};
+        }
     }
 
     // Keep at the end
