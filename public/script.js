@@ -36,6 +36,7 @@ import { initCollapsibleSections } from './js/collapsible.js';
 // Import SettingsManager
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
+import { ImportManager } from './managers/import.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize global variables for DOM elements
@@ -113,6 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast,
         renderDashboard,
         getDashboardOrder
+    });
+
+    // Instantiate ImportManager
+    const importManager = new ImportManager({
+        importModal,
+        importBtn,
+        importFile,
+        startImportBtn,
+        columnSelects,
+        showToast,
+        setButtonLoading,
+        loadAssets
     });
 
     // Save settings to backend
@@ -722,11 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    // In renderAssetList, only call renderDashboard if no asset is selected
-    // function renderAssetList has been moved to the listRenderer module
-
-    // Chart functionality has been moved to /public/managers/charts.js
 
     function renderEmptyState() {
         // Always render dashboard when showing empty state
@@ -1374,223 +1382,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Call handleSidebarNav after asset/sub-asset click
     // In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav();
-
-    // Open import modal
-    importBtn.addEventListener('click', () => {
-        importModal.style.display = 'block';
-    });
-
-    // Close import modal
-    importModal.querySelector('.close-btn').addEventListener('click', () => {
-        importModal.style.display = 'none';
-        // Reset the import form when closing the modal
-        resetImportForm();
-    });
-
-    // Handle file selection
-    importFile.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // selectedFileName.textContent = file.name;
-        
-        try {
-            // Read the file and get headers
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            console.log('Sending file to get headers...');
-            const response = await fetch('/api/import-assets', {
-            method: 'POST',
-                body: formData,
-                credentials: 'include' // Maintain session
-            });
-            
-            console.log('Header response status:', response.status);
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    console.log('Unauthorized, redirecting to login');
-                    window.location.href = '/login';
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to read file');
-            }
-            
-            const data = await response.json();
-            console.log('Headers received:', data.headers);
-            const headers = data.headers || [];
-            
-            // Show the column mapping section
-            const mappingContainer = document.querySelector('.column-mapping');
-            if (mappingContainer) {
-                mappingContainer.style.display = 'block';
-            }
-            
-            // Populate column selects
-            columnSelects.forEach(select => {
-                select.innerHTML = '<option value="">Select Column</option>';
-                headers.forEach((header, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = header;
-                    select.appendChild(option);
-                });
-            });
-            
-            // Also populate new selects
-            const urlColumn = document.getElementById('urlColumn');
-            const warrantyColumn = document.getElementById('warrantyColumn');
-            const warrantyExpirationColumn = document.getElementById('warrantyExpirationColumn');
-            [urlColumn, warrantyColumn, warrantyExpirationColumn].forEach(select => {
-                if (!select) return;
-                select.innerHTML = '<option value="">Select Column</option>';
-                headers.forEach((header, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = header;
-                    select.appendChild(option);
-                });
-            });
-            
-            // Auto-map columns after populating
-            autoMapColumns(headers);
-            
-            startImportBtn.disabled = headers.length === 0;
-        } catch (error) {
-            console.error('Error reading file:', error);
-            alert('Failed to read file: ' + error.message);
-        }
-    });
-
-    // Handle import
-    startImportBtn.addEventListener('click', async () => {
-        setButtonLoading(startImportBtn, true);
-        
-        const file = importFile.files[0];
-        if (!file) return;
-
-        // Get column mappings
-        const mappings = {
-            name: document.getElementById('nameColumn').value,
-            model: document.getElementById('modelColumn').value,
-            manufacturer: document.getElementById('manufacturerColumn').value,
-            serial: document.getElementById('serialColumn').value,
-            purchaseDate: document.getElementById('purchaseDateColumn').value,
-            purchasePrice: document.getElementById('purchasePriceColumn').value,
-            notes: document.getElementById('notesColumn').value,
-            url: urlColumn.value,
-            warranty: warrantyColumn.value,
-            warrantyExpiration: warrantyExpirationColumn.value
-        };
-
-        // Validate required mappings
-        if (!mappings.name) {
-            alert('Please map the Name column');
-            return;
-        }
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('mappings', JSON.stringify(mappings));
-
-            console.log('Sending import data with mappings:', mappings);
-            const response = await fetch('/api/import-assets', {
-                method: 'POST',
-                body: formData,
-                credentials: 'include' // Maintain session
-            });
-
-            console.log('Import response status:', response.status);
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    console.log('Unauthorized, redirecting to login');
-                    window.location.href = '/login';
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Import failed');
-            }
-
-            const result = await response.json();
-            console.log('Import result:', result);
-            alert(`Successfully imported ${result.importedCount} assets`);
-            
-            // Close modal and reset form
-            importModal.style.display = 'none';
-            importFile.value = '';
-            // selectedFileName.textContent = 'No file chosen';
-            startImportBtn.disabled = true;
-            setButtonLoading(startImportBtn, false);
-            columnSelects.forEach(select => {
-                select.innerHTML = '<option value="">Select Column</option>';
-            });
-            
-            // Refresh asset list
-            console.log('Refreshing asset list after import');
-            await loadAssets();
-        } catch (error) {
-            console.error('Import error:', error);
-            alert('Failed to import assets: ' + error.message);
-            setButtonLoading(startImportBtn, false);
-        }
-    });
-
-    // Auto-mapping logic for import columns
-    function autoMapColumns(headers) {
-        const mappingRules = {
-            nameColumn: ["name"],
-            modelColumn: ["model", "model #", "model number", "model num"],
-            manufacturerColumn: ["manufacturer", "make", "brand", "company"],
-            serialColumn: ["serial", "serial #", "serial number", "serial num"],
-            purchaseDateColumn: ["purchase date", "date purchased", "bought date"],
-            purchasePriceColumn: ["purchase price", "price", "cost", "amount"],
-            notesColumn: ["notes", "note", "description", "desc", "comments"],
-            urlColumn: ["url", "link", "website"],
-            warrantyColumn: ["warranty", "warranty scope", "coverage"],
-            warrantyExpirationColumn: ["warranty expiration", "warranty expiry", "warranty end", "warranty end date", "expiration", "expiry"]
-        };
-        
-        // Normalize a string for comparison
-        function normalize(str) {
-            return str.toLowerCase().replace(/[^a-z0-9]/g, "");
-        }
-        
-        Object.entries(mappingRules).forEach(([dropdownId, variations]) => {
-            const select = document.getElementById(dropdownId);
-            if (!select) return;
-            let foundIndex = "";
-            for (let i = 0; i < headers.length; i++) {
-                const headerNorm = normalize(headers[i]);
-                if (variations.some(variant => headerNorm === normalize(variant))) {
-                    foundIndex = i;
-                    break;
-                }
-            }
-            select.value = foundIndex;
-        });
-    }
-
-    // Global function to reset the import form
-    function resetImportForm() {
-        // Reset all column mapping dropdowns
-        const columnSelects = document.querySelectorAll('.column-select');
-        columnSelects.forEach(select => {
-            select.innerHTML = '<option value="">Select Column</option>';
-        });
-        
-        // Disable the start import button
-        const startImportBtn = document.getElementById('startImportBtn');
-        if (startImportBtn) {
-            startImportBtn.disabled = true;
-        }
-    }
-
-    // Make it available globally
-    window.resetImportForm = resetImportForm;
 
     // Sorting Functions
     function updateSortButtons(activeButton) {
