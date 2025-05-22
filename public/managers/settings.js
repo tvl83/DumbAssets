@@ -201,6 +201,13 @@ export class SettingsManager {
         let itemHeight, itemWidth;
         // Use the instance method directly
         this.cleanupPlaceholders(container);
+        // Remove all old event listeners by cloning each sortable-item
+        const oldItems = Array.from(container.querySelectorAll('.sortable-item'));
+        oldItems.forEach(item => {
+            const clone = item.cloneNode(true);
+            item.parentNode.replaceChild(clone, item);
+        });
+        // Now select the fresh clones
         const items = container.querySelectorAll('.sortable-item');
         const self = this; // capture 'this' for use in inner functions
         items.forEach(item => {
