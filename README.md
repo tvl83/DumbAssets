@@ -40,15 +40,22 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   dumbassets:
+    container_name: dumbassets
     image: dumbwareio/dumbassets:latest
-    ports:
+    ports: 
       - 3000:3000
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
     environment:
-      DUMBASSETS_PIN: 1234
-      APPRISE_URL: https://your.apprise.url
-      TZ: America/Chicago
+      PORT: ${DUMBASSETS_PORT:-3000}
+      NODE_ENV: ${DUMBASSETS_NODE_ENV:-production}
+      DEBUG: ${DUMBASSETS_DEBUG:-true}
+      SITE_TITLE: ${DUMBASSETS_SITE_TITLE:-DumbAssets}
+      BASE_URL: ${DUMBASSETS_BASE_URL:-http://localhost:3000}
+      DUMBASSETS_PIN: ${DUMBASSETS_PIN:-1234}
+      ALLOWED_ORIGINS: ${DUMBASSETS_ALLOWED_ORIGINS:-*}
+      APPRISE_URL: ${DUMBASSETS_APPRISE_URL:-}
       # ...other env vars
 ```
 
@@ -100,7 +107,8 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 | APPRISE_URL      | Apprise URL for notifications               | None               | No       |
 | TZ               | Container timezone                          | America/Chicago    | No       |
 | BASE_URL         | Base URL for the application                | http://localhost   | No       |
-| SITE_TITLE       | Site title shown in browser tab and header      | DumbAssets          | No       |
+| SITE_TITLE       | Site title shown in browser tab and header  | DumbAssets         | No       |
+| ALLOWED_ORIGINS  | Origins allowed to visit your instance      | '*'                | No       |
 
 ### Data Storage
 

@@ -1,7 +1,7 @@
 services:
   dumbassets:
     container_name: dumbassets
-    # image: dumbassets/dumbassets:latest
+    # image: dumbwareio/dumbassets:latest
     build: .
     ports: 
       - 3000:3000
