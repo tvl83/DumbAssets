@@ -982,7 +982,9 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                     scope: get('secondaryWarranty'),
                     expirationDate: parseExcelDate(get('secondaryWarrantyExpiration'))
                 },
-                tags: []
+                tags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
             // Parse tags if mapped
             if (mappings.tags !== undefined && mappings.tags !== "" && row[mappings.tags] !== undefined) {

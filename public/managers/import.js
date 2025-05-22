@@ -128,6 +128,42 @@ export class ImportManager {
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
+        // Client-side validation: read file and check required fields, date columns, tags
+        try {
+            const fileText = await file.text();
+            const lines = fileText.split(/\r?\n/).filter(Boolean);
+            if (lines.length < 2) throw new Error('No data rows found in file.');
+            const headers = lines[0].split(',');
+            const dataRows = lines.slice(1);
+            const dateCols = ['purchaseDate', 'warrantyExpiration', 'secondaryWarrantyExpiration'];
+            for (let i = 0; i < dataRows.length; i++) {
+                const row = dataRows[i].split(',');
+                // Validate name
+                const nameIdx = mappings.name !== '' ? parseInt(mappings.name) : -1;
+                if (nameIdx === -1 || !row[nameIdx] || !row[nameIdx].trim()) {
+                    alert(`Row ${i+2}: Name is required.`);
+                    this.setButtonLoading(this.startImportBtn, false);
+                    return;
+                }
+                // Validate date columns
+                for (const col of dateCols) {
+                    const idx = mappings[col] !== '' ? parseInt(mappings[col]) : -1;
+                    if (idx !== -1 && row[idx] && row[idx].trim()) {
+                        const val = row[idx].replace(/"/g, '');
+                        if (isNaN(Date.parse(val))) {
+                            alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
+                            this.setButtonLoading(this.startImportBtn, false);
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (validationError) {
+            alert('Validation error: ' + validationError.message);
+            this.setButtonLoading(this.startImportBtn, false);
+            return;
+        }
+        // ...existing code for sending to backend...
         try {
             const formData = new FormData();
             formData.append('file', file);
@@ -155,6 +191,8 @@ export class ImportManager {
                 select.innerHTML = '<option value="">Select Column</option>';
             });
             await this.loadAssets();
+            // Rerender dashboard after import
+            if (window.renderDashboard) window.renderDashboard();
         } catch (error) {
             console.error('Import error:', error);
             alert('Failed to import assets: ' + error.message);
@@ -197,7 +235,17 @@ export class ImportManager {
     }
 
     resetImportForm() {
-        this.importFile.value = '';
+        // Remove file preview and clear file input
+        const importFilePreview = document.getElementById('importFilePreview');
+        if (importFilePreview) importFilePreview.innerHTML = '';
+        if (this.importFile) {
+            this.importFile.value = '';
+            // Forcibly remove files from input (for browsers that keep the file after value='')
+            if (this.importFile.files && this.importFile.files.length > 0) {
+                const dt = new DataTransfer();
+                this.importFile.files = dt.files;
+            }
+        }
         this.columnSelects.forEach(select => {
             select.innerHTML = '<option value="">Select Column</option>';
         });

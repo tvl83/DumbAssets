@@ -2133,4 +2133,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load initial data
     loadAllData();
     registerServiceWorker();
+    // Expose renderDashboard globally for import rerender
+    window.renderDashboard = renderDashboard;
 });
