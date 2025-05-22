@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading,
         loadAssets
     });
+    window.importManager = importManager;
 
     // Save settings to backend
     function showToast(message) {

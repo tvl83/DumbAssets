@@ -938,100 +938,69 @@ function parseExcelDate(value) {
 // Import assets route
 app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
     try {
-        if (!req.file) {
+        const file = req.file;
+        if (!file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        
-        // First get column headers
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // If this is the first request (no mappings provided), return the headers
+        // If only headers are requested (first step), return headers
         if (!req.body.mappings) {
-            const headers = data[0] || [];
+            let workbook = XLSX.read(file.buffer, { type: 'buffer' });
+            let sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const headers = json[0] || [];
             return res.json({ headers });
         }
-
-        // When processing with mappings, use raw sheet data for better parsing
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-        console.log("Sample row:", jsonData.length > 0 ? jsonData[0] : "No data");
-        
-        // Get column mappings from request
+        // Parse mappings
         const mappings = JSON.parse(req.body.mappings);
-        console.log("Mappings:", mappings);
-        
-        // Convert column index mappings to actual column names
-        const headers = data[0] || [];
-        const columnMappings = {
-            name: mappings.name !== '' ? headers[parseInt(mappings.name, 10)] : '',
-            model: mappings.model !== '' ? headers[parseInt(mappings.model, 10)] : '',
-            manufacturer: mappings.manufacturer !== '' ? headers[parseInt(mappings.manufacturer, 10)] : '',
-            serial: mappings.serial !== '' ? headers[parseInt(mappings.serial, 10)] : '',
-            purchaseDate: mappings.purchaseDate !== '' ? headers[parseInt(mappings.purchaseDate, 10)] : '',
-            purchasePrice: mappings.purchasePrice !== '' ? headers[parseInt(mappings.purchasePrice, 10)] : '',
-            notes: mappings.notes !== '' ? headers[parseInt(mappings.notes, 10)] : '',
-            url: mappings.url !== '' ? headers[parseInt(mappings.url, 10)] : '',
-            warranty: mappings.warranty !== '' ? headers[parseInt(mappings.warranty, 10)] : '',
-            warrantyExpiration: mappings.warrantyExpiration !== '' ? headers[parseInt(mappings.warrantyExpiration, 10)] : ''
-        };
-        console.log("Column name mappings:", columnMappings);
-        
-        // Transform data using header-based mappings
-        const transformedData = jsonData.map(row => {
-            // Create a unique ID for each asset
-            const assetId = uuidv4();
-            console.log("Processing row:", row);
-            
-            // Use column names to access the data
+        let workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        let sheet = workbook.Sheets[workbook.SheetNames[0]];
+        let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const headers = json[0] || [];
+        const rows = json.slice(1);
+        let importedCount = 0;
+        let assets = readJsonFile(assetsFilePath);
+        for (const row of rows) {
+            if (!row.length) continue;
+            const get = idx => (mappings[idx] !== undefined && mappings[idx] !== "" && row[mappings[idx]] !== undefined) ? row[mappings[idx]] : "";
+            const name = get('name');
+            if (!name) continue;
             const asset = {
-                id: assetId,
-                name: columnMappings.name ? (row[columnMappings.name] || '') : '',
-                modelNumber: columnMappings.model ? (row[columnMappings.model] || '') : '',
-                manufacturer: columnMappings.manufacturer ? (row[columnMappings.manufacturer] || '') : '',
-                serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
-                purchaseDate: columnMappings.purchaseDate ? parseExcelDate(row[columnMappings.purchaseDate]) : '',
-                price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',
-                description: columnMappings.notes ? (row[columnMappings.notes] || '') : '',
-                link: columnMappings.url ? (row[columnMappings.url] || '') : '',
-                photoPath: null,
-                receiptPath: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                id: generateId(),
+                name: name,
+                manufacturer: get('manufacturer'),
+                modelNumber: get('model'),
+                serialNumber: get('serial'),
+                purchaseDate: parseExcelDate(get('purchaseDate')),
+                price: get('purchasePrice'),
+                description: get('notes'),
+                link: get('url'),
                 warranty: {
-                    scope: columnMappings.warranty ? (row[columnMappings.warranty] || '') : '',
-                    expirationDate: columnMappings.warrantyExpiration ? parseExcelDate(row[columnMappings.warrantyExpiration]) : ''
-                }
+                    scope: get('warranty'),
+                    expirationDate: parseExcelDate(get('warrantyExpiration'))
+                },
+                secondaryWarranty: {
+                    scope: get('secondaryWarranty'),
+                    expirationDate: parseExcelDate(get('secondaryWarrantyExpiration'))
+                },
+                tags: []
             };
-            return asset;
-        });
-
-        // Sample the first asset for debugging
-        console.log("Sample transformed asset:", transformedData.length > 0 ? transformedData[0] : "No data");
-
-        // Save transformed data to assets.json
-        const assetsPath = path.join(__dirname, 'data', 'Assets.json');
-        let existingAssets = [];
-        
-        if (fs.existsSync(assetsPath)) {
-            const fileContent = fs.readFileSync(assetsPath, 'utf8');
-            existingAssets = JSON.parse(fileContent);
+            // Parse tags if mapped
+            if (mappings.tags !== undefined && mappings.tags !== "" && row[mappings.tags] !== undefined) {
+                const tagsRaw = row[mappings.tags];
+                if (typeof tagsRaw === 'string') {
+                    asset.tags = tagsRaw.split(/[,;]+/).map(t => t.trim()).filter(Boolean);
+                } else if (Array.isArray(tagsRaw)) {
+                    asset.tags = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+                }
+            }
+            assets.push(asset);
+            importedCount++;
         }
-
-        // Add new assets to existing ones
-        const updatedAssets = [...existingAssets, ...transformedData];
-        
-        // Write back to file
-        fs.writeFileSync(assetsPath, JSON.stringify(updatedAssets, null, 2));
-
-        res.json({ 
-            message: 'Import successful', 
-            importedCount: transformedData.length 
-        });
-    } catch (error) {
-        console.error('Import error:', error);
-        res.status(500).json({ error: 'Failed to import assets: ' + error.message });
+        writeJsonFile(assetsFilePath, assets);
+        res.json({ importedCount });
+    } catch (err) {
+        console.error('Import error:', err);
+        res.status(500).json({ error: 'Failed to import assets' });
     }
 });
 

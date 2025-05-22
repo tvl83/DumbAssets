@@ -25,6 +25,7 @@ export class ImportManager {
 
     _bindEvents() {
         this.importBtn.addEventListener('click', () => {
+            this.resetImportForm();
             this.importModal.style.display = 'block';
         });
         this.importModal.querySelector('.close-btn').addEventListener('click', () => {
@@ -33,6 +34,11 @@ export class ImportManager {
         });
         this.importFile.addEventListener('change', (e) => this._handleFileSelection(e));
         this.startImportBtn.addEventListener('click', () => this._handleImport());
+        // Download Template button event
+        const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+        if (downloadTemplateBtn) {
+            downloadTemplateBtn.addEventListener('click', () => this._downloadTemplate());
+        }
     }
 
     async _handleFileSelection(e) {
@@ -66,7 +72,20 @@ export class ImportManager {
             const urlColumn = document.getElementById('urlColumn');
             const warrantyColumn = document.getElementById('warrantyColumn');
             const warrantyExpirationColumn = document.getElementById('warrantyExpirationColumn');
-            [urlColumn, warrantyColumn, warrantyExpirationColumn].forEach(select => {
+            const tagsColumn = document.getElementById('tagsColumn');
+            [urlColumn, warrantyColumn, warrantyExpirationColumn, tagsColumn].forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">Select Column</option>';
+                headers.forEach((header, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = header;
+                    select.appendChild(option);
+                });
+            });
+            const secondaryWarrantyColumn = document.getElementById('secondaryWarrantyColumn');
+            const secondaryWarrantyExpirationColumn = document.getElementById('secondaryWarrantyExpirationColumn');
+            [secondaryWarrantyColumn, secondaryWarrantyExpirationColumn].forEach(select => {
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Column</option>';
                 headers.forEach((header, index) => {
@@ -99,7 +118,10 @@ export class ImportManager {
             notes: document.getElementById('notesColumn').value,
             url: document.getElementById('urlColumn').value,
             warranty: document.getElementById('warrantyColumn').value,
-            warrantyExpiration: document.getElementById('warrantyExpirationColumn').value
+            warrantyExpiration: document.getElementById('warrantyExpirationColumn').value,
+            secondaryWarranty: document.getElementById('secondaryWarrantyColumn') ? document.getElementById('secondaryWarrantyColumn').value : '',
+            secondaryWarrantyExpiration: document.getElementById('secondaryWarrantyExpirationColumn') ? document.getElementById('secondaryWarrantyExpirationColumn').value : '',
+            tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : ''
         };
         if (!mappings.name) {
             alert('Please map the Name column');
@@ -151,7 +173,10 @@ export class ImportManager {
             notesColumn: ["notes", "note", "description", "desc", "comments"],
             urlColumn: ["url", "link", "website"],
             warrantyColumn: ["warranty", "warranty scope", "coverage"],
-            warrantyExpirationColumn: ["warranty expiration", "warranty expiry", "warranty end", "warranty end date", "expiration", "expiry"]
+            warrantyExpirationColumn: ["warranty expiration", "warranty expiry", "warranty end", "warranty end date", "expiration", "expiry"],
+            secondaryWarrantyColumn: ["secondary warranty", "secondary warranty scope", "warranty 2", "warranty2", "warranty scope 2"],
+            secondaryWarrantyExpirationColumn: ["secondary warranty expiration", "secondary warranty expiry", "secondary warranty end", "secondary warranty end date", "warranty 2 expiration", "warranty2 expiration", "warranty expiration 2", "warranty expiry 2"],
+            tagsColumn: ["tags", "tag", "labels", "categories"]
         };
         function normalize(str) {
             return str.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -176,6 +201,84 @@ export class ImportManager {
         this.columnSelects.forEach(select => {
             select.innerHTML = '<option value="">Select Column</option>';
         });
+        // Explicitly reset all individual column selects in case they are not in columnSelects
+        const columnIds = [
+            'nameColumn',
+            'modelColumn',
+            'manufacturerColumn',
+            'serialColumn',
+            'purchaseDateColumn',
+            'purchasePriceColumn',
+            'notesColumn',
+            'urlColumn',
+            'warrantyColumn',
+            'warrantyExpirationColumn',
+            'secondaryWarrantyColumn',
+            'secondaryWarrantyExpirationColumn',
+            'tagsColumn'
+        ];
+        columnIds.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.innerHTML = '<option value="">Select Column</option>';
+                select.value = '';
+            }
+        });
         this.startImportBtn.disabled = true;
+        // Optionally hide column mapping UI if needed
+        const mappingContainer = document.querySelector('.column-mapping');
+        if (mappingContainer) mappingContainer.style.display = 'none';
     }
+
+    _downloadTemplate() {
+        // Define the headers for the template CSV
+        const headers = [
+            'Name',
+            'Manufacturer',
+            'Model',
+            'Serial',
+            'Purchase Date',
+            'Purchase Price',
+            'Notes',
+            'URL',
+            'Warranty',
+            'Warranty Expiration',
+            'Secondary Warranty',
+            'Secondary Warranty Expiration',
+            'Tags'
+        ];
+        // Generate test data row
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const testRow = headers.map(h => {
+            const lower = h.toLowerCase();
+            if (lower.includes('date') || lower.includes('expiration')) return today;
+            if (lower === 'tags') return '"tag1,tag2,tag3"'; // CSV string for tags
+            if (lower === 'purchase price') return '123.45';
+            return `Test ${h}`;
+        });
+        const csvContent = headers.join(',') + '\n' + testRow.join(',') + '\n';
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'assets.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 0);
+    }
+}
+
+// Make resetImportForm globally accessible for fileUploader.js
+if (typeof window !== 'undefined') {
+    window.resetImportForm = (...args) => {
+        if (typeof ImportManager !== 'undefined' && ImportManager.prototype.resetImportForm) {
+            // Find the importManager instance if possible
+            if (window.importManager && typeof window.importManager.resetImportForm === 'function') {
+                window.importManager.resetImportForm(...args);
+            }
+        }
+    };
 }
