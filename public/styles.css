@@ -472,8 +472,8 @@ input[type="date"][data-has-value="true"] {
     display: grid;
     grid-template-columns: 300px 1fr;
     gap: 0.5rem;
+    padding: 0 0.5rem 0 0.5rem;
     max-width: 1200px;
-    margin: 0 auto;
     background: var(--container);
     border: var(--app-border);
     border-radius: var(--app-border-radius);
@@ -621,13 +621,19 @@ input[type="date"][data-has-value="true"] {
     min-height: 0; /* Critical for proper flex child behavior */
 }
 
-#assetDetails, #subAssetContainer {
-    border: var(--app-border);
-    border-radius: var(--app-border-radius);
-    padding: 0.75rem;
-    width: calc(100% - 0.5rem);
-    margin: 0.5rem 0.5rem 0.5rem auto;
-    box-sizing: border-box;
+#assetDetails {
+    border: none !important;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    /* Only the .dashboard-legend inside provides the border */
+}
+
+#subAssetContainer {
+    border: none !important;
+    padding: 0;
+    background: none;
+    box-shadow: none;
 }
 
 .asset-header {
@@ -1241,6 +1247,7 @@ input[type="date"][data-has-value="true"] {
     border-bottom: 3px solid transparent;
     cursor: pointer;
     font-weight: 600;
+    font-size: 0.9rem;
     color: var(--text-light);
     transition: all 0.2s ease;
 }
@@ -2270,6 +2277,39 @@ a:hover {
     100% { transform: translateY(0); }
 }
 
+/* Dashboard fieldset and legend styles */
+.dashboard-legend {
+    border: var(--app-border);
+    border-radius: var(--app-border-radius);
+    padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+    margin: 1.5rem 0 0 0;
+    background: var(--container);
+    box-shadow: 0 2px 8px rgba(37, 100, 235, 0.04);
+    position: relative;
+}
+.dashboard-legend-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--primary-color);
+    padding: 0 1.2rem;
+    background: var(--container);
+    border-radius: 1.2rem;
+    position: absolute;
+    top: -1.1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 4px rgba(37, 100, 235, 0.03);
+}
+
+/* Ensure legend does not overlap content */
+.dashboard-legend > legend {
+    width: auto;
+    margin: 0 auto;
+    text-align: center;
+}
+
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
 @media (max-width: 1200px) {
@@ -2305,6 +2345,9 @@ a:hover {
     #siteTitle {
         font-size: 1.8rem;
         margin-top: 0.5rem;
+    }
+    .dashboard-legend-title {
+        font-size: 1.1rem;
     }
     .header-actions {
         margin-right: 1rem;

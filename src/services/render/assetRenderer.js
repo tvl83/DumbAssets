@@ -218,72 +218,79 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         manualPath
     });
     
-    // Render asset or sub-asset details
+    // Determine legend title
+    let legendTitle = 'Asset Details';
+    if (isSubAsset) legendTitle = 'Component Details';
+
+    // Render asset or sub-asset details inside a unified fieldset/legend
     assetDetails.innerHTML = `
-        <div class="asset-header">
-            <div class="asset-title">
-                <h2>${asset.name}</h2>
-                <div class="asset-meta">
-                    Added: ${formatDate(asset.createdAt)}
-                    ${asset.updatedAt !== asset.createdAt ? ` • Updated: ${formatDate(asset.updatedAt)}` : ''}
+        <fieldset class="dashboard-legend">
+            <legend class="dashboard-legend-title">${legendTitle}</legend>
+            <div class="asset-header">
+                <div class="asset-title">
+                    <h2>${asset.name}</h2>
+                    <div class="asset-meta">
+                        Added: ${formatDate(asset.createdAt)}
+                        ${asset.updatedAt !== asset.createdAt ? ` • Updated: ${formatDate(asset.updatedAt)}` : ''}
+                    </div>
+                </div>
+                <div class="asset-actions">
+                    ${isSub ? `<button class="back-to-parent-btn" title="Back to Parent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>` : ''}
+                    <button class="edit-asset-btn" data-id="${asset.id}" title="Edit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                    </button>
+                    <button class="delete-asset-btn" data-id="${asset.id}" title="Delete">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </button>
                 </div>
             </div>
-            <div class="asset-actions">
-                ${isSub ? `<button class="back-to-parent-btn" title="Back to Parent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>` : ''}
-                <button class="edit-asset-btn" data-id="${asset.id}" title="Edit">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
-                </button>
-                <button class="delete-asset-btn" data-id="${asset.id}" title="Delete">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </button>
+            <div class="asset-info">
+                ${generateAssetInfoHTML(asset)}
             </div>
-        </div>
-        <div class="asset-info">
-            ${generateAssetInfoHTML(asset)}
-        </div>
-        ${asset.description ? `
-        <div class="asset-description">
-            <strong>Description:</strong>
-            <p>${asset.description}</p>
-        </div>
-        ` : ''}
-        <div class="asset-files">
-            <div class="files-grid">
-                ${photoPath ? `
-                <div class="file-item photo">
-                    <a href="${photoPath}" target="_blank" class="file-preview">
-                        <img src="${photoPath}" alt="${asset.name}" class="asset-image">
-                        <div class="file-label">Photo</div>
-                    </a>
-                </div>
-                ` : '<!-- No photo available -->'}
-                ${receiptPath ? `
-                <div class="file-item receipt">
-                    <a href="${receiptPath}" target="_blank" class="file-preview">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
-                        </svg>
-                        <div class="file-label">Receipt</div>
-                    </a>
-                </div>
-                ` : '<!-- No receipt available -->'}
-                ${manualPath ? `
-                <div class="file-item manual">
-                    <a href="${manualPath}" target="_blank" class="file-preview">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                        <div class="file-label">Manual</div>
-                    </a>
-                </div>
-                ` : '<!-- No manual available -->'}
+            ${asset.description ? `
+            <div class="asset-description">
+                <strong>Description:</strong>
+                <p>${asset.description}</p>
             </div>
-        </div>
+            ` : ''}
+            <div class="asset-files">
+                <div class="files-grid">
+                    ${photoPath ? `
+                    <div class="file-item photo">
+                        <a href="${photoPath}" target="_blank" class="file-preview">
+                            <img src="${photoPath}" alt="${asset.name}" class="asset-image">
+                            <div class="file-label">Photo</div>
+                        </a>
+                    </div>
+                    ` : '<!-- No photo available -->'}
+                    ${receiptPath ? `
+                    <div class="file-item receipt">
+                        <a href="${receiptPath}" target="_blank" class="file-preview">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
+                            </svg>
+                            <div class="file-label">Receipt</div>
+                        </a>
+                    </div>
+                    ` : '<!-- No receipt available -->'}
+                    ${manualPath ? `
+                    <div class="file-item manual">
+                        <a href="${manualPath}" target="_blank" class="file-preview">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            <div class="file-label">Manual</div>
+                        </a>
+                    </div>
+                    ` : '<!-- No manual available -->'}
+                </div>
+            </div>
+        </fieldset>
     `;
     // Add event listeners
     if (isSub) {
@@ -323,33 +330,28 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         if (!asset.parentSubId) {
             // Get fresh list of sub-sub-assets after potential changes
             const subSubAssets = subAssets.filter(sa => sa.parentSubId === asset.id);
-            const section = document.createElement('div');
-            section.className = 'sub-asset-section';
-            section.innerHTML = `
+            // --- Modern legend/fieldset for sub-sub-assets ---
+            const fieldset = document.createElement('fieldset');
+            fieldset.className = 'dashboard-legend';
+            fieldset.innerHTML = `
+                <legend class="dashboard-legend-title">Components & Attachments</legend>
                 <div class="sub-asset-header">
-                    <h3>Components & Attachments</h3>
+                    <button class="add-sub-asset-btn" style="margin-top:0.5rem;">+ Add Sub-Component</button>
+                </div>
+                <div class="sub-asset-list">
+                    ${subSubAssets.length === 0
+                        ? '<div class="empty-state"><p>No components found. Add your first component.</p></div>'
+                        : subSubAssets.map(child => {
+                            const wrapper = document.createElement('div');
+                            wrapper.appendChild(createSubAssetElement(child));
+                            return wrapper.innerHTML;
+                        }).join('')
+                    }
                 </div>
             `;
-            const list = document.createElement('div');
-            list.className = 'sub-asset-list';
-            if (subSubAssets.length === 0) {
-                list.innerHTML = `<div class="empty-state"><p>No components found. Add your first component.</p></div>`;
-            } else {
-                subSubAssets.forEach(child => {
-                    const childElement = createSubAssetElement(child);
-                    list.appendChild(childElement);
-                });
-            }
-            section.appendChild(list);
-            
-            // Add Sub-Component button
-            const addSubBtn = document.createElement('button');
-            addSubBtn.className = 'add-sub-asset-btn';
-            addSubBtn.textContent = '+ Add Sub-Component';
-            addSubBtn.style.marginTop = '1rem';
-            addSubBtn.onclick = () => openSubAssetModal(null, asset.parentId, asset.id);
-            section.appendChild(addSubBtn);
-            assetDetails.appendChild(section);
+            // Add event for add button
+            fieldset.querySelector('.add-sub-asset-btn').onclick = () => openSubAssetModal(null, asset.parentId, asset.id);
+            assetDetails.appendChild(fieldset);
         }
     }
     handleSidebarNav();

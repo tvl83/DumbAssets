@@ -562,6 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return defaultState;
     }
 
+    // Patch renderDashboard to ensure only one .dashboard-legend is present and legend title is correct
     function renderDashboard(shouldAnimateCharts = true) {
         // Calculate stats
         const totalAssets = assets.length;
@@ -690,10 +691,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Set the dashboard HTML with ordered sections
         assetDetails.innerHTML = `
-            <div class="dashboard">
-                <h2 class="dashboard-title">Asset Overview</h2>
+            <fieldset class="dashboard-legend">
+                <legend class="dashboard-legend-title">Asset Overview</legend>
                 ${orderedSections}
-            </div>
+            </fieldset>
         `;
         
         // Only create charts if shouldAnimateCharts is true
