@@ -225,6 +225,23 @@ function renderAssetDetails(assetId, isSubAsset = false) {
     if (isSubAsset) legendTitle = 'Component Details';
 
     // Render asset or sub-asset details inside a unified fieldset/legend
+    let maintenanceScheduleHtml = '';
+    if (asset.maintenanceSchedule) {
+        let scheduleText = '';
+        if (asset.maintenanceSchedule.unit === 'custom') {
+            scheduleText = asset.maintenanceSchedule.custom;
+        } else if (asset.maintenanceSchedule.frequency && asset.maintenanceSchedule.unit) {
+            scheduleText = `Every ${asset.maintenanceSchedule.frequency} ${asset.maintenanceSchedule.unit}`;
+        }
+        if (scheduleText) {
+            maintenanceScheduleHtml = `
+                <div class="info-item">
+                    <div class="info-label">Maintenance Schedule</div>
+                    <div>${scheduleText}</div>
+                </div>
+            `;
+        }
+    }
     assetDetails.innerHTML = `
         <fieldset class="dashboard-legend">
             <legend class="dashboard-legend-title">${legendTitle}</legend>
@@ -248,6 +265,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             </div>
             <div class="asset-info">
                 ${generateAssetInfoHTML(asset)}
+                ${maintenanceScheduleHtml}
             </div>
             ${(asset.description || asset.notes) ? `
             <div class="asset-description">
