@@ -762,6 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+    window.renderDashboard = renderDashboard;
 
     function renderEmptyState(animateCharts = true) {
         // Always render dashboard and charts when showing empty state
@@ -2184,6 +2185,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load initial data
     loadAllData();
     registerServiceWorker();
-    // Expose renderDashboard globally for import rerender
-    window.renderDashboard = renderDashboard;
 });
