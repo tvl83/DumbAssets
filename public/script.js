@@ -614,8 +614,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardVisibility = (typeof getDashboardCardVisibility === 'function') ? getDashboardCardVisibility() : {};
         // Prepare HTML sections for each dashboard component
         const totalsSection = `
+            <fieldset class="dashboard-legend">
+                <legend class="dashboard-legend-title">Totals</legend>
                 <div class="dashboard-section" data-section="totals" style="${!sectionVisibility.totals ? 'display:none;' : ''}">
-                    ${sectionHeader('Totals')}
                     <div class="dashboard-cards totals-cards">
                         ${cardVisibility.assets !== false ? `<div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
                             <div class="card-label">Assets</div>
@@ -630,11 +631,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="card-value">${formatCurrency(totalValue)}</div>
                         </div>` : ''}
                     </div>
-                </div>`;
-                
+                </div>
+            </fieldset>`;
         const warrantiesSection = `
+            <fieldset class="dashboard-legend">
+                <legend class="dashboard-legend-title">Warranties</legend>
                 <div class="dashboard-section dashboard-warranty-section" data-section="warranties" style="${!sectionVisibility.warranties ? 'display:none;' : ''}">
-                    ${sectionHeader('Warranties')}
                     <div class="dashboard-cards warranty-cards">
                         ${cardVisibility.warranties !== false ? `<div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                             <div class="card-label">Total</div>
@@ -657,11 +659,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="card-value">${active}</div>
                         </div>` : ''}
                     </div>
-                </div>`;
-                
+                </div>
+            </fieldset>`;
         const analyticsSection = `
+            <fieldset class="dashboard-legend">
+                <legend class="dashboard-legend-title">Analytics</legend>
                 <div class="dashboard-section" data-section="analytics" style="${!sectionVisibility.analytics ? 'display:none;' : ''}">
-                    ${sectionHeader('Analytics')}
                     <div class="dashboard-charts-section">
                         <div class="chart-container">
                             <h3>Warranty Status</h3>
@@ -672,7 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
                         </div>
                     </div>
-                </div>`;
+                </div>
+            </fieldset>`;
         
         // Map of section names to their HTML
         const sectionMap = {
