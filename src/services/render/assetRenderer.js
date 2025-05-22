@@ -127,7 +127,7 @@ function generateAssetInfoHTML(asset) {
         </div>
         <div class="info-item">
             <div class="info-label">Price</div>
-            <div>${formatCurrency(asset.price)}</div>
+            <div>${formatCurrency(asset.price || asset.purchasePrice)}</div>
         </div>
         ${asset.warranty?.scope ? `
         <div class="info-item">
@@ -254,10 +254,10 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             <div class="asset-info">
                 ${generateAssetInfoHTML(asset)}
             </div>
-            ${asset.description ? `
+            ${(asset.description || asset.notes) ? `
             <div class="asset-description">
                 <strong>Description:</strong>
-                <p>${asset.description}</p>
+                <p>${asset.description || asset.notes}</p>
             </div>
             ` : ''}
             <div class="asset-files">
