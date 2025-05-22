@@ -3,6 +3,9 @@
  * Main JavaScript file handling application logic
  */
 
+// Debug mode flag - set to true to enable debug logging
+const DEBUG = false;
+
 // Import file upload module
 import { initializeFileUploads, handleFileUploads } from '/src/services/fileUpload/index.js';
 import { formatFileSize } from '/src/services/fileUpload/utils.js';
