@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Rendering Functions
-    function renderDashboard() {
+    function renderDashboard(shouldAnimateCharts = true) {
         // Calculate stats
         const totalAssets = assets.length;
         const totalSubAssets = subAssets.length;
@@ -670,8 +670,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         
-        // Create charts after the HTML has been added to the DOM
-        chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active });
+        // Only create charts if shouldAnimateCharts is true
+        chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
         
         // Add click handler for clear filters button
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -731,14 +731,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateDashboardFilter(dashboardFilter);
                 renderAssetList(searchInput.value);
-                if (!selectedAssetId) renderDashboard();
+                // Only re-render dashboard UI, not charts, on filter
+                if (!selectedAssetId) renderDashboard(false);
             });
         });
     }
 
     function renderEmptyState() {
-        // Always render dashboard when showing empty state
-        renderDashboard();
+        // Always render dashboard and charts when showing empty state
+        renderDashboard(true);
         subAssetContainer.classList.add('hidden');
     }
 
@@ -2016,7 +2017,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.remove('active');
         });
         
-        // Render dashboard
+        // Render dashboard and charts
         renderEmptyState();
         
         // Close sidebar on mobile

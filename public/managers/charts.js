@@ -61,8 +61,9 @@ export class ChartManager {
     /**
      * Creates warranty dashboard charts
      * @param {Object} data - The warranty data
+     * @param {boolean} animate - Whether to animate the charts
      */
-    createWarrantyDashboard(data) {
+    createWarrantyDashboard(data, animate = true) {
         const { allWarranties, expired, within30, within60, active } = data;
 
         // Create pie chart
@@ -85,7 +86,6 @@ export class ChartManager {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                // aspectRatio: 1.5,
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -111,8 +111,7 @@ export class ChartManager {
                     }
                 },
                 cutout: '65%',
-                animation: { duration: 1000 },
-                
+                animation: animate ? { duration: 1000 } : false,
             }
         });
 
@@ -208,7 +207,7 @@ export class ChartManager {
                         }
                     }
                 },
-                animation: { duration: 1000 }
+                animation: animate ? { duration: 1000 } : false
             }
         });
 
