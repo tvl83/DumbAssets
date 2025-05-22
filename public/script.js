@@ -35,6 +35,7 @@ import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 import { initCollapsibleSections } from './js/collapsible.js';
 // Import SettingsManager
 import { SettingsManager } from './managers/settings.js';
+import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize global variables for DOM elements
@@ -113,26 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDashboard,
         getDashboardOrder
     });
-
-    // Utility Functions
-    function generateId() {
-        // Generate a 10-digit ID
-        return Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    }
-
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString();
-    }
-
-    function formatCurrency(amount) {
-        if (amount === null || amount === undefined) return 'N/A';
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount);
-    }
 
     // Save settings to backend
     function showToast(message) {
