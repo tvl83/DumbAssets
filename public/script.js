@@ -122,6 +122,17 @@ document.addEventListener('DOMContentLoaded', () => {
         getDashboardOrder
     });
 
+    // Add Ctrl+Enter keyboard shortcut to save the settings form
+    if (settingsModal && saveSettings) {
+        const settingsKeydownHandler = (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                saveSettings.click();
+            }
+        };
+        settingsModal.addEventListener('keydown', settingsKeydownHandler);
+    }
+
     // Instantiate ImportManager
     const importManager = new ImportManager({
         importModal,
@@ -1020,6 +1031,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(updatedAsset => saveAsset(updatedAsset));
         };
         
+        // Add Ctrl+Enter keyboard shortcut to save the asset form
+        const assetKeydownHandler = (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                assetForm.dispatchEvent(new Event('submit'));
+            }
+        };
+        assetModal.addEventListener('keydown', assetKeydownHandler);
+        
         // Set up cancel button
         const cancelBtn = assetForm.querySelector('.cancel-btn');
         if (cancelBtn) {
@@ -1290,6 +1310,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(updatedSubAsset => saveSubAsset(updatedSubAsset));
         };
         
+        // Add Ctrl+Enter keyboard shortcut to save the component form
+        const subAssetKeydownHandler = (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                subAssetForm.dispatchEvent(new Event('submit'));
+            }
+        };
+        subAssetModal.addEventListener('keydown', subAssetKeydownHandler);
+        
         // Set up cancel button
         const cancelBtn = subAssetForm.querySelector('.cancel-btn');
         if (cancelBtn) {
@@ -1394,7 +1423,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             closeSidebar();
         });
     }
