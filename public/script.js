@@ -32,7 +32,11 @@ const chartManager = new ChartManager();
 // Use setupFilePreview from the render index.js
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 // Import collapsible sections functionality
-import { initCollapsibleSections } from './js/collapsible.js';
+import {     
+    initCollapsibleSections, 
+    expandSection,
+    collapseSection
+} from './js/collapsible.js';
 // Import SettingsManager
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
@@ -797,7 +801,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isEditMode = !!asset;
         document.getElementById('addAssetTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
         assetForm.reset();
-        
+        let containsExistingFiles = false;
+
         // Reset loading state of save button
         const saveBtn = assetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, false);
@@ -929,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     photoInfo.originalName || asset.photoPath.split('/').pop(),
                     photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
                 );
+                containsExistingFiles = true;
             }
             
             if (asset.receiptPath) {
@@ -943,6 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     receiptInfo.originalName || asset.receiptPath.split('/').pop(),
                     receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
                 );
+                containsExistingFiles = true;
             }
             
             if (asset.manualPath) {
@@ -964,6 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         deleteManual = window.deleteManual = true;
                     }
                 };
+                containsExistingFiles = true;
             }
             setMaintenanceScheduleInModal('asset', asset.maintenanceSchedule || {});
         } else {
@@ -1059,10 +1067,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show the modal
         assetModal.style.display = 'block';
         
-        // // Initialize collapsible sections in the modal - with a slight delay to ensure content is visible
-        // setTimeout(() => {
-        //     initCollapsibleSections();
-        // }, 50);
+        if (containsExistingFiles) expandSection('#assetFileUploader');
+        else collapseSection('#assetFileUploader');
     }
 
     function closeAssetModal() {
@@ -1100,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isEditMode = !!subAsset;
         document.getElementById('addComponentTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
         subAssetForm.reset();
+        let containsExistingFiles = false;
         
         // Reset loading state of save button
         const saveBtn = subAssetForm.querySelector('.save-btn');
@@ -1183,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     photoInfo.originalName || subAsset.photoPath.split('/').pop(),
                     photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
                 );
+                containsExistingFiles = true;
             }
             
             if (subAsset.receiptPath) {
@@ -1197,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     receiptInfo.originalName || subAsset.receiptPath.split('/').pop(),
                     receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
                 );
+                containsExistingFiles = true;
             }
             
             if (subAsset.manualPath) {
@@ -1217,6 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         deleteSubManual = window.deleteSubManual = true;
                     }
                 };
+                containsExistingFiles = true;
             }
             setMaintenanceScheduleInModal('subAsset', subAsset.maintenanceSchedule || {});
         } else {
@@ -1338,10 +1348,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show the modal
         subAssetModal.style.display = 'block';
         
-        // // Initialize any collapsible sections in the modal
-        // setTimeout(() => {
-        //     initCollapsibleSections();
-        // }, 50);
+        if (containsExistingFiles) expandSection('#subAssetFileUploader');
+        else collapseSection('#subAssetFileUploader');
     }
 
     function closeSubAssetModal() {
@@ -1430,7 +1438,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get dashboard section order from settings or use default
     function getDashboardOrder() {
         // Default order
-        let order = ['totals', 'warranties', 'analytics'];
+        let order = ['analytics', 'totals', 'warranties'];
         
         try {
             // Try to get from localStorage as a quick cache
