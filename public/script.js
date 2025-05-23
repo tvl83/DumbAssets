@@ -978,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Create asset object
             const assetTags = assetTagManager.getTags();
             const tagsInput = document.getElementById('assetTags');
-            if (tagsInput && tagsInput.value !== '' && tagsInput.value !== ' ') assetTags.push(tagsInput.value);
+            if (tagsInput && tagsInput.value.trim() !== '') assetTags.push(tagsInput.value);
 
             const newAsset = {
                 name: document.getElementById('assetName').value,
@@ -1256,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const subAssetTags = subAssetTagManager.getTags();
             const subAssetTagsInput = document.getElementById('subAssetTags');
-            if (subAssetTagsInput && subAssetTagsInput.value !== '' && subAssetTagsInput.value !== ' ') subAssetTags.push(subAssetTagsInput.value);
+            if (subAssetTagsInput && subAssetTagsInput.value !== '') subAssetTags.push(subAssetTagsInput.value);
 
             const newSubAsset = {
                 id: idInput && idInput.value ? idInput.value : generateId(), // Generate new ID if not editing
