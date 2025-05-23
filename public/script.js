@@ -1266,9 +1266,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 parentSubId: newSubAsset.parentSubId,
                 warranty: newSubAsset.warranty
             });
-
-            const tagsInput = document.getElementById('subAssetTags');
-            if(tagsInput.value) subAssetTagManager.addTag(tagsInput.value);
             
             // Add file info if editing, generate new paths if adding
             if (isEditMode && subAsset) {
@@ -2039,7 +2036,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (input) {
             input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === ',') {
                     e.preventDefault();
                     const tag = input.value.trim();
                     if (tag && !tags.has(tag)) {
