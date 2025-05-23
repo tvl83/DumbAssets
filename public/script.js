@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add Ctrl+Enter keyboard shortcut to save the settings form
     if (settingsModal && saveSettings) {
         const settingsKeydownHandler = (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 saveSettings.click();
             }
@@ -1033,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add Ctrl+Enter keyboard shortcut to save the asset form
         const assetKeydownHandler = (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 assetForm.dispatchEvent(new Event('submit'));
             }
@@ -1312,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add Ctrl+Enter keyboard shortcut to save the component form
         const subAssetKeydownHandler = (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 subAssetForm.dispatchEvent(new Event('submit'));
             }
