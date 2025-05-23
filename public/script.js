@@ -965,6 +965,10 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             
             // Create asset object
+            const assetTags = assetTagManager.getTags();
+            const tagsInput = document.getElementById('assetTags');
+            if (tagsInput && tagsInput.value !== '' && tagsInput.value !== ' ') assetTags.push(tagsInput.value);
+
             const newAsset = {
                 name: document.getElementById('assetName').value,
                 modelNumber: document.getElementById('assetModel').value,
@@ -978,7 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 link: document.getElementById('assetLink').value,
                 description: document.getElementById('assetDescription').value,
-                tags: assetTagManager.getTags(),
+                tags: assetTags,
                 updatedAt: new Date().toISOString(),
                 maintenanceSchedule: getMaintenanceScheduleFromModal('asset')
             };
@@ -1230,6 +1234,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
+            const subAssetTags = subAssetTagManager.getTags();
+            const subAssetTagsInput = document.getElementById('subAssetTags');
+            if (subAssetTagsInput && subAssetTagsInput.value !== '' && subAssetTagsInput.value !== ' ') subAssetTags.push(subAssetTagsInput.value);
+
             const newSubAsset = {
                 id: idInput && idInput.value ? idInput.value : generateId(), // Generate new ID if not editing
                 name: nameInput ? nameInput.value : '',
@@ -1241,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 parentId: parentIdInput ? parentIdInput.value : '',
                 parentSubId: parentSubIdInput ? parentSubIdInput.value : '',
                 notes: notesInput ? notesInput.value : '',
-                tags: subAssetTagManager.getTags(),
+                tags: subAssetTags,
                 warranty: {
                     scope: warrantyScopeInput ? warrantyScopeInput.value : '',
                     expirationDate: warrantyExpirationInput ? warrantyExpirationInput.value : ''
@@ -1258,6 +1266,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 parentSubId: newSubAsset.parentSubId,
                 warranty: newSubAsset.warranty
             });
+
+            const tagsInput = document.getElementById('subAssetTags');
+            if(tagsInput.value) subAssetTagManager.addTag(tagsInput.value);
             
             // Add file info if editing, generate new paths if adding
             if (isEditMode && subAsset) {
