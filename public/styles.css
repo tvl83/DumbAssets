@@ -588,8 +588,16 @@ input[type="date"][data-has-value="true"] {
     background-color: var(--primary-transparent);
     border-radius: 1rem;
     color: var(--primary-color);
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
     display: inline-block;
+    cursor: pointer;
+}
+
+.asset-item .asset-tag:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .add-asset-btn, .add-sub-asset-btn {
@@ -2143,10 +2151,18 @@ a:hover {
     background-color: var(--primary-transparent);
     border-radius: 1rem;
     color: var(--primary-color);
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    cursor: pointer;
+}
+
+.tag:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .tag .remove-tag {
@@ -2184,6 +2200,15 @@ a:hover {
 .info-item .tag {
     padding: 0.3rem 0.8rem;
     font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.info-item .tag:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 /* Sub-asset tag display */
@@ -2197,6 +2222,15 @@ a:hover {
 .sub-asset-info .tag {
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sub-asset-info .tag:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 /* Settings - Sortable List Styles */
@@ -2360,7 +2394,7 @@ a:hover {
 @media (max-width: 1200px) {
     .dashboard-card .card-value {
         font-size: 1rem;
-        // make sure the text is responsive and not too big
+        /* make sure the text is responsive and not too big */
         line-height: 2rem;
         
     }

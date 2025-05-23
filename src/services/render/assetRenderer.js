@@ -17,6 +17,10 @@ let createSubAssetElement;
 let handleSidebarNav;
 let renderSubAssets;
 
+// Search functionality
+let searchInput;
+let renderAssetList;
+
 // Global state references - will be passed from main script
 let assets = [];
 let subAssets = [];
@@ -46,6 +50,10 @@ function initRenderer(config) {
     createSubAssetElement = config.createSubAssetElement;
     handleSidebarNav = config.handleSidebarNav;
     renderSubAssets = config.renderSubAssets;
+    
+    // Store references to search functionality
+    searchInput = config.searchInput;
+    renderAssetList = config.renderAssetList;
     
     // Store references to global state
     assets = config.assets;
@@ -277,7 +285,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             <div class="info-item" style="margin-bottom: 1rem;">
                 <div class="info-label">Tags</div>
                 <div class="tag-list">
-                    ${asset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    ${asset.tags.map(tag => `<span class="tag" data-tag="${tag}" style="cursor: pointer;">${tag}</span>`).join('')}
                 </div>
             </div>` : ''}
             <div class="asset-files">
@@ -347,6 +355,34 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             else deleteAsset(asset.id);
         });
     }
+    
+    // Add click event listeners to tags in the details view
+    const tagElements = assetDetails.querySelectorAll('.tag[data-tag]');
+    tagElements.forEach(tagElement => {
+        tagElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tagName = tagElement.dataset.tag;
+            
+            // Set the search input value to the tag name
+            if (searchInput) {
+                searchInput.value = tagName;
+                
+                // Show the clear search button
+                const clearSearchBtn = document.getElementById('clearSearchBtn');
+                if (clearSearchBtn) {
+                    clearSearchBtn.style.display = 'flex';
+                }
+                
+                // Trigger the search by calling renderAssetList with the tag
+                if (renderAssetList) {
+                    renderAssetList(tagName);
+                }
+                
+                // Focus the search input
+                searchInput.focus();
+            }
+        });
+    });
     
     // Only render sub-assets if viewing a main asset
     if (!isSub) {

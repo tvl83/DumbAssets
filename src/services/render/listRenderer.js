@@ -295,12 +295,17 @@ function renderAssetList(searchQuery = '') {
             ${asset.modelNumber ? `<div class="asset-item-model">${asset.modelNumber}</div>` : ''}
             ${asset.tags && asset.tags.length > 0 ? `
                 <div class="asset-item-tags">
-                    ${asset.tags.map(tag => `<span class="asset-tag">${tag}</span>`).join('')}
+                    ${asset.tags.map(tag => `<span class="asset-tag" data-tag="${tag}">${tag}</span>`).join('')}
                 </div>
             ` : ''}
         `;
             
-        assetItem.addEventListener('click', () => {
+        assetItem.addEventListener('click', (e) => {
+            // Don't trigger asset click if clicking on a tag
+            if (e.target.classList.contains('asset-tag')) {
+                return;
+            }
+            
             // Remove active class from all asset items
             document.querySelectorAll('.asset-item').forEach(item => {
                 item.classList.remove('active');
@@ -314,6 +319,35 @@ function renderAssetList(searchQuery = '') {
             
             renderAssetDetails(asset.id);
             handleSidebarNav();
+        });
+        
+        // Add click event listeners to tags
+        const tagElements = assetItem.querySelectorAll('.asset-tag');
+        tagElements.forEach(tagElement => {
+            tagElement.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent asset click
+                const tagName = tagElement.dataset.tag;
+                
+                // Set the search input value to the tag name
+                if (searchInput) {
+                    searchInput.value = tagName;
+                    
+                    // Show the clear search button
+                    const clearSearchBtn = document.getElementById('clearSearchBtn');
+                    if (clearSearchBtn) {
+                        clearSearchBtn.style.display = 'flex';
+                    }
+                    
+                    // Trigger the search by calling renderAssetList with the tag
+                    renderAssetList(tagName);
+                    
+                    // Focus the search input
+                    searchInput.focus();
+                }
+            });
+            
+            // Add cursor pointer style to make it clear tags are clickable
+            tagElement.style.cursor = 'pointer';
         });
         
         assetList.appendChild(assetItem);

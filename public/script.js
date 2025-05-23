@@ -1580,11 +1580,40 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             ${subAsset.tags && subAsset.tags.length > 0 ? `
             <div class="tag-list">
-                ${subAsset.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                ${subAsset.tags.map(tag => `<span class="tag" data-tag="${tag}">${tag}</span>`).join('')}
             </div>`: ''}
         `;
         
         element.appendChild(info);
+        
+        // Add click event listeners to tags
+        const tagElements = info.querySelectorAll('.tag');
+        tagElements.forEach(tagElement => {
+            tagElement.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent sub-asset click
+                const tagName = tagElement.dataset.tag;
+                
+                // Set the search input value to the tag name
+                if (searchInput) {
+                    searchInput.value = tagName;
+                    
+                    // Show the clear search button
+                    const clearSearchBtn = document.getElementById('clearSearchBtn');
+                    if (clearSearchBtn) {
+                        clearSearchBtn.style.display = 'flex';
+                    }
+                    
+                    // Trigger the search by calling renderAssetList with the tag
+                    renderAssetList(tagName);
+                    
+                    // Focus the search input
+                    searchInput.focus();
+                }
+            });
+            
+            // Add cursor pointer style to make it clear tags are clickable
+            tagElement.style.cursor = 'pointer';
+        });
         
         // Add file previews
         const filePreviewsContainer = document.createElement('div');
@@ -1704,10 +1733,39 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         ${child.tags && child.tags.length > 0 ? `
                         <div class="tag-list">
-                            ${child.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            ${child.tags.map(tag => `<span class="tag" data-tag="${tag}">${tag}</span>`).join('')}
                         </div>`: ''}
                     `;
                     childElement.appendChild(childInfo);
+                    
+                    // Add click event listeners to tags
+                    const tagElements = childInfo.querySelectorAll('.tag');
+                    tagElements.forEach(tagElement => {
+                        tagElement.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent sub-asset click
+                            const tagName = tagElement.dataset.tag;
+                            
+                            // Set the search input value to the tag name
+                            if (searchInput) {
+                                searchInput.value = tagName;
+                                
+                                // Show the clear search button
+                                const clearSearchBtn = document.getElementById('clearSearchBtn');
+                                if (clearSearchBtn) {
+                                    clearSearchBtn.style.display = 'flex';
+                                }
+                                
+                                // Trigger the search by calling renderAssetList with the tag
+                                renderAssetList(tagName);
+                                
+                                // Focus the search input
+                                searchInput.focus();
+                            }
+                        });
+                        
+                        // Add cursor pointer style to make it clear tags are clickable
+                        tagElement.style.cursor = 'pointer';
+                    });
                     
                     // Add file previews container for the child
                     const childFilePreviewsContainer = document.createElement('div');
@@ -2060,6 +2118,10 @@ document.addEventListener('DOMContentLoaded', () => {
         createSubAssetElement,
         handleSidebarNav,
         renderSubAssets,
+        
+        // Search functionality
+        searchInput,
+        renderAssetList,
         
         // Global state
         assets,
