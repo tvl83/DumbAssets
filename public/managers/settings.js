@@ -196,31 +196,33 @@ export class SettingsManager {
             console.log('[DEBUG] Test notification settings button clicked');
         }
         this.setButtonLoading(this.testNotificationSettings, true);
-        try {
-            const enabledTypes = [];
-            const f = this.notificationForm;
-            if (f.notifyAdd.checked) enabledTypes.push('notifyAdd');
-            if (f.notifyDelete.checked) enabledTypes.push('notifyDelete');
-            if (f.notifyEdit.checked) enabledTypes.push('notifyEdit');
-            if (f.notify1Month.checked) enabledTypes.push('notify1Month');
-            if (f.notify2Week.checked) enabledTypes.push('notify2Week');
-            if (f.notify7Day.checked) enabledTypes.push('notify7Day');
-            if (f.notify3Day.checked) enabledTypes.push('notify3Day');
-            if (f.notifyMaintenance.checked) enabledTypes.push('notifyMaintenance');
-            if (enabledTypes.length === 0) enabledTypes.push('notifyAdd');
-            const response = await fetch('/api/notification-test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabledTypes })
-            });
+        const enabledTypes = [];
+        const f = this.notificationForm;
+        if (f.notifyAdd.checked) enabledTypes.push('notifyAdd');
+        if (f.notifyDelete.checked) enabledTypes.push('notifyDelete');
+        if (f.notifyEdit.checked) enabledTypes.push('notifyEdit');
+        if (f.notify1Month.checked) enabledTypes.push('notify1Month');
+        if (f.notify2Week.checked) enabledTypes.push('notify2Week');
+        if (f.notify7Day.checked) enabledTypes.push('notify7Day');
+        if (f.notify3Day.checked) enabledTypes.push('notify3Day');
+        if (f.notifyMaintenance.checked) enabledTypes.push('notifyMaintenance');
+        if (enabledTypes.length === 0) enabledTypes.push('notifyAdd');
+        fetch('/api/notification-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabledTypes })
+        })
+        .then(response => {
             if (!response.ok) throw new Error('Failed to send test notifications');
             this.showToast('Test notifications sent successfully!');
-        } catch (error) {
+        })
+        .catch(error => {
             console.error('Error sending test notifications:', error);
             this.showToast('Failed to send test notifications');
-        } finally {
+        })
+        .finally(() => {
             this.setButtonLoading(this.testNotificationSettings, false);
-        }
+        });
     }
 
     cleanupPlaceholders(container) {
