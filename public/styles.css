@@ -2389,6 +2389,33 @@ a:hover {
     text-align: center;
 }
 
+/* Demo Mode Banner Styles */
+.demo-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, #f7b733 0%, #fc4a1a 100%);
+  color: #222;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #fc4a1a;
+  letter-spacing: 0.01em;
+  z-index: 1000;
+  position: relative;
+  min-height: 2.5rem;
+}
+.demo-mode-banner .demo-mode-icon {
+  margin-right: 0.5em;
+  font-size: 1.3em;
+  vertical-align: middle;
+}
+.demo-mode-banner .demo-mode-text {
+  flex: 1 1 auto;
+  text-align: center;
+  word-break: break-word;
+}
+
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
 @media (max-width: 1200px) {
@@ -2616,6 +2643,14 @@ a:hover {
     .chart-container {
         flex: 1 1 100%;
         margin-bottom: 1.5rem;
+    }
+    .demo-mode-banner {
+        font-size: 0.95rem;
+        padding: 0.4rem 0.5rem;
+    }
+    .demo-mode-banner .demo-mode-icon {
+        font-size: 1.1em;
+        margin-right: 0.3em;
     }
 }
 

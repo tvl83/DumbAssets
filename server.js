@@ -155,6 +155,31 @@ app.use(BASE_PATH, (req, res, next) => {
     });
 });
 
+// --- DEMO MODE MIDDLEWARE ---
+function demoModeMiddleware(req, res, next) {
+    // Skip demo mode restrictions for authentication endpoints
+    const authPaths = [
+        '/verify-pin',
+        '/login',
+        '/pin-length'
+    ];
+    
+    // Check if current path is an authentication endpoint
+    const isAuthPath = authPaths.some(path => req.path.endsWith(path));
+    
+    if (DEMO_MODE && !isAuthPath && (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE')) {
+        return res.status(403).json({ 
+            error: 'Demo mode: Write operations are disabled',
+            demoMode: true 
+        });
+    }
+    next();
+}
+
+// --- GLOBAL DEMO MODE MIDDLEWARE ---
+// Apply demo mode restrictions to all routes globally
+app.use(BASE_PATH, demoModeMiddleware);
+
 // --- PIN VERIFICATION ---
 function verifyPin(storedPin, providedPin) {
     if (!storedPin || !providedPin) return false;
@@ -188,7 +213,7 @@ function authMiddleware(req, res, next) {
         // Redirect to login for page requests
         return res.redirect(BASE_PATH + '/login');
     }
-};
+}
 
 // --- STATIC FILES & CONFIG ---
 app.get(BASE_PATH + '/config.js', async (req, res) => {
@@ -204,6 +229,7 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
             debug: ${DEBUG},
             siteTitle: '${SITE_TITLE}',
             version: '${VERSION}',
+            demoMode: ${DEMO_MODE},
         };
     `);
     
@@ -1038,8 +1064,8 @@ app.get('/api/settings', authMiddleware, (req, res) => {
                     notifyMaintenance: false
                 },
                 interfaceSettings: {
-                    dashboardOrder: ["totals", "warranties", "analytics"],
-                    dashboardVisibility: { totals: true, warranties: true, analytics: true }
+                    dashboardOrder: ["analytics", "totals", "warranties"],
+                    dashboardVisibility: { analytics: true, totals: true, warranties: true }
                 }
             });
         }
@@ -1047,7 +1073,7 @@ app.get('/api/settings', authMiddleware, (req, res) => {
         // Ensure dashboardVisibility always present
         if (!config.interfaceSettings) config.interfaceSettings = {};
         if (!config.interfaceSettings.dashboardVisibility) {
-            config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
+            config.interfaceSettings.dashboardVisibility = { analytics: true, totals: true, warranties: true };
         }
         // Ensure cardVisibility is present in interfaceSettings
         if (!config.interfaceSettings.cardVisibility) {
@@ -1102,7 +1128,7 @@ app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
 });
 
 // Test notification endpoint
-app.post('/api/notification-test', authMiddleware, async (req, res) => {
+app.post('/api/notification-test', [authMiddleware], async (req, res) => {
     if (DEBUG) {
         console.log('[DEBUG] /api/notification-test called');
     }
@@ -1253,7 +1279,7 @@ setInterval(() => {
 }, 60000);
 
 // Warranty expiration notification cron
-startWarrantyCron();
+if (!DEMO_MODE) startWarrantyCron();
 
 // --- START SERVER ---
 app.listen(PORT, () => {

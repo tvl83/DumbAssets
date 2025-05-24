@@ -1,6 +1,8 @@
 // public/managers/import.js
 // ImportManager handles all import modal logic, file selection, mapping, and import actions
 
+import { DemoModeManager } from './demoModeManager.js';
+
 export class ImportManager {
     constructor({
         importModal,
@@ -20,6 +22,7 @@ export class ImportManager {
         this.showToast = showToast;
         this.setButtonLoading = setButtonLoading;
         this.loadAssets = loadAssets;
+        this.demoModeManager = new DemoModeManager();
         this._bindEvents();
     }
 
@@ -44,7 +47,42 @@ export class ImportManager {
     async _handleFileSelection(e) {
         const file = e.target.files[0];
         if (!file) return;
+        
         try {
+            // Check if we're in demo mode
+            if (this.demoModeManager.isDemoMode) {
+                // In demo mode, parse the CSV file directly on client side
+                const fileText = await file.text();
+                const lines = fileText.split(/\r?\n/).filter(Boolean);
+                if (lines.length < 1) {
+                    alert('Invalid CSV file');
+                    return;
+                }
+                
+                const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+                
+                // Show the column mapping section
+                const mappingContainer = document.querySelector('.column-mapping');
+                if (mappingContainer) mappingContainer.style.display = 'block';
+                
+                // Populate column selects
+                this.columnSelects.forEach(select => {
+                    select.innerHTML = '<option value="">Select Column</option>';
+                    headers.forEach((header, index) => {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = header;
+                        select.appendChild(option);
+                    });
+                });
+                
+                // Auto-map columns
+                this.autoMapColumns(headers);
+                this.startImportBtn.disabled = false;
+                return;
+            }
+            
+            // Normal mode: send to server for processing
             const formData = new FormData();
             formData.append('file', file);
             const response = await fetch('/api/import-assets', {
@@ -165,6 +203,96 @@ export class ImportManager {
         }
         // ...existing code for sending to backend...
         try {
+            // Check if we're in demo mode
+            if (this.demoModeManager.isDemoMode) {
+                // In demo mode, process the import locally
+                const fileText = await file.text();
+                const lines = fileText.split(/\r?\n/).filter(Boolean);
+                const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+                const dataRows = lines.slice(1);
+                
+                let importedCount = 0;
+                
+                for (const row of dataRows) {
+                    const columns = row.split(',').map(col => col.trim().replace(/"/g, ''));
+                    
+                    // Build asset object from mappings
+                    const asset = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    // Map columns to asset properties
+                    if (mappings.name && columns[mappings.name]) asset.name = columns[mappings.name];
+                    if (mappings.model && columns[mappings.model]) asset.modelNumber = columns[mappings.model];
+                    if (mappings.manufacturer && columns[mappings.manufacturer]) asset.manufacturer = columns[mappings.manufacturer];
+                    if (mappings.serial && columns[mappings.serial]) asset.serialNumber = columns[mappings.serial];
+                    if (mappings.purchasePrice && columns[mappings.purchasePrice]) {
+                        const price = parseFloat(columns[mappings.purchasePrice].replace(/[^0-9.-]/g, ''));
+                        if (!isNaN(price)) asset.purchasePrice = price;
+                    }
+                    if (mappings.notes && columns[mappings.notes]) asset.notes = columns[mappings.notes];
+                    if (mappings.url && columns[mappings.url]) asset.link = columns[mappings.url];
+                    
+                    // Handle dates
+                    if (mappings.purchaseDate && columns[mappings.purchaseDate]) {
+                        const date = new Date(columns[mappings.purchaseDate]);
+                        if (!isNaN(date.getTime())) asset.purchaseDate = date.toISOString();
+                    }
+                    
+                    // Handle warranty
+                    if (mappings.warranty && columns[mappings.warranty]) {
+                        asset.warranty = { scope: columns[mappings.warranty] };
+                    }
+                    if (mappings.warrantyExpiration && columns[mappings.warrantyExpiration]) {
+                        const date = new Date(columns[mappings.warrantyExpiration]);
+                        if (!isNaN(date.getTime())) {
+                            if (!asset.warranty) asset.warranty = {};
+                            asset.warranty.expirationDate = date.toISOString();
+                        }
+                    }
+                    
+                    // Handle secondary warranty
+                    if (mappings.secondaryWarranty && columns[mappings.secondaryWarranty]) {
+                        asset.secondaryWarranty = { scope: columns[mappings.secondaryWarranty] };
+                    }
+                    if (mappings.secondaryWarrantyExpiration && columns[mappings.secondaryWarrantyExpiration]) {
+                        const date = new Date(columns[mappings.secondaryWarrantyExpiration]);
+                        if (!isNaN(date.getTime())) {
+                            if (!asset.secondaryWarranty) asset.secondaryWarranty = {};
+                            asset.secondaryWarranty.expirationDate = date.toISOString();
+                        }
+                    }
+                    
+                    // Handle tags
+                    if (mappings.tags && columns[mappings.tags]) {
+                        asset.tags = columns[mappings.tags].split(',').map(tag => tag.trim()).filter(tag => tag);
+                    }
+                    
+                    // Skip if no name
+                    if (!asset.name) continue;
+                    
+                    // Save asset using demo storage manager
+                    await this.demoModeManager.saveAsset(asset);
+                    importedCount++;
+                }
+                
+                alert(`Successfully imported ${importedCount} assets`);
+                this.importModal.style.display = 'none';
+                this.importFile.value = '';
+                this.startImportBtn.disabled = true;
+                this.setButtonLoading(this.startImportBtn, false);
+                this.columnSelects.forEach(select => {
+                    select.innerHTML = '<option value="">Select Column</option>';
+                });
+                await this.loadAssets();
+                // Rerender dashboard after import
+                if (window.renderDashboard) window.renderDashboard();
+                return;
+            }
+            
+            // Normal mode: send to server
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mappings', JSON.stringify(mappings));

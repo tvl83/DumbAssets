@@ -32,6 +32,10 @@ let assetList;
 let assetDetails;
 let subAssetContainer;
 
+// Replace all isDemoMode and DemoStorageManager usage with DemoModeManager abstraction
+import { DemoModeManager } from '/managers/demoModeManager.js';
+const demoModeManager = new DemoModeManager();
+
 /**
  * Initialize the renderer with required dependencies
  * 
@@ -97,18 +101,16 @@ function updateSelectedIds(assetId, subAssetId) {
  */
 function formatFilePath(path) {
     if (!path) return '';
-    
-    // If the path already includes the full URL, return it as is
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-        return path;
+    // Check if we're in demo mode
+    if (demoModeManager.isDemoMode) {
+        return demoModeManager.getFileDataUrl(path);
     }
-    
+    // If the path already includes the full URL, return it as is
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
     // Get the base URL from window.appConfig or window.location
     const baseUrl = window.appConfig?.basePath || '';
-    
     // Ensure path starts with a slash
     const formattedPath = path.startsWith('/') ? path : `/${path}`;
-    
     // Return the complete URL
     return `${baseUrl}${formattedPath}`;
 }
