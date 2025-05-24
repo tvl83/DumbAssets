@@ -2379,7 +2379,7 @@ a:hover {
     transform: translateX(-50%);
     z-index: 1;
     letter-spacing: 0.02em;
-    box-shadow: 0 1px 4px rgba(37, 100, 235, 0.03);
+    /* box-shadow: 0 1px 4px rgba(37, 100, 235, 0.03); */
 }
 
 /* Ensure legend does not overlap content */
