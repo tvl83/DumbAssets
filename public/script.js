@@ -732,17 +732,21 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const sectionOrder = getDashboardOrder();
         
-        const assetWarranties = assets.filter(a => a.warranty && a.warranty.expirationDate);
-        const subAssetWarranties = subAssets.filter(sa => sa.warranty && sa.warranty.expirationDate);
+        const assetWarranties = assets.filter(a => a.warranty && (a.warranty.expirationDate || a.warranty.isLifetime));
+        const subAssetWarranties = subAssets.filter(sa => sa.warranty && (sa.warranty.expirationDate || sa.warranty.isLifetime));
         const allWarranties = [...assetWarranties, ...subAssetWarranties];
         
         const now = new Date();
         let expired = 0, within60 = 0, within30 = 0, active = 0;
         
         allWarranties.forEach(item => {
+            const isLifetime = item.warranty.isLifetime;
+            if (isLifetime) {
+                active++;
+                return;
+            }
             const exp = new Date(item.warranty.expirationDate);
             if (isNaN(exp)) return;
-            
             const diff = (exp - now) / (1000 * 60 * 60 * 24);
             if (diff < 0) {
                 expired++;
