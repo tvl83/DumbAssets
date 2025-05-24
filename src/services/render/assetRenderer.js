@@ -146,14 +146,14 @@ function generateAssetInfoHTML(asset) {
         <div class="info-item">
             <div class="info-label">Warranty</div>
             <div>${asset.warranty.scope}</div>
-            <div>${formatDate(asset.warranty.expirationDate)}</div>
+            <div>${asset.warranty.isLifetime ? 'Lifetime' : formatDate(asset.warranty.expirationDate)}</div>
         </div>
         ` : ''}
         ${asset.secondaryWarranty?.scope || asset.secondaryWarranty?.expirationDate ? `
         <div class="info-item">
             <div class="info-label">Secondary Warranty</div>
             <div>${asset.secondaryWarranty.scope || 'N/A'}</div>
-            <div>${formatDate(asset.secondaryWarranty.expirationDate)}</div>
+            <div>${asset.secondaryWarranty.isLifetime ? 'Lifetime' : formatDate(asset.secondaryWarranty.expirationDate)}</div>
         </div>
         ` : ''}
         ${asset.link ? `

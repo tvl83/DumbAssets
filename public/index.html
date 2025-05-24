@@ -174,9 +174,15 @@
                             <label for="assetWarrantyScope">Warranty Scope</label>
                             <input type="text" id="assetWarrantyScope" name="warrantyScope">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group warranty-expiration-group">
                             <label for="assetWarrantyExpiration">Warranty Expiration</label>
-                            <input type="date" id="assetWarrantyExpiration" name="warrantyExpiration">
+                            <div class="warranty-expiration-inputs">
+                                <input type="date" id="assetWarrantyExpiration" name="warrantyExpiration">
+                                <label class="lifetime-warranty-label">
+                                    <input type="checkbox" id="assetWarrantyLifetime" name="warrantyLifetime">
+                                    Lifetime
+                                </label>
+                            </div>
                         </div>
                         <div class="form-group">
                             <button type="button" id="addSecondaryWarranty" class="secondary-warranty-btn" title="Add Secondary Warranty">
@@ -191,9 +197,15 @@
                                     <label for="assetSecondaryWarrantyScope">Secondary Warranty Scope</label>
                                     <input type="text" id="assetSecondaryWarrantyScope" name="secondaryWarrantyScope">
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group warranty-expiration-group">
                                     <label for="assetSecondaryWarrantyExpiration">Secondary Warranty Expiration</label>
-                                    <input type="date" id="assetSecondaryWarrantyExpiration" name="secondaryWarrantyExpiration">
+                                    <div class="warranty-expiration-inputs">
+                                        <input type="date" id="assetSecondaryWarrantyExpiration" name="secondaryWarrantyExpiration">
+                                        <label class="lifetime-warranty-label">
+                                            <input type="checkbox" id="assetSecondaryWarrantyLifetime" name="secondaryWarrantyLifetime">
+                                            Lifetime
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -344,9 +356,15 @@
                             <input type="text" id="subAssetWarrantyScope" name="warrantyScope">
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group warranty-expiration-group">
                             <label for="subAssetWarrantyExpiration">Warranty Expiration</label>
-                            <input type="date" id="subAssetWarrantyExpiration" name="warrantyExpiration">
+                            <div class="warranty-expiration-inputs">
+                                <input type="date" id="subAssetWarrantyExpiration" name="warrantyExpiration">
+                                <label class="lifetime-warranty-label">
+                                    <input type="checkbox" id="subAssetWarrantyLifetime" name="warrantyLifetime">
+                                    Lifetime
+                                </label>
+                            </div>
                         </div>
 
                         <div class="form-group">

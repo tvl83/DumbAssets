@@ -986,6 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('assetPurchaseDate').value = asset.purchaseDate || '';
             document.getElementById('assetPrice').value = asset.price || '';
             document.getElementById('assetWarrantyScope').value = asset.warranty?.scope || '';
+            document.getElementById('assetWarrantyLifetime').checked = asset.warranty?.isLifetime || false;
             document.getElementById('assetWarrantyExpiration').value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
             document.getElementById('assetDescription').value = asset.description || '';
             document.getElementById('assetLink').value = asset.link || '';
@@ -998,6 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     secondaryWarrantyFields.style.display = 'block';
                     document.getElementById('assetSecondaryWarrantyScope').value = asset.secondaryWarranty.scope || '';
                     document.getElementById('assetSecondaryWarrantyExpiration').value = asset.secondaryWarranty.expirationDate ? new Date(asset.secondaryWarranty.expirationDate).toISOString().split('T')[0] : '';
+                    document.getElementById('assetSecondaryWarrantyLifetime').checked = asset.secondaryWarranty.isLifetime || false;
                     if (addSecondaryWarrantyBtn) {
                         addSecondaryWarrantyBtn.innerHTML = `
                             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -1099,7 +1101,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 price: parseFloat(document.getElementById('assetPrice').value) || null,
                 warranty: {
                     scope: document.getElementById('assetWarrantyScope').value,
-                    expirationDate: document.getElementById('assetWarrantyExpiration').value
+                    expirationDate: document.getElementById('assetWarrantyLifetime').checked ? null : document.getElementById('assetWarrantyExpiration').value,
+                    isLifetime: document.getElementById('assetWarrantyLifetime').checked
                 },
                 link: document.getElementById('assetLink').value,
                 description: document.getElementById('assetDescription').value,
@@ -1111,11 +1114,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
             if (secondaryWarrantyFields && secondaryWarrantyFields.style.display !== 'none') {
                 const secondaryScope = document.getElementById('assetSecondaryWarrantyScope').value;
-                const secondaryExpiration = document.getElementById('assetSecondaryWarrantyExpiration').value;
+                const secondaryExpiration = document.getElementById('assetSecondaryWarrantyLifetime').checked ? null : document.getElementById('assetSecondaryWarrantyExpiration').value;
                 if (secondaryScope || secondaryExpiration) {
                     newAsset.secondaryWarranty = {
                         scope: secondaryScope,
-                        expirationDate: secondaryExpiration
+                        expirationDate: secondaryExpiration,
+                        isLifetime: document.getElementById('assetSecondaryWarrantyLifetime').checked
                     };
                 }
             }
@@ -1364,7 +1368,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tags: subAssetTags,
                 warranty: {
                     scope: warrantyScopeInput ? warrantyScopeInput.value : '',
-                    expirationDate: warrantyExpirationInput ? warrantyExpirationInput.value : ''
+                    expirationDate: document.getElementById('subAssetWarrantyLifetime').checked ? null : warrantyExpirationInput.value,
+                    isLifetime: document.getElementById('subAssetWarrantyLifetime').checked
                 },
                 updatedAt: new Date().toISOString(),
                 maintenanceSchedule: getMaintenanceScheduleFromModal('subAsset')

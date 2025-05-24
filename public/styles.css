@@ -2724,3 +2724,35 @@ a:hover {
         height: 32px;
     }
 }
+
+.warranty-expiration-group {
+    margin-bottom: 1rem;
+}
+
+.warranty-expiration-inputs {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.lifetime-warranty-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.lifetime-warranty-label input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* When lifetime warranty is checked, disable the date input */
+.lifetime-warranty-label input[type="checkbox"]:checked ~ input[type="date"] {
+    opacity: 0.5;
+    pointer-events: none;
+}

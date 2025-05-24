@@ -82,9 +82,9 @@ function updateSort(newSort) {
 function getWarrantyDotType(asset) {
     // Check both primary and secondary warranties
     const warranties = [
-        { exp: asset?.warranty?.expirationDate },
-        { exp: asset?.secondaryWarranty?.expirationDate }
-    ].filter(w => w.exp);
+        { exp: asset?.warranty?.expirationDate, isLifetime: asset?.warranty?.isLifetime },
+        { exp: asset?.secondaryWarranty?.expirationDate, isLifetime: asset?.secondaryWarranty?.isLifetime }
+    ].filter(w => w.exp || w.isLifetime);
 
     if (warranties.length === 0) return null;
 
@@ -94,6 +94,9 @@ function getWarrantyDotType(asset) {
     let hasExpired = false;
 
     warranties.forEach(warranty => {
+        // Skip lifetime warranties
+        if (warranty.isLifetime) return;
+        
         const expDate = new Date(warranty.exp);
         if (isNaN(expDate)) return;
         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
@@ -220,7 +223,9 @@ function renderAssetList(searchQuery = '') {
             // Assets with active warranties (more than 60 days)
             filteredAssets = filteredAssets.filter(a => {
                 const exp = a.warranty?.expirationDate;
-                if (!exp) return false;
+                const isLifetime = a.warranty?.isLifetime;
+                if (!exp && !isLifetime) return false;
+                if (isLifetime) return true;
                 const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
                 return diff > 60;
             });
@@ -231,7 +236,9 @@ function renderAssetList(searchQuery = '') {
                 subAssets.some(sa => {
                     if (sa.parentId !== a.id) return false;
                     const exp = sa.warranty?.expirationDate;
-                    if (!exp) return false;
+                    const isLifetime = sa.warranty?.isLifetime;
+                    if (!exp && !isLifetime) return false;
+                    if (isLifetime) return true;
                     const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
                     return diff > 60;
                 })
@@ -243,7 +250,7 @@ function renderAssetList(searchQuery = '') {
                 !assetsWithActiveComponents.includes(a) && // Don't duplicate
                 subAssets.some(sa => {
                     if (sa.parentId !== a.id) return false;
-                    return sa.warranty && sa.warranty.expirationDate;
+                    return (sa.warranty && sa.warranty.expirationDate) || sa.warranty?.isLifetime;
                 })
             );
             
