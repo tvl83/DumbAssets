@@ -2837,6 +2837,11 @@ a:hover {
     color: var(--text-color);
 }
 
+#maintenance-notes {
+    width: 100%;
+    resize: vertical;
+}
+
 .frequency-due-label {
     font-size: 0.9rem;
     font-weight: 500;

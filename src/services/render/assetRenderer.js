@@ -442,7 +442,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             const fieldset = document.createElement('fieldset');
             fieldset.className = 'dashboard-legend';
             fieldset.innerHTML = `
-                <legend class="dashboard-legend-title">Components & Attachments</legend>
+                <legend class="dashboard-legend-title">Components</legend>
                 <div class="sub-asset-header">
                     <button class="add-sub-asset-btn" style="margin-top:0.5rem;">+ Add Sub-Component</button>
                 </div>

@@ -101,7 +101,7 @@ export class MaintenanceManager {
                         <input type="date" name="specificDate">
                     </div>
                     <div class="maintenance-event-row">
-                        <textarea name="notes" placeholder="Notes (optional)"></textarea>
+                        <textarea id="maintenance-notes" name="notes" placeholder="Notes (optional)"></textarea>
                     </div>
                 </div>
             </div>
