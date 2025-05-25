@@ -365,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const apiBaseUrl = getApiBaseUrl();
+            const isEditMode = !!subAsset.id;
             
             // Debug logging to see what we're sending
             console.log('Saving sub-asset with data:', JSON.stringify(subAsset, null, 2));
