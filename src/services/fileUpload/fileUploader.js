@@ -5,9 +5,6 @@
 
 import { validateFileType, formatFileSize } from './utils.js';
 import { createPhotoPreview, createDocumentPreview } from '../render/previewRenderer.js';
-import { DemoModeManager } from '/managers/demoModeManager.js';
-
-const demoModeManager = new DemoModeManager();
 
 // Get access to the global flags
 let deletePhoto = false, deleteReceipt = false, deleteManual = false;
@@ -29,18 +26,13 @@ function getDeleteFlags() {
 }
 
 /**
- * Upload a file to the server or simulate upload in demo mode
+ * Upload a file to the server
  * @param {File} file - The file to upload
  * @param {string} type - The type of file ('image', 'receipt', or 'manual')
  * @param {string} id - The ID of the associated asset
  * @returns {Promise<{path: string, fileInfo: Object}|null>} - The path and info of the uploaded file, or null if the upload failed
  */
 async function uploadFile(file, type, id) {
-    if (demoModeManager.isDemoMode) {
-        return await demoModeManager.uploadFile(file, type, id);
-    }
-    
-    // Normal mode: upload to server
     let fieldName;
     let endpoint;
     const apiBaseUrl = window.location.origin + (window.appConfig?.basePath || '');
@@ -216,7 +208,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
 }
 
 /**
- * Handle file uploads for an asset (supports DEMO_MODE)
+ * Handle file uploads for an asset
  * @param {Object} asset - The asset to upload files for
  * @param {boolean} isEditMode - Whether we're editing an existing asset or creating a new one
  * @param {boolean} isSubAsset - Whether this is a sub-asset
@@ -225,22 +217,27 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
 async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     // Get the current delete flags
     getDeleteFlags();
+    
     // Clone the asset to avoid modifying the original
     const assetCopy = { ...asset };
+    
     // Log initial state of file paths
     console.log('handleFileUploads starting with asset:', {
         id: assetCopy.id,
         name: assetCopy.name,
         parentId: assetCopy.parentId || null
     });
+    
     // Initialize file info arrays if they don't exist
     assetCopy.photoInfo = assetCopy.photoInfo || [];
     assetCopy.receiptInfo = assetCopy.receiptInfo || [];
     assetCopy.manualInfo = assetCopy.manualInfo || [];
+    
     // Get file inputs
     const photoInput = document.getElementById(isSubAsset ? 'subAssetPhoto' : 'assetPhoto');
     const receiptInput = document.getElementById(isSubAsset ? 'subAssetReceipt' : 'assetReceipt');
     const manualInput = document.getElementById(isSubAsset ? 'subAssetManual' : 'assetManual');
+    
     // Make sure inputs exist before trying to access them
     if (!photoInput || !receiptInput || !manualInput) {
         console.error('File inputs not found:', {
@@ -250,18 +247,19 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         });
         return assetCopy;
     }
+    
     // Initialize arrays for multiple files
     assetCopy.photoPaths = assetCopy.photoPaths || [];
     assetCopy.receiptPaths = assetCopy.receiptPaths || [];
     assetCopy.manualPaths = assetCopy.manualPaths || [];
-
+    
     // Handle photo uploads
     if (photoInput.files && photoInput.files.length > 0) {
         console.log(`Uploading ${photoInput.files.length} photo(s)`);
         assetCopy.photoPaths = [];
         assetCopy.photoInfo = [];
         for (const file of photoInput.files) {
-            const result = await demoModeManager.uploadFile(file, 'image', assetCopy.id);
+            const result = await uploadFile(file, 'image', assetCopy.id);
             if (result) {
                 assetCopy.photoPaths.push(result.path);
                 assetCopy.photoInfo.push(result.fileInfo);
@@ -277,13 +275,14 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
             assetCopy.photoInfo = [];
         }
     }
+    
     // Handle receipt uploads
     if (receiptInput.files && receiptInput.files.length > 0) {
         console.log(`Uploading ${receiptInput.files.length} receipt(s)`);
         assetCopy.receiptPaths = [];
         assetCopy.receiptInfo = [];
         for (const file of receiptInput.files) {
-            const result = await demoModeManager.uploadFile(file, 'receipt', assetCopy.id);
+            const result = await uploadFile(file, 'receipt', assetCopy.id);
             if (result) {
                 assetCopy.receiptPaths.push(result.path);
                 assetCopy.receiptInfo.push(result.fileInfo);
@@ -299,13 +298,14 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
             assetCopy.receiptInfo = [];
         }
     }
+
     // Handle manual uploads
     if (manualInput.files && manualInput.files.length > 0) {
         console.log(`Uploading ${manualInput.files.length} manual(s)`);
         assetCopy.manualPaths = [];
         assetCopy.manualInfo = [];
         for (const file of manualInput.files) {
-            const result = await demoModeManager.uploadFile(file, 'manual', assetCopy.id);
+            const result = await uploadFile(file, 'manual', assetCopy.id);
             if (result) {
                 assetCopy.manualPaths.push(result.path);
                 assetCopy.manualInfo.push(result.fileInfo);
@@ -321,6 +321,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
             assetCopy.manualInfo = [];
         }
     }
+    
     return assetCopy;
 }
 

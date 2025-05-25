@@ -41,8 +41,6 @@ import {
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 import { ImportManager } from './managers/import.js';
-// Import DemoModeManager for centralized demo mode logic
-import { DemoModeManager } from './managers/demoModeManager.js';
 import {     
     getMaintenanceScheduleFromModal,
     setMaintenanceScheduleInModal,
@@ -50,18 +48,6 @@ import {
 } from '../src/services/render/assetRenderer.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize DemoModeManager
-    const demoModeManager = new DemoModeManager();
-    const isDemoMode = demoModeManager.isDemoMode;
-    // Expose for other modules if needed
-    window.demoModeManager = demoModeManager;
-
-    // Show demo mode banner if in demo mode
-    if (isDemoMode) {
-        const banner = document.getElementById('demoModeBanner');
-        if (banner) banner.style.display = 'flex';
-    }
-
     // Initialize global variables for DOM elements
     let assetModal, assetForm, subAssetModal, subAssetForm, assetList, assetDetails, subAssetContainer;
     let searchInput, clearSearchBtn;
@@ -188,22 +174,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Data Functions
     async function loadAssets() {
         try {
-            if (demoModeManager.isDemoMode) {
-                assets = demoModeManager.getAssets();
-            } else {
-                const apiBaseUrl = getApiBaseUrl();
-                const response = await fetch(`${apiBaseUrl}/api/assets`, {
-                    credentials: 'include'
-                });
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.location.href = `${apiBaseUrl}/login`;
-                        return;
-                    }
-                    throw new Error('Failed to load assets');
+            const apiBaseUrl = getApiBaseUrl();
+            const response = await fetch(`${apiBaseUrl}/api/assets`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = `${apiBaseUrl}/login`;
+                    return;
                 }
-                assets = await response.json();
+                throw new Error('Failed to load assets');
             }
+            assets = await response.json();
             // Update asset list in the modules
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -219,22 +201,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadSubAssets() {
         try {
-            if (demoModeManager.isDemoMode) {
-                subAssets = demoModeManager.getSubAssets();
-            } else {
-                const apiBaseUrl = getApiBaseUrl();
-                const response = await fetch(`${apiBaseUrl}/api/subassets`, {
-                    credentials: 'include'
-                });
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.location.href = `${apiBaseUrl}/login`;
-                        return;
-                    }
-                    throw new Error('Failed to load sub-assets');
+            const apiBaseUrl = getApiBaseUrl();
+            const response = await fetch(`${apiBaseUrl}/api/subassets`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = `${apiBaseUrl}/login`;
+                    return;
                 }
-                subAssets = await response.json();
+                throw new Error('Failed to load sub-assets');
             }
+            subAssets = await response.json();
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
         } catch (error) {
@@ -272,6 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading(saveBtn, true);
 
         try {
+            const apiBaseUrl = getApiBaseUrl();
+            
             // Create a copy to avoid mutation issues
             const assetToSave = { ...asset };
             
@@ -282,54 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 receiptPath: assetToSave.receiptPath,
                 manualPath: assetToSave.manualPath
             });
-            
-            if (demoModeManager.isDemoMode) {
-                console.log('Demo mode: saving asset to localStorage');
-                
-                // Handle file deletions in demo mode
-                if (deletePhoto && assetToSave.photoPath) {
-                    demoModeManager.deleteFile(assetToSave.photoPath);
-                    assetToSave.photoPath = null;
-                }
-                if (deleteReceipt && assetToSave.receiptPath) {
-                    demoModeManager.deleteFile(assetToSave.receiptPath);
-                    assetToSave.receiptPath = null;
-                }
-                if (deleteManual && assetToSave.manualPath) {
-                    demoModeManager.deleteFile(assetToSave.manualPath);
-                    assetToSave.manualPath = null;
-                }
-                
-                // Save asset using demo storage manager
-                const savedAsset = await demoModeManager.saveAsset(assetToSave);
-                
-                console.log('Asset saved successfully in demo mode:', savedAsset);
-                
-                // Reload all data to ensure everything is updated
-                await refreshAllData();
-                
-                // Close the modal
-                closeAssetModal();
-                
-                // Reset delete flags
-                deletePhoto = window.deletePhoto = false;
-                deleteReceipt = window.deleteReceipt = false;
-                deleteManual = window.deleteManual = false;
-                
-                // Refresh asset details
-                if (selectedAssetId === assetToSave.id || !selectedAssetId) {
-                    selectedAssetId = savedAsset.id;
-                    refreshAssetDetails(savedAsset.id, false);
-                }
-                
-                // Show success message
-                showToast(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
-                setButtonLoading(saveBtn, false);
-                return;
-            }
-            
-            // Normal mode: use API
-            const apiBaseUrl = getApiBaseUrl();
             
             // Log the current state of delete flags
             console.log('Current delete flags:', {
@@ -444,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading(saveBtn, true);
 
         try {
+            const apiBaseUrl = getApiBaseUrl();
+            
             // Debug logging to see what we're sending
             console.log('Saving sub-asset with data:', JSON.stringify(subAsset, null, 2));
             
@@ -462,60 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!subAsset.id || !subAsset.name || !subAsset.parentId) {
                 throw new Error('Missing required fields for sub-asset. Check the console for details.');
             }
-            
-            if (demoModeManager.isDemoMode) {
-                console.log('Demo mode: saving sub-asset to localStorage');
-                
-                // Handle file deletions in demo mode
-                if (deleteSubPhoto && subAsset.photoPath) {
-                    demoModeManager.deleteFile(subAsset.photoPath);
-                    subAsset.photoPath = null;
-                }
-                if (deleteSubReceipt && subAsset.receiptPath) {
-                    demoModeManager.deleteFile(subAsset.receiptPath);
-                    subAsset.receiptPath = null;
-                }
-                if (deleteSubManual && subAsset.manualPath) {
-                    demoModeManager.deleteFile(subAsset.manualPath);
-                    subAsset.manualPath = null;
-                }
-                
-                // Save sub-asset using demo storage manager
-                const savedSubAsset = await demoModeManager.saveSubAsset(subAsset);
-                
-                console.log('Sub-asset saved successfully in demo mode:', savedSubAsset);
-                
-                // Reload all data to ensure everything is updated
-                await refreshAllData();
-                
-                // Close the modal
-                closeSubAssetModal();
-                
-                // Reset delete flags
-                deleteSubPhoto = window.deleteSubPhoto = false;
-                deleteSubReceipt = window.deleteSubReceipt = false;
-                deleteSubManual = window.deleteSubManual = false;
-                
-                // Determine which view to render after saving
-                if (subAsset.parentSubId) {
-                    // If this is a sub-sub-asset, go to the parent sub-asset view
-                    refreshAssetDetails(subAsset.parentSubId, true);
-                } else if (selectedSubAssetId === subAsset.id) {
-                    // If we're editing the currently viewed sub-asset
-                    refreshAssetDetails(subAsset.id, true);
-                } else {
-                    // Navigate based on the saved component's context
-                    await handleComponentNavigation(savedSubAsset);
-                }
-                
-                // Show success message
-                showToast(isEditMode ? "Component updated successfully!" : "Component added successfully!");
-                setButtonLoading(saveBtn, false);
-                return;
-            }
-            
-            // Normal mode: use API
-            const apiBaseUrl = getApiBaseUrl();
             
             if (deleteSubPhoto && subAsset.photoPath) {
                 await fetch(`${apiBaseUrl}/api/delete-file`, {
@@ -599,26 +479,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            if (demoModeManager.isDemoMode) {
-                console.log('Demo mode: deleting asset from localStorage');
-                await demoModeManager.deleteAsset(assetId);
-                assets = demoModeManager.getAssets();
-                subAssets = demoModeManager.getSubAssets();
-                updateState(assets, subAssets);
-                updateListState(assets, subAssets, selectedAssetId);
-                renderAssetList();
-                showToast("Asset deleted successfully!");
-                return;
-            } else {
-                const apiBaseUrl = getApiBaseUrl();
-                const response = await fetch(`${apiBaseUrl}/api/asset/${assetId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) throw new Error('Failed to delete asset');
-            }
+            const apiBaseUrl = getApiBaseUrl();
+            const response = await fetch(`${apiBaseUrl}/api/asset/${assetId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
             
+            if (!response.ok) throw new Error('Failed to delete asset');
             updateSelectedIds(null, null);
             await refreshAllData();
             renderEmptyState();
@@ -635,38 +502,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
+            const apiBaseUrl = getApiBaseUrl();
+            
+            // Find the sub-asset and its parent info before deleting
             const subAsset = subAssets.find(s => s.id === subAssetId);
             if (!subAsset) {
                 throw new Error('Sub-asset not found');
             }
             
+            // Store parent info for later
             const parentAssetId = subAsset.parentId;
             const parentSubId = subAsset.parentSubId;
 
-            if (demoModeManager.isDemoMode) {
-                console.log('Demo mode: deleting sub-asset from localStorage');
-                await demoModeManager.deleteSubAsset(subAssetId);
-                assets = demoModeManager.getAssets();
-                subAssets = demoModeManager.getSubAssets();
-                updateState(assets, subAssets);
-                updateListState(assets, subAssets, selectedAssetId);
-                renderAssetList();
-                showToast("Component deleted successfully!");
-                return;
-            } else {
-                const apiBaseUrl = getApiBaseUrl();
-                const response = await fetch(`${apiBaseUrl}/api/subasset/${subAssetId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) throw new Error('Failed to delete component');
-            }
+            const response = await fetch(`${apiBaseUrl}/api/subasset/${subAssetId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (!response.ok) throw new Error('Failed to delete component');
 
+            // Refresh all data first to ensure we have the latest state
             await refreshAllData();
 
+            // Handle navigation and refresh views based on deleted component's context
             await handleComponentNavigation({ id: subAssetId, parentId: parentAssetId, parentSubId }, true);
 
+            // If viewing the parent sub-asset or asset, refresh the current view
             if (selectedSubAssetId === parentSubId) {
                 await refreshAssetDetails(parentSubId, true);
             } else if (selectedAssetId === parentAssetId && !selectedSubAssetId) {
@@ -680,56 +541,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Utility function to handle component navigation and rendering logic
     async function handleComponentNavigation(component, isDeleted = false) {
         const parentAssetId = component.parentId;
         const parentSubId = component.parentSubId;
 
+        // Case 1: If the component was being viewed when deleted
+        // Or if it's a new/updated component and we want to show it
         if (!isDeleted && (component.id === selectedSubAssetId || !parentSubId)) {
             updateSelectedIds(parentAssetId, component.id);
             await refreshAssetDetails(component.id, true);
             return;
         }
 
+        // Case 2: Navigate to parent sub-asset if this was a sub-sub-asset
         if (parentSubId) {
             updateSelectedIds(parentAssetId, parentSubId);
             await refreshAssetDetails(parentSubId, true);
             return;
         }
 
+        // Case 3: Navigate to parent asset
         updateSelectedIds(parentAssetId, null);
         await refreshAssetDetails(parentAssetId, false);
     }
 
+    // Rendering Functions
     function getDashboardSectionVisibility() {
+        // Default: all visible
         const defaultState = { totals: true, warranties: true, analytics: true };
         try {
-            let settings = null;
-            
-            if (demoModeManager.isDemoMode) {
-                settings = demoModeManager.getSettings();
-            } else {
-                const cachedSettings = localStorage.getItem('dumbAssetSettings');
-                if (cachedSettings) {
-                    settings = JSON.parse(cachedSettings);
+            const cachedSettings = localStorage.getItem('dumbAssetSettings');
+            if (cachedSettings) {
+                const settings = JSON.parse(cachedSettings);
+                if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
+                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
                 }
-            }
-            
-            if (settings && settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
-                return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
             }
         } catch (e) {}
         return defaultState;
     }
 
+    // Patch renderDashboard to ensure only one .dashboard-legend is present and legend title is correct
     function renderDashboard(shouldAnimateCharts = true) {
+        // Calculate stats
         const totalAssets = assets.length;
         const totalSubAssets = subAssets.length;
+        // Total Components is just the count of sub-assets
         const totalComponents = totalSubAssets;
         
+        // Calculate total value including sub-assets
         const totalAssetsValue = assets.reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
         const totalSubAssetsValue = subAssets.reduce((sum, sa) => sum + (parseFloat(sa.purchasePrice) || 0), 0);
         const totalValue = totalAssetsValue + totalSubAssetsValue;
         
+        // Get dashboard section order
         const sectionOrder = getDashboardOrder();
         
         const assetWarranties = assets.filter(a => a.warranty && (a.warranty.expirationDate || a.warranty.isLifetime));
@@ -762,11 +628,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const sectionVisibility = getDashboardSectionVisibility();
 
+        // Prepare HTML sections for each dashboard component, NO toggle-switch in header
         function sectionHeader(title) {
             return `<div class="section-title">${title}</div>`;
         }
 
+        // Prepare per-card visibility
         const cardVisibility = (typeof getDashboardCardVisibility === 'function') ? getDashboardCardVisibility() : {};
+        // Prepare HTML sections for each dashboard component
         const totalsSection = sectionVisibility.totals ? `
             <fieldset class="dashboard-legend">
                 <legend class="dashboard-legend-title">Totals</legend>
@@ -832,12 +701,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </fieldset>` : '';
         
+        // Map of section names to their HTML
         const sectionMap = {
             'totals': totalsSection,
             'warranties': warrantiesSection,
             'analytics': analyticsSection
         };
         
+        // Build the sections in the custom order
         let orderedSections = '';
         sectionOrder.forEach(sectionName => {
             if (sectionMap[sectionName]) {
@@ -845,6 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
+        // Set the dashboard HTML with ordered sections
         assetDetails.innerHTML = `
             <fieldset class="dashboard-legend">
                 <legend class="dashboard-legend-title">Asset Overview</legend>
@@ -852,15 +724,19 @@ document.addEventListener('DOMContentLoaded', () => {
             </fieldset>
         `;
         
+        // Only create charts if shouldAnimateCharts is true
         chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
         
+        // Add click handler for clear filters button
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');
         if (clearFiltersBtn) {
             clearFiltersBtn.addEventListener('click', () => {
+                // Remove active class from all cards
                 assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
                     c.classList.remove('active');
                 });
 
+                // Reset all sort buttons to default state
                 document.querySelectorAll('.sort-button').forEach(btn => {
                     btn.classList.remove('active');
                     btn.setAttribute('data-direction', 'asc');
@@ -870,30 +746,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 
+                // Reset filter and sort
                 dashboardFilter = null;
                 currentSort = { field: 'updatedAt', direction: 'desc' };
                 updateDashboardFilter(null);
                 updateSort(currentSort);
 
+                // Reset selected asset and hide components section
                 selectedAssetId = null;
                 updateSelectedIds(null, null);
                 
+                // Re-render list and dashboard
                 searchInput.value = '';
                 renderAssetList(searchInput.value);
                 renderEmptyState(false);
             });
         }
 
+        // Add click handlers for filtering (except value card)
         assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
             if (card.getAttribute('data-filter') === 'value') return;
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const filter = card.getAttribute('data-filter');
                 
+                // Remove active class from all cards
                 assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
                     c.classList.remove('active');
                 });
                 
+                // Add active class to clicked card
                 card.classList.add('active');
                 
                 if (filter === 'all') {
@@ -903,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateDashboardFilter(dashboardFilter);
                 renderAssetList(searchInput.value);
+                // Only re-render dashboard UI, not charts, on filter
                 if (!selectedAssetId) renderDashboard(false);
             });
         });
@@ -910,10 +793,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderDashboard = renderDashboard;
 
     function renderEmptyState(animateCharts = true) {
+        // Always render dashboard and charts when showing empty state
         renderDashboard(animateCharts);
         subAssetContainer.classList.add('hidden');
     }
 
+    // Modal Functions
     function openAssetModal(asset = null) {
         if (!assetModal || !assetForm) return;
         isEditMode = !!asset;
@@ -921,18 +806,22 @@ document.addEventListener('DOMContentLoaded', () => {
         assetForm.reset();
         let containsExistingFiles = false;
 
+        // Reset loading state of save button
         const saveBtn = assetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, false);
 
+        // Reset delete flags both locally and on window
         deletePhoto = window.deletePhoto = false;
         deleteReceipt = window.deleteReceipt = false;
         deleteManual = window.deleteManual = false;
         
+        // Reset secondary warranty fields
         const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
         if (secondaryWarrantyFields) {
             secondaryWarrantyFields.style.display = 'none';
         }
         
+        // Set up secondary warranty button
         const addSecondaryWarrantyBtn = document.getElementById('addSecondaryWarranty');
         if (addSecondaryWarrantyBtn) {
             addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
@@ -966,6 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         
+        // Clear file inputs and previews
         const photoInput = document.getElementById('assetPhoto');
         const receiptInput = document.getElementById('assetReceipt');
         const manualInput = document.getElementById('assetManual');
@@ -974,6 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const manualPreview = document.getElementById('manualPreview');
         
         if (!isEditMode) {
+            // Clear file inputs and previews for new assets
             if (photoInput) photoInput.value = '';
             if (receiptInput) receiptInput.value = '';
             if (manualInput) manualInput.value = '';
@@ -995,8 +886,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('assetDescription').value = asset.description || '';
             document.getElementById('assetLink').value = asset.link || '';
             
+            // Set tags
             assetTagManager.setTags(asset.tags || []);
             
+            // Handle secondary warranty
             if (asset.secondaryWarranty) {
                 const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
                 if (secondaryWarrantyFields) {
@@ -1030,8 +923,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('assetLink').value = asset.link || '';
             document.getElementById('assetDescription').value = asset.description || '';
             
+            // Set tags
             assetTagManager.setTags(asset.tags || []);
 
+            // Preview existing files using our utility function
             if (asset.photoPath) {
                 const photoInfo = asset.photoInfo?.[0] || {};
                 setupFilePreview(
@@ -1089,9 +984,11 @@ document.addEventListener('DOMContentLoaded', () => {
             assetTagManager.setTags([]);
             setMaintenanceScheduleInModal('asset', {});
         }
+        // Set up form submission
         assetForm.onsubmit = (e) => {
             e.preventDefault();
             
+            // Create asset object
             const assetTags = assetTagManager.getTags();
             const tagsInput = document.getElementById('assetTags');
             if (tagsInput && tagsInput.value.trim() !== '') assetTags.push(tagsInput.value);
@@ -1115,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintenanceSchedule: getMaintenanceScheduleFromModal('asset')
             };
             
+            // Add secondary warranty if fields are visible and filled
             const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
             if (secondaryWarrantyFields && secondaryWarrantyFields.style.display !== 'none') {
                 const secondaryScope = document.getElementById('assetSecondaryWarrantyScope').value;
@@ -1128,6 +1026,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
+            // Add ID if editing, generate new one if adding
             if (isEditMode && asset) {
                 newAsset.id = asset.id;
                 newAsset.photoPath = asset.photoPath;
@@ -1142,10 +1041,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 newAsset.createdAt = new Date().toISOString();
             }
             
+            // Handle file uploads then save
             handleFileUploads(newAsset, isEditMode)
                 .then(updatedAsset => saveAsset(updatedAsset));
         };
         
+        // Add Ctrl+Enter keyboard shortcut to save the asset form
         const assetKeydownHandler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
@@ -1154,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         assetModal.addEventListener('keydown', assetKeydownHandler);
         
+        // Set up cancel button
         const cancelBtn = assetForm.querySelector('.cancel-btn');
         if (cancelBtn) {
             cancelBtn.onclick = () => {
@@ -1161,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         
+        // Set up close button
         const closeBtn = assetModal.querySelector('.close-btn');
         if (closeBtn) {
             closeBtn.onclick = () => {
@@ -1168,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         
+        // Show the modal
         assetModal.style.display = 'block';
         
         if (containsExistingFiles) expandSection('#assetFileUploader');
@@ -1177,9 +1081,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeAssetModal() {
         if (!assetModal) return;
         
+        // Reset loading state of save button
         const saveBtn = assetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, false);
 
+        // Clear file inputs and previews
         const photoInput = document.getElementById('assetPhoto');
         const receiptInput = document.getElementById('assetReceipt');
         const manualInput = document.getElementById('assetManual');
@@ -1194,6 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
 
+        // Reset maintenance schedule inputs to default
         if (typeof setMaintenanceScheduleInModal === 'function') {
             setMaintenanceScheduleInModal('asset');
         }
@@ -1208,13 +1115,16 @@ document.addEventListener('DOMContentLoaded', () => {
         subAssetForm.reset();
         let containsExistingFiles = false;
         
+        // Reset loading state of save button
         const saveBtn = subAssetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, false);
 
+        // Reset delete flags both locally and on window
         deleteSubPhoto = window.deleteSubPhoto = false;
         deleteSubReceipt = window.deleteSubReceipt = false;
         deleteSubManual = window.deleteSubManual = false;
         
+        // Clear file inputs and previews
         const photoInput = document.getElementById('subAssetPhoto');
         const receiptInput = document.getElementById('subAssetReceipt');
         const manualInput = document.getElementById('subAssetManual');
@@ -1223,6 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const manualPreview = document.getElementById('subManualPreview');
         
         if (!isEditMode) {
+            // Clear file inputs and previews for new assets
             if (photoInput) photoInput.value = '';
             if (receiptInput) receiptInput.value = '';
             if (manualInput) manualInput.value = '';
@@ -1231,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (manualPreview) manualPreview.innerHTML = '';
         }
         
+        // Set parent ID - Add null checks to prevent errors
         const parentIdInput = document.getElementById('parentAssetId');
         const parentSubIdInput = document.getElementById('parentSubAssetId');
         
@@ -1269,8 +1181,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (warrantyScopeInput) warrantyScopeInput.value = subAsset.warranty?.scope || '';
             if (warrantyExpirationInput) warrantyExpirationInput.value = subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : '';
             
+            // Set tags
             subAssetTagManager.setTags(subAsset.tags || []);
 
+            // Preview existing images if available
             if (subAsset.photoPath) {
                 const photoInfo = subAsset.photoInfo?.[0] || {};
                 setupFilePreview(
@@ -1328,9 +1242,11 @@ document.addEventListener('DOMContentLoaded', () => {
             setMaintenanceScheduleInModal('subAsset', {});
         }
         
+        // Set up form submission
         subAssetForm.onsubmit = (e) => {
             e.preventDefault();
             
+            // Create sub-asset object with null checks
             const nameInput = document.getElementById('subAssetName');
             const modelInput = document.getElementById('subAssetModel');
             const serialInput = document.getElementById('subAssetSerial');
@@ -1343,6 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const warrantyScopeInput = document.getElementById('subAssetWarrantyScope');
             const warrantyExpirationInput = document.getElementById('subAssetWarrantyExpiration');
             
+            // Ensure required fields exist and have values
             if (!nameInput || !nameInput.value.trim()) {
                 alert('Name is required');
                 return;
@@ -1359,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (subAssetTagsInput && subAssetTagsInput.value !== '') subAssetTags.push(subAssetTagsInput.value);
 
             const newSubAsset = {
-                id: idInput && idInput.value ? idInput.value : generateId(),
+                id: idInput && idInput.value ? idInput.value : generateId(), // Generate new ID if not editing
                 name: nameInput ? nameInput.value : '',
                 manufacturer: document.getElementById('subAssetManufacturer').value,
                 modelNumber: modelInput ? modelInput.value : '',
@@ -1379,6 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintenanceSchedule: getMaintenanceScheduleFromModal('subAsset')
             };
             
+            // Debug log the sub-asset data before file uploads
             console.log('Sub-asset data before file uploads:', {
                 id: newSubAsset.id,
                 name: newSubAsset.name,
@@ -1387,12 +1305,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 warranty: newSubAsset.warranty
             });
             
+            // Add file info if editing, generate new paths if adding
             if (isEditMode && subAsset) {
                 newSubAsset.photoPath = subAsset.photoPath;
                 newSubAsset.receiptPath = subAsset.receiptPath;
                 newSubAsset.manualPath = subAsset.manualPath;
                 newSubAsset.createdAt = subAsset.createdAt;
                 
+                // Handle file deletions
                 if (deleteSubPhoto) newSubAsset.photoPath = null;
                 if (deleteSubReceipt) newSubAsset.receiptPath = null;
                 if (deleteSubManual) newSubAsset.manualPath = null;
@@ -1403,10 +1323,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 newSubAsset.createdAt = new Date().toISOString();
             }
             
+            // Handle file uploads then save
             handleFileUploads(newSubAsset, isEditMode, true)
                 .then(updatedSubAsset => saveSubAsset(updatedSubAsset));
         };
         
+        // Add Ctrl+Enter keyboard shortcut to save the component form
         const subAssetKeydownHandler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
@@ -1415,6 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         subAssetModal.addEventListener('keydown', subAssetKeydownHandler);
         
+        // Set up cancel button
         const cancelBtn = subAssetForm.querySelector('.cancel-btn');
         if (cancelBtn) {
             cancelBtn.onclick = () => {
@@ -1422,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         
+        // Set up close button
         const closeBtn = subAssetModal.querySelector('.close-btn');
         if (closeBtn) {
             closeBtn.onclick = () => {
@@ -1429,6 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         
+        // Show the modal
         subAssetModal.style.display = 'block';
         
         if (containsExistingFiles) expandSection('#subAssetFileUploader');
@@ -1438,9 +1363,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeSubAssetModal() {
         if (!subAssetModal) return;
         
+        // Reset loading state of save button
         const saveBtn = subAssetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, false);
 
+        // Clear file inputs and previews
         const photoInput = document.getElementById('subAssetPhoto');
         const receiptInput = document.getElementById('subAssetReceipt');
         const manualInput = document.getElementById('subAssetManual');
@@ -1455,6 +1382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
 
+        // Reset maintenance schedule inputs to default
         if (typeof setMaintenanceScheduleInModal === 'function') {
             setMaintenanceScheduleInModal('subAsset');
         }
@@ -1469,6 +1397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarToggle) sidebarToggle.style.display = 'block';
         document.querySelector('.app-container').classList.remove('sidebar-active');
         
+        // Hide overlay directly with JavaScript for cross-browser compatibility
         if (sidebarOverlay) {
             sidebarOverlay.style.display = 'none';
             sidebarOverlay.style.opacity = '0';
@@ -1482,6 +1411,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarOpenBtn) sidebarOpenBtn.style.display = 'none';
         document.querySelector('.app-container').classList.add('sidebar-active');
         
+        // Show overlay directly with JavaScript for cross-browser compatibility
+        // Only in mobile view (width <= 853px)
         if (sidebarOverlay && window.innerWidth <= 853) {
             sidebarOverlay.style.display = 'block';
             sidebarOverlay.style.opacity = '1';
@@ -1504,6 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Close sidebar when clicking the overlay
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1511,25 +1443,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Get dashboard section order from settings or use default
     function getDashboardOrder() {
+        // Default order
         let order = ['analytics', 'totals', 'warranties'];
         
         try {
-            let settings = null;
-            
-            if (demoModeManager.isDemoMode) {
-                settings = demoModeManager.getSettings();
-            } else {
-                const cachedSettings = localStorage.getItem('dumbAssetSettings');
-                if (cachedSettings) {
-                    settings = JSON.parse(cachedSettings);
+            // Try to get from localStorage as a quick cache
+            const cachedSettings = localStorage.getItem('dumbAssetSettings');
+            if (cachedSettings) {
+                const settings = JSON.parse(cachedSettings);
+                if (settings.interfaceSettings?.dashboardOrder && 
+                    Array.isArray(settings.interfaceSettings.dashboardOrder) && 
+                    settings.interfaceSettings.dashboardOrder.length === 3) {
+                    order = settings.interfaceSettings.dashboardOrder;
                 }
-            }
-            
-            if (settings && settings.interfaceSettings?.dashboardOrder && 
-                Array.isArray(settings.interfaceSettings.dashboardOrder) && 
-                settings.interfaceSettings.dashboardOrder.length === 3) {
-                order = settings.interfaceSettings.dashboardOrder;
             }
         } catch (err) {
             console.error('Error getting dashboard order', err);
@@ -1538,12 +1466,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return order;
     }
 
+    // Handle window resize events to update sidebar overlay
     window.addEventListener('resize', () => {
+        // If we're now in desktop mode but overlay is visible, hide it
         if (window.innerWidth > 853 && sidebarOverlay) {
             sidebarOverlay.style.display = 'none';
             sidebarOverlay.style.opacity = '0';
             sidebarOverlay.style.pointerEvents = 'none';
         }
+        // If we're now in mobile mode with sidebar open, show overlay
         else if (window.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
             sidebarOverlay.style.display = 'block';
             sidebarOverlay.style.opacity = '1';
@@ -1551,15 +1482,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Optionally close sidebar on navigation
     function handleSidebarNav() {
         if (window.innerWidth <= 853) closeSidebar();
     }
+    // Call handleSidebarNav after asset/sub-asset click
+    // In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav();
 
+    // Sorting Functions
     function updateSortButtons(activeButton) {
+        // Remove active class from all buttons
         document.querySelectorAll('.sort-button').forEach(btn => {
             btn.classList.remove('active');
         });
         
+        // Set active button and update its direction
         if (activeButton) {
             activeButton.classList.add('active');
             const direction = activeButton.getAttribute('data-direction');
@@ -1570,6 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Add click-off-to-close for modals
     [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
         if (modal) {
             modal.addEventListener('mousedown', function(e) {
@@ -1580,12 +1518,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Note: syncState is now directly called from loadAssets and loadSubAssets functions
+    // No need to redefine functions which could cause errors in strict mode
+
     function renderSubAssets(parentAssetId) {
         if (!subAssetContainer || !subAssetList) return;
         
+        // Get sub-assets for this parent
         const parentSubAssets = subAssets.filter(sa => sa.parentId === parentAssetId && !sa.parentSubId);
         
         
+        // Render the sub-asset header (the + Add Component button)
         const subAssetHeader = subAssetContainer.querySelector('.sub-asset-header');
         if (subAssetHeader) {
             subAssetHeader.innerHTML = `
@@ -1597,6 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // Render the sub-asset list
         if (parentSubAssets.length === 0) {
             subAssetList.innerHTML = `
             <div class="empty-state">
@@ -1611,6 +1555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
+        // Show or hide the container
         subAssetContainer.classList.remove('hidden');
     }
 
@@ -1621,13 +1566,15 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.add('active');
         }
         
+        // Check warranty expiration
         let warrantyDot = '';
         if (subAsset.warranty && subAsset.warranty.expirationDate) {
             const expDate = new Date(subAsset.warranty.expirationDate);
             const now = new Date();
-            const diff = (expDate - now) / (1000 * 60 * 60 * 24);
+            const diff = (expDate - now) / (1000 * 60 * 60 * 24); // difference in days
             
             if (diff < 0) {
+                // Warranty has expired
                 warrantyDot = `<div class="warranty-expired-icon">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10" />
@@ -1642,6 +1589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // Create header with name and actions
         const details = document.createElement('div');
         details.className = 'sub-asset-details';
         details.innerHTML = `
@@ -1657,6 +1605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         
+        // Set up button event listeners
         const editBtn = details.querySelector('.edit-sub-btn');
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1671,9 +1620,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         element.appendChild(details);
         
+        // Add summary info
         const info = document.createElement('div');
         info.className = 'sub-asset-info';
         
+        // Create model/serial info and tags section
         info.innerHTML = `
             <div>
                 ${subAsset.modelNumber ? `<span>${subAsset.modelNumber}</span>` : ''}
@@ -1687,32 +1638,40 @@ document.addEventListener('DOMContentLoaded', () => {
         
         element.appendChild(info);
         
+        // Add click event listeners to tags
         const tagElements = info.querySelectorAll('.tag');
         tagElements.forEach(tagElement => {
             tagElement.addEventListener('click', (e) => {
-                e.stopPropagation();
+                e.stopPropagation(); // Prevent sub-asset click
                 const tagName = tagElement.dataset.tag;
                 
+                // Set the search input value to the tag name
                 if (searchInput) {
                     searchInput.value = tagName;
                     
+                    // Show the clear search button
                     const clearSearchBtn = document.getElementById('clearSearchBtn');
                     if (clearSearchBtn) {
                         clearSearchBtn.style.display = 'flex';
                     }
                     
+                    // Trigger the search by calling renderAssetList with the tag
                     renderAssetList(tagName);
                     
+                    // Focus the search input
                     searchInput.focus();
                 }
             });
             
+            // Add cursor pointer style to make it clear tags are clickable
             tagElement.style.cursor = 'pointer';
         });
         
+        // Add file previews
         const filePreviewsContainer = document.createElement('div');
         filePreviewsContainer.className = 'sub-asset-files';
         
+        // Add file previews if available
         if (subAsset.photoPath || subAsset.receiptPath || subAsset.manualPath) {
             const files = document.createElement('div');
             files.className = 'compact-files-grid';
@@ -1764,6 +1723,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         element.appendChild(filePreviewsContainer);
         
+        // Check for children (only for first level sub-assets)
         if (!subAsset.parentSubId) {
             const children = subAssets.filter(sa => sa.parentSubId === subAsset.id);
             
@@ -1775,6 +1735,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const childElement = document.createElement('div');
                     childElement.className = 'sub-asset-item child';
                     
+                    // Check warranty expiration for child
                     let childWarrantyDot = '';
                     if (child.warranty && child.warranty.expirationDate) {
                         const expDate = new Date(child.warranty.expirationDate);
@@ -1782,6 +1743,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
                         
                         if (diff < 0) {
+                            // Warranty has expired
                             childWarrantyDot = `<div class="warranty-expired-icon">
                                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="10" />
@@ -1796,6 +1758,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                     
+                    // Create child header
                     const childDetails = document.createElement('div');
                     childDetails.className = 'sub-asset-details';
                     childDetails.innerHTML = `
@@ -1812,6 +1775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                     childElement.appendChild(childDetails);
                     
+                    // Add child info section with tags
                     const childInfo = document.createElement('div');
                     childInfo.className = 'sub-asset-info';
                     childInfo.innerHTML = `
@@ -1826,29 +1790,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                     childElement.appendChild(childInfo);
                     
+                    // Add click event listeners to tags
                     const tagElements = childInfo.querySelectorAll('.tag');
                     tagElements.forEach(tagElement => {
                         tagElement.addEventListener('click', (e) => {
-                            e.stopPropagation();
+                            e.stopPropagation(); // Prevent sub-asset click
                             const tagName = tagElement.dataset.tag;
                             
+                            // Set the search input value to the tag name
                             if (searchInput) {
                                 searchInput.value = tagName;
                                 
+                                // Show the clear search button
                                 const clearSearchBtn = document.getElementById('clearSearchBtn');
                                 if (clearSearchBtn) {
                                     clearSearchBtn.style.display = 'flex';
                                 }
                                 
+                                // Trigger the search by calling renderAssetList with the tag
                                 renderAssetList(tagName);
                                 
+                                // Focus the search input
                                 searchInput.focus();
                             }
                         });
                         
+                        // Add cursor pointer style to make it clear tags are clickable
                         tagElement.style.cursor = 'pointer';
                     });
                     
+                    // Add file previews container for the child
                     const childFilePreviewsContainer = document.createElement('div');
                     childFilePreviewsContainer.className = 'sub-asset-files';
                     
@@ -1902,6 +1873,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     childElement.appendChild(childFilePreviewsContainer);
                     
+                    // Add event listeners to child
                     const childEditBtn = childElement.querySelector('.edit-sub-btn');
                     childEditBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -1914,6 +1886,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         deleteSubAsset(child.id);
                     });
                     
+                    // Make sub-sub-asset clickable to show details
                     childElement.addEventListener('click', (e) => {
                         if (e.target.closest('button')) return;
                         e.stopPropagation();
@@ -1928,7 +1901,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // Make the component clickable to show details
         element.addEventListener('click', (e) => {
+            // Prevent click if clicking on an action button
             if (e.target.closest('button')) return;
             e.stopPropagation();
             updateSelectedIds(selectedAssetId, subAsset.id);
@@ -1938,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return element;
     }
 
+    // Add/enhance function to render asset details properly
     async function refreshAssetDetails(assetId, isSubAsset = false) {
         console.log(`Refreshing ${isSubAsset ? 'sub-asset' : 'asset'} details for ID: ${assetId}`);
         
@@ -1946,11 +1922,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Ensure we have fresh data before proceeding
         const collection = isSubAsset ? subAssets : assets;
         const item = collection.find(a => a.id === assetId);
         
         if (!item) {
             console.error(`Could not find ${isSubAsset ? 'sub-asset' : 'asset'} with ID: ${assetId}`);
+            // If item not found and we're refreshing a sub-asset, try to refresh the parent asset instead
             if (isSubAsset) {
                 const parentAssetId = collection.find(a => a.id === assetId)?.parentId;
                 if (parentAssetId) {
@@ -1962,6 +1940,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Log item details for debugging
         console.log(`Found ${isSubAsset ? 'sub-asset' : 'asset'} data:`, {
             id: item.id,
             name: item.name,
@@ -1971,6 +1950,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updatedAt: item.updatedAt
         });
         
+        // Ensure that any image paths are properly formatted
         if (item.photoPath) {
             console.log(`Original photo path: ${item.photoPath}`);
             const formattedPhotoPath = formatFilePath(item.photoPath);
@@ -1991,6 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Formatted manual path: ${formattedManualPath}`);
         }
         
+        // Add secondary warranty info if it exists
         let detailsHtml = '';
         if (item.secondaryWarranty) {
             detailsHtml += `
@@ -2005,13 +1986,17 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
         
+        // Render the details with a brief delay to ensure the DOM is ready
+        // and any data changes are fully applied
         setTimeout(() => {
             console.log(`Rendering details for ${isSubAsset ? 'sub-asset' : 'asset'} ${item.id}`);
             renderAssetDetails(assetId, isSubAsset);
         }, 50);
     }
 
+    // DOM initialization function
     function initializeDOMElements() {
+        // Initialize DOM elements
         assetModal = document.getElementById('assetModal');
         assetForm = document.getElementById('assetForm');
         subAssetModal = document.getElementById('subAssetModal');
@@ -2022,6 +2007,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput = document.getElementById('searchInput');
         clearSearchBtn = document.getElementById('clearSearchBtn');
         
+        // Log the initialization status
         console.log('DOM Elements initialized:', {
             assetModal: !!assetModal,
             assetForm: !!assetForm,
@@ -2034,12 +2020,14 @@ document.addEventListener('DOMContentLoaded', () => {
             clearSearchBtn: !!clearSearchBtn
         });
         
+        // Initialize tag managers
         assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
         subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
         setupDragIcons();
     }
 
     function setupDragIcons() {
+        // --- Inject SVG into .sortable-handle elements (Settings UI) ---
         const sortableHandleSVG = `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -2059,6 +2047,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Tag management functions
     function setupTagInput(inputId, containerId) {
         const tags = new Set();
         const input = document.getElementById(inputId);
@@ -2078,6 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
             `).join('');
 
+            // Add click handlers to remove buttons
             container.querySelectorAll('.remove-tag').forEach(btn => {
                 btn.onclick = (e) => {
                     e.preventDefault();
@@ -2124,7 +2114,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // Add per-card visibility toggles in the settings modal (interface tab)
+    // This should be called when rendering the settings modal tabs
     function renderCardVisibilityToggles(settings) {
+        // Set initial state from settings
         const vis = (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
         document.getElementById('toggleCardTotalAssets').checked = vis.assets !== false;
         document.getElementById('toggleCardTotalComponents').checked = vis.components !== false;
@@ -2137,40 +2130,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.renderCardVisibilityToggles = renderCardVisibilityToggles;
 
+    // Helper for per-card visibility
     function getDashboardCardVisibility() {
         try {
-            let settings = null;
-            
-            if (demoModeManager.isDemoMode) {
-                settings = demoModeManager.getSettings();
-            } else {
-                const cachedSettings = localStorage.getItem('dumbAssetSettings');
-                if (cachedSettings) {
-                    settings = JSON.parse(cachedSettings);
-                }
-            }
-            
+            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings'));
             return (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
         } catch {
             return {};
         }
     }
 
+    // Keep at the end
+    // Initialize DOM elements
     initializeDOMElements();
     
+    // Check if DOM elements exist
     if (!assetList || !assetDetails) {
         console.error('Required DOM elements not found.');
         return;
     }
     
+    // Set up file upload functionality
     initializeFileUploads();
     
+    // Initialize collapsible sections
     initCollapsibleSections();
     
+    // Initialize the asset renderer module
     initRenderer({
+        // Utility functions
         formatDate,
         formatCurrency,
         
+        // Module functions
         openAssetModal,
         openSubAssetModal,
         deleteAsset,
@@ -2179,22 +2171,28 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSidebarNav,
         renderSubAssets,
         
+        // Search functionality
         searchInput,
         renderAssetList,
         
+        // Global state
         assets,
         subAssets,
         
+        // DOM elements
         assetList,
         assetDetails,
         subAssetContainer
     });
     
+    // Initialize the list renderer module
     initListRenderer({
+        // Module functions
         updateSelectedIds,
         renderAssetDetails,
         handleSidebarNav,
         
+        // Global state
         assets,
         subAssets,
         selectedAssetId,
@@ -2202,9 +2200,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSort,
         searchInput,
         
+        // DOM elements
         assetList
     });
     
+    // Set up search
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             renderAssetList(e.target.value);
@@ -2222,29 +2222,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Set up home button
     const homeBtn = document.getElementById('homeBtn');
     if (homeBtn) {
         homeBtn.addEventListener('click', () => goHome());
     }
 
     function goHome() {
+        // Clear selected asset
         updateSelectedIds(null, null);
         
+        // Remove active class from all asset items
         document.querySelectorAll('.asset-item').forEach(item => {
             item.classList.remove('active');
         });
         
+        // Render dashboard and charts
         renderEmptyState();
         
+        // Close sidebar on mobile
         handleSidebarNav();
     }
     
+    // Set up add asset button
     if (addAssetBtn) {
         addAssetBtn.addEventListener('click', () => {
             openAssetModal();
         });
     }
     
+    // Add event listener for escape key to close all modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
@@ -2255,6 +2262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Add click-off-to-close for all modals on overlay click
     [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
         if (modal) {
             modal.addEventListener('mousedown', function(e) {
@@ -2265,6 +2273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Add event listener for escape key to close modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeAssetModal();
@@ -2272,6 +2281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Set the page and site title from config if available
     if (window.appConfig && window.appConfig.siteTitle) {
         const siteTitleElem = document.getElementById('siteTitle');
         if (siteTitleElem) {
@@ -2285,19 +2295,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
 
+    // Set up sort buttons   
     if (sortNameBtn) {
         sortNameBtn.addEventListener('click', () => {
             const currentDirection = sortNameBtn.getAttribute('data-direction') || 'asc';
             const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
             
+            // Update button state
             sortNameBtn.setAttribute('data-direction', newDirection);
             sortWarrantyBtn.setAttribute('data-direction', 'asc');
             
+            // Update sort settings
             currentSort = { field: 'name', direction: newDirection };
             updateSort(currentSort);
             
+            // Update UI
             updateSortButtons(sortNameBtn);
             
+            // Re-render with sort
             renderAssetList(searchInput ? searchInput.value : '');
         });
     }
@@ -2307,18 +2322,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentDirection = sortWarrantyBtn.getAttribute('data-direction') || 'asc';
             const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
             
+            // Update button state
             sortWarrantyBtn.setAttribute('data-direction', newDirection);
             sortNameBtn.setAttribute('data-direction', 'asc');
             
+            // Update sort settings
             currentSort = { field: 'warranty', direction: newDirection };
             updateSort(currentSort);
             
+            // Update UI
             updateSortButtons(sortWarrantyBtn);
             
+            // Re-render with sort
             renderAssetList(searchInput ? searchInput.value : '');
         });
     }
     
+    // Top Sort Button (optional)
     const topSortBtn = document.getElementById('topSortBtn');
     if (topSortBtn) {
         topSortBtn.addEventListener('click', () => {
@@ -2329,6 +2349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Load initial data
     loadAllData();
     registerServiceWorker();
 });

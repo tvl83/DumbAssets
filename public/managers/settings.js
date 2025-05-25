@@ -1,6 +1,4 @@
 // SettingsManager handles all settings modal logic, loading, saving, and dashboard order drag/drop
-import { DemoModeManager } from './demoModeManager.js';
-
 export class SettingsManager {
     constructor({
         settingsBtn,
@@ -28,7 +26,6 @@ export class SettingsManager {
         this.getDashboardOrder = getDashboardOrder;
         this.selectedAssetId = null;
         this.DEBUG = false;
-        this.demoModeManager = new DemoModeManager();
         this._bindEvents();
     }
 
@@ -77,46 +74,9 @@ export class SettingsManager {
 
     async loadSettings() {
         try {
-            let settings;
-            
-            if (this.demoModeManager.isDemoMode) {
-                settings = this.demoModeManager.getSettings();
-                
-                if (!settings || Object.keys(settings).length === 0) {
-                    settings = {
-                        notificationSettings: {
-                            notifyAdd: true,
-                            notifyDelete: false,
-                            notifyEdit: true,
-                            notify1Month: true,
-                            notify2Week: false,
-                            notify7Day: true,
-                            notify3Day: false,
-                            notifyMaintenance: false
-                        },
-                        interfaceSettings: {
-                            dashboardOrder: ["totals", "warranties", "analytics"],
-                            dashboardVisibility: { totals: true, warranties: true, analytics: true },
-                            cardVisibility: {
-                                assets: true,
-                                components: true,
-                                value: true,
-                                warranties: true,
-                                within60: true,
-                                within30: true,
-                                expired: true,
-                                active: true
-                            }
-                        }
-                    };
-                    this.demoModeManager.saveSettings(settings);
-                }
-            } else {
-                const response = await fetch('/api/settings', { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load settings');
-                settings = await response.json();
-            }
-            
+            const response = await fetch('/api/settings', { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to load settings');
+            const settings = await response.json();
             const notificationSettings = settings.notificationSettings || {};
             this.notificationForm.notifyAdd.checked = !!notificationSettings.notifyAdd;
             this.notificationForm.notifyDelete.checked = !!notificationSettings.notifyDelete;
@@ -208,21 +168,14 @@ export class SettingsManager {
             settings.interfaceSettings.dashboardOrder.push(section.getAttribute('data-section'));
         });
         try {
-            let response;
-            
-            if (this.demoModeManager.isDemoMode) {
-                await this.demoModeManager.saveSettings(settings);
-                response = { ok: true };
-            } else {
-                response = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(settings),
-                    credentials: 'include'
-                });
-            }
-            
+            const response = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+                credentials: 'include'
+            });
             if (!response.ok) throw new Error('Failed to save settings');
+            // Merge notifyMaintenance to root for legacy/compatibility
             const mergedSettings = { ...settings, notifyMaintenance: settings.notificationSettings.notifyMaintenance };
             localStorage.setItem('dumbAssetSettings', JSON.stringify(mergedSettings));
             this.closeSettingsModal();
@@ -254,13 +207,6 @@ export class SettingsManager {
         if (f.notify3Day.checked) enabledTypes.push('notify3Day');
         if (f.notifyMaintenance.checked) enabledTypes.push('notifyMaintenance');
         if (enabledTypes.length === 0) enabledTypes.push('notifyAdd');
-        
-        if (this.demoModeManager.isDemoMode) {
-            this.showToast('Test notifications sent successfully! (Demo mode - no actual notifications sent)');
-            this.setButtonLoading(this.testNotificationSettings, false);
-            return;
-        }
-        
         fetch('/api/notification-test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
