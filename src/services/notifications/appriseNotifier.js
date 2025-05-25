@@ -7,6 +7,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const { formatDate, sanitizeText } = require('./utils');
+const notificationQueue = require('./notificationQueue');
 
 function formatNotification(eventType, assetData) {
   let lines = [];
@@ -59,13 +60,13 @@ function formatNotification(eventType, assetData) {
 }
 
 /**
- * Send a notification using Apprise
- * @param {string} eventType - Type of event (e.g., 'asset_added', 'import_complete')
- * @param {Object} assetData - Data about the asset/event (e.g., { name, modelNumber, price })
- * @param {Object} config - Configuration object (appriseUrl, appriseMessage, etc.)
+ * Internal function to actually send the notification (used by the queue)
+ * @param {string} eventType - Type of event
+ * @param {Object} assetData - Data about the asset/event
+ * @param {Object} config - Configuration object
  * @returns {Promise<void>}
  */
-async function sendNotification(eventType, assetData, config) {
+async function _sendNotificationImmediate(eventType, assetData, config) {
   const { appriseUrl, appriseMessage } = config;
   if (!appriseUrl) return;
 
@@ -89,7 +90,7 @@ async function sendNotification(eventType, assetData, config) {
       });
     }
 
-    new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const appriseProcess = spawn('apprise', [appriseUrl, '-b', message]);
       appriseProcess.stdout.on('data', (data) => {
         console.info(`Apprise Output: ${data.toString().trim()}`);
@@ -111,7 +112,20 @@ async function sendNotification(eventType, assetData, config) {
     });
   } catch (err) {
     console.error(`Failed to send notification: ${err.message}`);
+    throw err;
   }
+}
+
+/**
+ * Send a notification using Apprise (queued with 5-second delays between notifications)
+ * @param {string} eventType - Type of event (e.g., 'asset_added', 'import_complete')
+ * @param {Object} assetData - Data about the asset/event (e.g., { name, modelNumber, price })
+ * @param {Object} config - Configuration object (appriseUrl, appriseMessage, etc.)
+ * @returns {Promise<void>}
+ */
+async function sendNotification(eventType, assetData, config) {
+  // Add the notification to the queue instead of sending immediately
+  notificationQueue.enqueue(_sendNotificationImmediate, [eventType, assetData, config]);
 }
 
 module.exports = {

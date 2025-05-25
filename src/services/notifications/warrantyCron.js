@@ -29,6 +29,7 @@ function readJsonFile(filePath) {
 }
 
 async function startWarrantyCron() {
+    // Warranty expiration checks at 12:01 PM daily
     cron.schedule('1 12 * * *', () => {
         const assets = readJsonFile(assetsFilePath);
         const now = DateTime.now();
@@ -36,8 +37,11 @@ async function startWarrantyCron() {
         const notificationSettings = settings.notificationSettings || {};
         const appriseUrl = process.env.APPRISE_URL;
 
-        // Helper function to check and send warranty notifications
-        function checkAndNotifyWarranty(asset, warranty, isSecondary = false) {
+        // Collect all notifications to send
+        const notificationsToSend = [];
+
+        // Helper function to check and queue warranty notifications
+        function checkAndQueueWarranty(asset, warranty, isSecondary = false) {
             if (!warranty || !warranty.expirationDate) return;
             const expDate = DateTime.fromISO(warranty.expirationDate, { zone: process.env.TZ || 'America/Chicago' });
             if (!expDate.isValid) return;
@@ -45,54 +49,86 @@ async function startWarrantyCron() {
             const warrantyType = isSecondary ? 'Secondary Warranty' : 'Warranty';
 
             if (notificationSettings.notify1Month && daysOut === 30) {
-                sendNotification('warranty_expiring', {
-                    name: asset.name,
-                    modelNumber: asset.modelNumber,
-                    expirationDate: warranty.expirationDate,
-                    days: 30,
-                    warrantyType
-                }, { appriseUrl });
-                debugLog(`[DEBUG] ${warrantyType} 30-day notification sent for asset: ${asset.name}`);
+                notificationsToSend.push({
+                    type: 'warranty_expiring',
+                    data: {
+                        name: asset.name,
+                        modelNumber: asset.modelNumber,
+                        expirationDate: warranty.expirationDate,
+                        days: 30,
+                        warrantyType
+                    },
+                    config: { appriseUrl }
+                });
+                debugLog(`[DEBUG] ${warrantyType} 30-day notification queued for asset: ${asset.name}`);
             }
             if (notificationSettings.notify2Week && daysOut === 14) {
-                sendNotification('warranty_expiring', {
-                    name: asset.name,
-                    modelNumber: asset.modelNumber,
-                    expirationDate: warranty.expirationDate,
-                    days: 14,
-                    warrantyType
-                }, { appriseUrl });
-                debugLog(`[DEBUG] ${warrantyType} 14-day notification sent for asset: ${asset.name}`);
+                notificationsToSend.push({
+                    type: 'warranty_expiring',
+                    data: {
+                        name: asset.name,
+                        modelNumber: asset.modelNumber,
+                        expirationDate: warranty.expirationDate,
+                        days: 14,
+                        warrantyType
+                    },
+                    config: { appriseUrl }
+                });
+                debugLog(`[DEBUG] ${warrantyType} 14-day notification queued for asset: ${asset.name}`);
             }
             if (notificationSettings.notify7Day && daysOut === 7) {
-                sendNotification('warranty_expiring', {
-                    name: asset.name,
-                    modelNumber: asset.modelNumber,
-                    expirationDate: warranty.expirationDate,
-                    days: 7,
-                    warrantyType
-                }, { appriseUrl });
-                debugLog(`[DEBUG] ${warrantyType} 7-day notification sent for asset: ${asset.name}`);
+                notificationsToSend.push({
+                    type: 'warranty_expiring',
+                    data: {
+                        name: asset.name,
+                        modelNumber: asset.modelNumber,
+                        expirationDate: warranty.expirationDate,
+                        days: 7,
+                        warrantyType
+                    },
+                    config: { appriseUrl }
+                });
+                debugLog(`[DEBUG] ${warrantyType} 7-day notification queued for asset: ${asset.name}`);
             }
             if (notificationSettings.notify3Day && daysOut === 3) {
-                sendNotification('warranty_expiring', {
-                    name: asset.name,
-                    modelNumber: asset.modelNumber,
-                    expirationDate: warranty.expirationDate,
-                    days: 3,
-                    warrantyType
-                }, { appriseUrl });
-                debugLog(`[DEBUG] ${warrantyType} 3-day notification sent for asset: ${asset.name}`);
+                notificationsToSend.push({
+                    type: 'warranty_expiring',
+                    data: {
+                        name: asset.name,
+                        modelNumber: asset.modelNumber,
+                        expirationDate: warranty.expirationDate,
+                        days: 3,
+                        warrantyType
+                    },
+                    config: { appriseUrl }
+                });
+                debugLog(`[DEBUG] ${warrantyType} 3-day notification queued for asset: ${asset.name}`);
             }
         }
 
         assets.forEach(asset => {
             // Check primary warranty
-            checkAndNotifyWarranty(asset, asset.warranty);
+            checkAndQueueWarranty(asset, asset.warranty);
             
             // Check secondary warranty
-            checkAndNotifyWarranty(asset, asset.secondaryWarranty, true);
+            checkAndQueueWarranty(asset, asset.secondaryWarranty, true);
         });
+
+        // Send all queued notifications (they will be processed with 5-second delays)
+        notificationsToSend.forEach(notification => {
+            sendNotification(notification.type, notification.data, notification.config);
+        });
+
+        if (notificationsToSend.length > 0) {
+            debugLog(`[DEBUG] ${notificationsToSend.length} warranty notifications queued for processing`);
+        }
+    }, {
+        timezone: process.env.TZ || 'America/Chicago'
+    });
+
+    // Maintenance schedule checks at 12:02 PM daily (1 minute after warranty checks)
+    cron.schedule('2 12 * * *', () => {
+        checkMaintenanceSchedules();
     }, {
         timezone: process.env.TZ || 'America/Chicago'
     });
@@ -100,11 +136,16 @@ async function startWarrantyCron() {
 
 // Maintenance Schedule notification logic
 async function checkMaintenanceSchedules() {
-    const settings = settings.notificationSettings || {};
-    if (!settings.notifyMaintenance) return;
+    const settings = readJsonFile(notificationSettingsPath);
+    const notificationSettings = settings.notificationSettings || {};
+    if (!notificationSettings.notifyMaintenance) return;
+    
     const assets = readJsonFile(assetsFilePath);
     const now = new Date();
     const appriseUrl = process.env.APPRISE_URL;
+
+    // Collect all maintenance notifications to send
+    const notificationsToSend = [];
 
     for (const asset of assets) {
         if (asset.maintenanceEvents && asset.maintenanceEvents.length > 0) {
@@ -127,15 +168,19 @@ async function checkMaintenanceSchedules() {
                 }
 
                 if (shouldNotify) {
-                    sendNotification('maintenance_schedule', {
-                        name: asset.name,
-                        modelNumber: asset.modelNumber,
-                        eventName: event.name,
-                        schedule: desc,
-                        notes: event.notes,
-                        type: 'Asset'
-                    }, { appriseUrl });
-                    debugLog(`[DEBUG] Maintenance event notification sent for asset: ${asset.name}, event: ${event.name}`);
+                    notificationsToSend.push({
+                        type: 'maintenance_schedule',
+                        data: {
+                            name: asset.name,
+                            modelNumber: asset.modelNumber,
+                            eventName: event.name,
+                            schedule: desc,
+                            notes: event.notes,
+                            type: 'Asset'
+                        },
+                        config: { appriseUrl }
+                    });
+                    debugLog(`[DEBUG] Maintenance event notification queued for asset: ${asset.name}, event: ${event.name}`);
                 }
             }
         }
@@ -162,21 +207,34 @@ async function checkMaintenanceSchedules() {
                         }
 
                         if (shouldNotify) {
-                            sendNotification('maintenance_schedule', {
-                                name: sub.name,
-                                modelNumber: sub.modelNumber,
-                                eventName: event.name,
-                                schedule: desc,
-                                notes: event.notes,
-                                type: 'Sub-Asset',
-                                parentAsset: asset.name
-                            }, { appriseUrl });
-                            debugLog(`[DEBUG] Maintenance event notification sent for sub-asset: ${sub.name}, event: ${event.name}`);
+                            notificationsToSend.push({
+                                type: 'maintenance_schedule',
+                                data: {
+                                    name: sub.name,
+                                    modelNumber: sub.modelNumber,
+                                    eventName: event.name,
+                                    schedule: desc,
+                                    notes: event.notes,
+                                    type: 'Sub-Asset',
+                                    parentAsset: asset.name
+                                },
+                                config: { appriseUrl }
+                            });
+                            debugLog(`[DEBUG] Maintenance event notification queued for sub-asset: ${sub.name}, event: ${event.name}`);
                         }
                     }
                 }
             }
         }
+    }
+
+    // Send all queued maintenance notifications (they will be processed with 5-second delays)
+    notificationsToSend.forEach(notification => {
+        sendNotification(notification.type, notification.data, notification.config);
+    });
+
+    if (notificationsToSend.length > 0) {
+        debugLog(`[DEBUG] ${notificationsToSend.length} maintenance notifications queued for processing`);
     }
 }
 

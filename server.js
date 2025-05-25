@@ -1227,10 +1227,7 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
                 appriseMessage: message
             });
 
-            // Add a 2-second delay between notifications
-            if (type !== enabledTypes[enabledTypes.length - 1]) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+            // Note: No manual delay needed - the notification queue handles delays automatically
         }
 
         if (DEBUG) {
