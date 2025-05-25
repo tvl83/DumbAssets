@@ -421,8 +421,8 @@ app.post('/api/asset', async (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const newAsset = req.body;
 
-    // Ensure maintenanceSchedule is always present (even if empty)
-    newAsset.maintenanceSchedule = newAsset.maintenanceSchedule || {};
+    // Ensure maintenanceEvents is always present (even if empty)
+    newAsset.maintenanceEvents = newAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!newAsset.name) {
@@ -482,8 +482,8 @@ app.put('/api/asset', (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const updatedAsset = req.body;
 
-    // Ensure maintenanceSchedule is always present (even if empty)
-    updatedAsset.maintenanceSchedule = updatedAsset.maintenanceSchedule || {};
+    // Ensure maintenanceEvents is always present (even if empty)
+    updatedAsset.maintenanceEvents = updatedAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!updatedAsset.id || !updatedAsset.name) {
@@ -633,8 +633,8 @@ app.post('/api/subasset', (req, res) => {
     const newSubAsset = req.body;
     // Remove legacy maintenanceReminder if present
     if (newSubAsset.maintenanceReminder) delete newSubAsset.maintenanceReminder;
-    // Ensure maintenanceSchedule is always present (even if empty)
-    newSubAsset.maintenanceSchedule = newSubAsset.maintenanceSchedule || {};
+    // Ensure maintenanceEvents is always present (even if empty)
+    newSubAsset.maintenanceEvents = newSubAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!newSubAsset.name || !newSubAsset.parentId) {
@@ -665,8 +665,8 @@ app.put('/api/subasset', (req, res) => {
     const updatedSubAsset = req.body;
     // Remove legacy maintenanceReminder if present
     if (updatedSubAsset.maintenanceReminder) delete updatedSubAsset.maintenanceReminder;
-    // Ensure maintenanceSchedule is always present (even if empty)
-    updatedSubAsset.maintenanceSchedule = updatedSubAsset.maintenanceSchedule || {};
+    // Ensure maintenanceEvents is always present (even if empty)
+    updatedSubAsset.maintenanceEvents = updatedSubAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!updatedSubAsset.id || !updatedSubAsset.name || !updatedSubAsset.parentId) {

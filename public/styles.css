@@ -909,7 +909,7 @@ input[type="date"][data-has-value="true"] {
     margin-bottom: 0.5rem;
 }
 
-#assetDescription, #subAssetNotes {
+#assetNotes, #subAssetNotes {
     min-width: 100%;
     max-width: 100%;
     min-height: 50px;
@@ -2720,4 +2720,133 @@ a:hover {
 .lifetime-warranty-label input[type="checkbox"]:checked ~ input[type="date"] {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* Maintenance Events Styles */
+.maintenance-event {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: var(--app-border);
+    border-radius: var(--app-border-radius);
+    background: var(--hover-color);
+}
+
+.maintenance-event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.maintenance-event-title {
+    font-weight: 500;
+    margin: 0;
+}
+
+.delete-maintenance-event {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-maintenance-event:hover {
+    color: var(--error-color-hover);
+}
+
+.maintenance-event-fields {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.maintenance-event-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.maintenance-event-row input[type="text"],
+.maintenance-event-row input[type="date"],
+.maintenance-event-row input[type="number"],
+.maintenance-event-row select {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem;
+    border: var(--app-border);
+    border-radius: var(--app-border-radius);
+    background: var(--background-color);
+    color: var(--text-color);
+}
+
+.maintenance-event-row select {
+    max-width: 160px;
+}
+
+.maintenance-event-row input[type="number"] {
+    max-width: 100px;
+}
+
+.maintenance-event-row input[type="date"] {
+    max-width: 150px;
+}
+
+#addMaintenanceEvent,
+#addSubAssetMaintenanceEvent {
+    margin-top: 0.5rem;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Maintenance Events Display Styles */
+.maintenance-section-inline {
+    margin-bottom: 1rem;
+    grid-column: 1 / -1; /* Span the full width of the grid */
+}
+
+.maintenance-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.maintenance-event-item {
+    padding: 0.75rem;
+    border: var(--app-border);
+    border-radius: var(--app-border-radius);
+    background: var(--hover-color);
+    border-left: 3px solid var(--primary-color);
+}
+
+.maintenance-event-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.maintenance-event-line strong {
+    color: var(--text-color);
+}
+
+.maintenance-schedule-inline {
+    color: var(--primary-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.maintenance-notes-line {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+.maintenance-notes-line strong {
+    color: var(--text-color);
 }

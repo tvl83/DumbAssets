@@ -46,6 +46,7 @@ import {
     setMaintenanceScheduleInModal,
     setupMaintenanceScheduleFields 
 } from '../src/services/render/assetRenderer.js';
+import { MaintenanceManager } from './managers/maintenanceManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize global variables for DOM elements
@@ -80,6 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize tag managers at the top with other app state variables
     let assetTagManager = null;
     let subAssetTagManager = null;
+
+    // Initialize MaintenanceManager
+    const maintenanceManager = new MaintenanceManager();
 
     // DOM Elements
     const subAssetList = document.getElementById('subAssetList');
@@ -874,17 +878,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (isEditMode && asset) {
-            document.getElementById('assetName').value = asset.name || '';
-            document.getElementById('assetModel').value = asset.modelNumber || '';
-            document.getElementById('assetManufacturer').value = asset.manufacturer || '';
-            document.getElementById('assetSerial').value = asset.serialNumber || '';
-            document.getElementById('assetPurchaseDate').value = asset.purchaseDate || '';
-            document.getElementById('assetPrice').value = asset.price || '';
-            document.getElementById('assetWarrantyScope').value = asset.warranty?.scope || '';
-            document.getElementById('assetWarrantyLifetime').checked = asset.warranty?.isLifetime || false;
-            document.getElementById('assetWarrantyExpiration').value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
-            document.getElementById('assetDescription').value = asset.description || '';
-            document.getElementById('assetLink').value = asset.link || '';
+            const assetNameInput = document.getElementById('assetName');
+            if (assetNameInput) assetNameInput.value = asset.name || '';
+            const assetModelInput = document.getElementById('assetModel');
+            if (assetModelInput) assetModelInput.value = asset.modelNumber || '';
+            const assetManufacturerInput = document.getElementById('assetManufacturer');
+            if (assetManufacturerInput) assetManufacturerInput.value = asset.manufacturer || '';
+            const assetSerialInput = document.getElementById('assetSerial');
+            if (assetSerialInput) assetSerialInput.value = asset.serialNumber || '';
+            const assetPurchaseDateInput = document.getElementById('assetPurchaseDate');
+            if (assetPurchaseDateInput) assetPurchaseDateInput.value = asset.purchaseDate || '';
+            const assetPriceInput = document.getElementById('assetPrice');
+            if (assetPriceInput) assetPriceInput.value = asset.price || '';
+            const assetWarrantyScopeInput = document.getElementById('assetWarrantyScope');
+            if (assetWarrantyScopeInput) assetWarrantyScopeInput.value = asset.warranty?.scope || '';
+            const assetWarrantyLifetimeInput = document.getElementById('assetWarrantyLifetime');
+            if (assetWarrantyLifetimeInput) assetWarrantyLifetimeInput.checked = asset.warranty?.isLifetime || false;
+            const assetWarrantyExpirationInput = document.getElementById('assetWarrantyExpiration');
+            if (assetWarrantyExpirationInput) assetWarrantyExpirationInput.value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
+            const assetDescriptionInput = document.getElementById('assetNotes');
+            if (assetDescriptionInput) assetDescriptionInput.value = asset.description || '';
+            const assetLinkInput = document.getElementById('assetLink');
+            if (assetLinkInput) assetLinkInput.value = asset.link || '';
             
             // Set tags
             assetTagManager.setTags(asset.tags || []);
@@ -919,9 +934,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
                 }
             }
-            
-            document.getElementById('assetLink').value = asset.link || '';
-            document.getElementById('assetDescription').value = asset.description || '';
             
             // Set tags
             assetTagManager.setTags(asset.tags || []);
@@ -969,59 +981,76 @@ document.addEventListener('DOMContentLoaded', () => {
                     manualInfo.originalName || asset.manualPath.split('/').pop(),
                     manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size'
                 );
-                manualPreview.querySelector('.delete-preview-btn').onclick = () => {
-                    if (confirm('Are you sure you want to delete this manual?')) {
-                        manualPreview.innerHTML = '';
-                        manualInput.value = '';
-                        deleteManual = window.deleteManual = true;
-                    }
-                };
+                const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
+                if (deleteBtn) {
+                    deleteBtn.onclick = () => {
+                        if (confirm('Are you sure you want to delete this manual?')) {
+                            manualPreview.innerHTML = '';
+                            if (manualInput) manualInput.value = '';
+                            deleteManual = window.deleteManual = true;
+                        }
+                    };
+                }
                 containsExistingFiles = true;
             }
-            setMaintenanceScheduleInModal('asset', asset.maintenanceSchedule || {});
+            maintenanceManager.setMaintenanceEvents('asset', asset.maintenanceEvents || []);
         } else {
             assetForm.reset();
             assetTagManager.setTags([]);
-            setMaintenanceScheduleInModal('asset', {});
+            maintenanceManager.setMaintenanceEvents('asset', []);
         }
         // Set up form submission
         assetForm.onsubmit = (e) => {
             e.preventDefault();
             
-            // Create asset object
+            const assetNameInput = document.getElementById('assetName');
+            const assetModelInput = document.getElementById('assetModel');
+            const assetManufacturerInput = document.getElementById('assetManufacturer');
+            const assetSerialInput = document.getElementById('assetSerial');
+            const assetPurchaseDateInput = document.getElementById('assetPurchaseDate');
+            const assetPriceInput = document.getElementById('assetPrice');
+            const assetWarrantyScopeInput = document.getElementById('assetWarrantyScope');
+            const assetWarrantyLifetimeInput = document.getElementById('assetWarrantyLifetime');
+            const assetWarrantyExpirationInput = document.getElementById('assetWarrantyExpiration');
+            const assetLinkInput = document.getElementById('assetLink');
+            const assetDescriptionInput = document.getElementById('assetNotes');
+
             const assetTags = assetTagManager.getTags();
             const tagsInput = document.getElementById('assetTags');
             if (tagsInput && tagsInput.value.trim() !== '') assetTags.push(tagsInput.value);
 
             const newAsset = {
-                name: document.getElementById('assetName').value,
-                modelNumber: document.getElementById('assetModel').value,
-                manufacturer: document.getElementById('assetManufacturer').value,
-                serialNumber: document.getElementById('assetSerial').value,
-                purchaseDate: document.getElementById('assetPurchaseDate').value,
-                price: parseFloat(document.getElementById('assetPrice').value) || null,
+                name: assetNameInput ? assetNameInput.value : '',
+                modelNumber: assetModelInput ? assetModelInput.value : '',
+                manufacturer: assetManufacturerInput ? assetManufacturerInput.value : '',
+                serialNumber: assetSerialInput ? assetSerialInput.value : '',
+                purchaseDate: assetPurchaseDateInput ? assetPurchaseDateInput.value : '',
+                price: assetPriceInput ? parseFloat(assetPriceInput.value) || null : null,
                 warranty: {
-                    scope: document.getElementById('assetWarrantyScope').value,
-                    expirationDate: document.getElementById('assetWarrantyLifetime').checked ? null : document.getElementById('assetWarrantyExpiration').value,
-                    isLifetime: document.getElementById('assetWarrantyLifetime').checked
+                    scope: assetWarrantyScopeInput ? assetWarrantyScopeInput.value : '',
+                    expirationDate: assetWarrantyLifetimeInput && assetWarrantyLifetimeInput.checked ? null : (assetWarrantyExpirationInput ? assetWarrantyExpirationInput.value : ''),
+                    isLifetime: assetWarrantyLifetimeInput ? assetWarrantyLifetimeInput.checked : false
                 },
-                link: document.getElementById('assetLink').value,
-                description: document.getElementById('assetDescription').value,
+                link: assetLinkInput ? assetLinkInput.value : '',
+                description: assetDescriptionInput ? assetDescriptionInput.value : '',
                 tags: assetTags,
                 updatedAt: new Date().toISOString(),
-                maintenanceSchedule: getMaintenanceScheduleFromModal('asset')
+                maintenanceEvents: maintenanceManager.getMaintenanceEvents('asset')
             };
             
             // Add secondary warranty if fields are visible and filled
             const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
             if (secondaryWarrantyFields && secondaryWarrantyFields.style.display !== 'none') {
-                const secondaryScope = document.getElementById('assetSecondaryWarrantyScope').value;
-                const secondaryExpiration = document.getElementById('assetSecondaryWarrantyLifetime').checked ? null : document.getElementById('assetSecondaryWarrantyExpiration').value;
+                const secondaryScopeInput = document.getElementById('assetSecondaryWarrantyScope');
+                const secondaryExpirationInput = document.getElementById('assetSecondaryWarrantyExpiration');
+                const secondaryLifetimeInput = document.getElementById('assetSecondaryWarrantyLifetime');
+                const secondaryScope = secondaryScopeInput ? secondaryScopeInput.value : '';
+                const secondaryExpiration = secondaryLifetimeInput && secondaryLifetimeInput.checked ? null : (secondaryExpirationInput ? secondaryExpirationInput.value : '');
                 if (secondaryScope || secondaryExpiration) {
                     newAsset.secondaryWarranty = {
                         scope: secondaryScope,
                         expirationDate: secondaryExpiration,
-                        isLifetime: document.getElementById('assetSecondaryWarrantyLifetime').checked
+                        isLifetime: secondaryLifetimeInput ? secondaryLifetimeInput.checked : false
                     };
                 }
             }
@@ -1100,11 +1129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
 
-        // Reset maintenance schedule inputs to default
-        if (typeof setMaintenanceScheduleInModal === 'function') {
-            setMaintenanceScheduleInModal('asset');
-        }
-
         assetModal.style.display = 'none';
     }
 
@@ -1158,27 +1182,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (isEditMode && subAsset) {
             const idInput = document.getElementById('subAssetId');
-            const nameInput = document.getElementById('subAssetName');
-            const manufacturerInput = document.getElementById('subAssetManufacturer');
-            const modelInput = document.getElementById('subAssetModel');
-            const serialInput = document.getElementById('subAssetSerial');
-            const purchaseDateInput = document.getElementById('subAssetPurchaseDate');
-            const purchasePriceInput = document.getElementById('subAssetPurchasePrice');
-            const notesInput = document.getElementById('subAssetNotes');
-            const warrantyScopeInput = document.getElementById('subAssetWarrantyScope');
-            const warrantyExpirationInput = document.getElementById('subAssetWarrantyExpiration');
-            
             if (idInput) idInput.value = subAsset.id;
+            const nameInput = document.getElementById('subAssetName');
             if (nameInput) nameInput.value = subAsset.name || '';
+            const manufacturerInput = document.getElementById('subAssetManufacturer');
             if (manufacturerInput) manufacturerInput.value = subAsset.manufacturer || '';
+            const modelInput = document.getElementById('subAssetModel');
             if (modelInput) modelInput.value = subAsset.modelNumber || '';
+            const serialInput = document.getElementById('subAssetSerial');
             if (serialInput) serialInput.value = subAsset.serialNumber || '';
+            const purchaseDateInput = document.getElementById('subAssetPurchaseDate');
             if (purchaseDateInput) purchaseDateInput.value = subAsset.purchaseDate || '';
+            const purchasePriceInput = document.getElementById('subAssetPurchasePrice');
             if (purchasePriceInput) purchasePriceInput.value = subAsset.purchasePrice || '';
+            const parentIdInput = document.getElementById('parentAssetId');
             if (parentIdInput) parentIdInput.value = subAsset.parentId || parentId || '';
+            const parentSubIdInput = document.getElementById('parentSubAssetId');
             if (parentSubIdInput) parentSubIdInput.value = subAsset.parentSubId || parentSubId || '';
+            const notesInput = document.getElementById('subAssetNotes');
             if (notesInput) notesInput.value = subAsset.notes || '';
+            const warrantyScopeInput = document.getElementById('subAssetWarrantyScope');
             if (warrantyScopeInput) warrantyScopeInput.value = subAsset.warranty?.scope || '';
+            const warrantyExpirationInput = document.getElementById('subAssetWarrantyExpiration');
             if (warrantyExpirationInput) warrantyExpirationInput.value = subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : '';
             
             // Set tags
@@ -1226,20 +1251,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     'deleteSubManual',
                     manualInfo.originalName || subAsset.manualPath.split('/').pop(),
                     manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size');
-                manualPreview.querySelector('.delete-preview-btn').onclick = () => {
-                    if (confirm('Are you sure you want to delete this manual?')) {
-                        manualPreview.innerHTML = '';
-                        manualInput.value = '';
-                        deleteSubManual = window.deleteSubManual = true;
-                    }
-                };
+                const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
+                if (deleteBtn) {
+                    deleteBtn.onclick = () => {
+                        if (confirm('Are you sure you want to delete this manual?')) {
+                            manualPreview.innerHTML = '';
+                            if (manualInput) manualInput.value = '';
+                            deleteSubManual = window.deleteSubManual = true;
+                        }
+                    };
+                }
                 containsExistingFiles = true;
             }
-            setMaintenanceScheduleInModal('subAsset', subAsset.maintenanceSchedule || {});
+            maintenanceManager.setMaintenanceEvents('subAsset', subAsset.maintenanceEvents || []);
         } else {
             subAssetForm.reset();
             subAssetTagManager.setTags([]);
-            setMaintenanceScheduleInModal('subAsset', {});
+            maintenanceManager.setMaintenanceEvents('subAsset', []);
         }
         
         // Set up form submission
@@ -1293,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     isLifetime: document.getElementById('subAssetWarrantyLifetime').checked
                 },
                 updatedAt: new Date().toISOString(),
-                maintenanceSchedule: getMaintenanceScheduleFromModal('subAsset')
+                maintenanceEvents: maintenanceManager.getMaintenanceEvents('subAsset')
             };
             
             // Debug log the sub-asset data before file uploads
@@ -1381,11 +1409,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (photoPreview) photoPreview.innerHTML = '';
         if (receiptPreview) receiptPreview.innerHTML = '';
         if (manualPreview) manualPreview.innerHTML = '';
-
-        // Reset maintenance schedule inputs to default
-        if (typeof setMaintenanceScheduleInModal === 'function') {
-            setMaintenanceScheduleInModal('subAsset');
-        }
 
         subAssetModal.style.display = 'none';
     }

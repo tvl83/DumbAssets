@@ -39,7 +39,9 @@ function formatNotification(eventType, assetData) {
       lines.push(`Asset: ${assetData.name}`);
     }
     if (assetData.modelNumber) lines.push(`Model #: ${assetData.modelNumber}`);
+    if (assetData.eventName) lines.push(`Event: ${assetData.eventName}`);
     if (assetData.schedule) lines.push(`Schedule: ${assetData.schedule}`);
+    if (assetData.notes) lines.push(`Notes: ${assetData.notes}`);
   } else if (eventType === 'test') {
     lines.push('🧪🔔 Test Notification');
   } else {

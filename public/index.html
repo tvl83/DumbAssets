@@ -218,23 +218,31 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="assetDescription">Description</label>
-                            <textarea id="assetDescription" name="description" rows="3"></textarea>
+                            <label for="assetNotes">Notes</label>
+                            <textarea id="assetNotes" name="notes"></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="assetMaintenanceScheduleFrequency">Maintenance Schedule</label>
-                            <div class="maintenance-schedule-row">
-                                <select id="assetMaintenanceScheduleUnit" name="maintenanceScheduleUnit" class="maintenance-schedule-unit">
-                                    <option value="days">Days</option>
-                                    <option value="weeks">Weeks</option>
-                                    <option value="months">Months</option>
-                                    <option value="years">Years</option>
-                                    <option value="custom">Custom</option>
-                                </select>
-                                <input type="number" id="assetMaintenanceScheduleFrequency" name="maintenanceScheduleFrequency" min="1" class="maintenance-schedule-frequency" placeholder="Frequency">
-                                <input type="text" id="assetMaintenanceScheduleCustom" name="maintenanceScheduleCustom" class="maintenance-schedule-custom hidden" placeholder="e.g. Every 2nd Monday, 15th of month, etc.">
+
+                        <div id="assetMaintenanceSection" class="collapsible-section" data-collapsed="true">
+                            <div class="collapsible-header">
+                                <h3>Maintenance Events</h3>
+                                <svg class="collapsible-toggle" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="collapsible-content">
+                                <div id="assetMaintenanceEvents">
+                                    <!-- Maintenance events will be added here dynamically -->
+                                </div>
+                                <button type="button" id="addMaintenanceEvent" class="secondary-warranty-btn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Maintenance Event
+                                </button>
                             </div>
                         </div>
+
                         <div id="assetFileUploader" class="collapsible-section" data-collapsed="true">
                             <div class="collapsible-header">
                                 <h3>File Attachments</h3>
@@ -387,6 +395,27 @@
                         <div class="form-group">
                             <label for="subAssetNotes">Notes</label>
                             <textarea id="subAssetNotes" name="notes"></textarea>
+                        </div>
+
+                        <div id="subAssetMaintenanceSection" class="collapsible-section" data-collapsed="true">
+                            <div class="collapsible-header">
+                                <h3>Maintenance Events</h3>
+                                <svg class="collapsible-toggle" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="collapsible-content">
+                                <div id="subAssetMaintenanceEvents">
+                                    <!-- Maintenance events will be added here dynamically -->
+                                </div>
+                                <button type="button" id="addSubAssetMaintenanceEvent" class="secondary-warranty-btn">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Maintenance Event
+                                </button>
+                            </div>
                         </div>
 
                         <div id="subAssetFileUploader" class="collapsible-section" data-collapsed="true">

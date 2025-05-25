@@ -114,6 +114,53 @@ function formatFilePath(path) {
 }
 
 /**
+ * Generate HTML for maintenance events section
+ * @param {Array} maintenanceEvents - Array of maintenance events
+ * @returns {string} HTML string for maintenance events section
+ */
+function generateMaintenanceEventsHTML(maintenanceEvents) {
+    if (!maintenanceEvents || maintenanceEvents.length === 0) {
+        return '';
+    }
+
+    const eventsHTML = maintenanceEvents.map(event => {
+        let scheduleText = '';
+        let typeText = '';
+        
+        if (event.type === 'frequency') {
+            scheduleText = `Every ${event.frequency} ${event.frequencyUnit}`;
+            typeText = 'Recurring';
+        } else if (event.type === 'specific') {
+            scheduleText = `${formatDate(event.specificDate)}`;
+            typeText = 'One-time';
+        }
+
+        return `
+            <div class="maintenance-event-item">
+                <div class="maintenance-event-line">
+                    <strong>Event:</strong>${event.name}
+                    <span class="maintenance-schedule-inline">${typeText} - ${scheduleText}</span>
+                </div>
+                ${event.notes ? `
+                <div class="maintenance-notes-line">
+                    <strong>Notes:</strong> ${event.notes}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="maintenance-section-inline">
+            <div class="info-label">Maintenance</div>
+            <div class="maintenance-events-list">
+                ${eventsHTML}
+            </div>
+        </div>
+    `;
+}
+
+/**
  * Generate HTML for asset info section
  * @param {Object} asset - The asset object
  * @returns {string} HTML string for asset info section
@@ -274,6 +321,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             <div class="asset-info">
                 ${generateAssetInfoHTML(asset)}
                 ${maintenanceScheduleHtml}
+                ${generateMaintenanceEventsHTML(asset.maintenanceEvents)}
             </div>
             ${(asset.description || asset.notes) ? `
             <div class="asset-description">
@@ -418,32 +466,6 @@ function renderAssetDetails(assetId, isSubAsset = false) {
         }
     }
     handleSidebarNav();
-}
-
-// Display maintenance schedule in asset details
-if (typeof asset !== 'undefined' && asset.maintenanceSchedule) {
-    let scheduleText = '';
-    if (asset.maintenanceSchedule.unit === 'custom') {
-        scheduleText = asset.maintenanceSchedule.custom;
-    } else if (asset.maintenanceSchedule.frequency && asset.maintenanceSchedule.unit) {
-        scheduleText = `Every ${asset.maintenanceSchedule.frequency} ${asset.maintenanceSchedule.unit}`;
-    }
-    if (scheduleText) {
-        html += `<div class="asset-detail-row"><strong>Maintenance Schedule:</strong> ${scheduleText}</div>`;
-    }
-}
-
-// For sub-assets, similar logic:
-if (typeof subAsset !== 'undefined' && subAsset.maintenanceSchedule) {
-    let scheduleText = '';
-    if (subAsset.maintenanceSchedule.unit === 'custom') {
-        scheduleText = subAsset.maintenanceSchedule.custom;
-    } else if (subAsset.maintenanceSchedule.frequency && subAsset.maintenanceSchedule.unit) {
-        scheduleText = `Every ${subAsset.maintenanceSchedule.frequency} ${subAsset.maintenanceSchedule.unit}`;
-    }
-    if (scheduleText) {
-        html += `<div class="asset-detail-row"><strong>Maintenance Schedule:</strong> ${scheduleText}</div>`;
-    }
 }
 
 /**

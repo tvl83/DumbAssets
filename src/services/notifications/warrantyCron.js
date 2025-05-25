@@ -105,48 +105,74 @@ async function checkMaintenanceSchedules() {
     const assets = readJsonFile(assetsFilePath);
     const now = new Date();
     const appriseUrl = process.env.APPRISE_URL;
+
     for (const asset of assets) {
-        if (asset.maintenanceSchedule) {
-            let shouldNotify = false;
-            let desc = '';
-            if (asset.maintenanceSchedule.unit === 'custom' && asset.maintenanceSchedule.custom) {
-                shouldNotify = true;
-                desc = asset.maintenanceSchedule.custom;
-            } else if (asset.maintenanceSchedule.frequency && asset.maintenanceSchedule.unit) {
-                shouldNotify = true;
-                desc = `Every ${asset.maintenanceSchedule.frequency} ${asset.maintenanceSchedule.unit}`;
-            }
-            if (shouldNotify) {
-                sendNotification('maintenance_schedule', {
-                    name: asset.name,
-                    modelNumber: asset.modelNumber,
-                    schedule: desc,
-                    type: 'Asset'
-                }, { appriseUrl });
-                debugLog(`[DEBUG] Maintenance schedule notification sent for asset: ${asset.name}`);
+        if (asset.maintenanceEvents && asset.maintenanceEvents.length > 0) {
+            for (const event of asset.maintenanceEvents) {
+                let shouldNotify = false;
+                let desc = '';
+
+                if (event.type === 'frequency' && event.frequency && event.frequencyUnit) {
+                    shouldNotify = true;
+                    desc = `Every ${event.frequency} ${event.frequencyUnit}`;
+                } else if (event.type === 'specific' && event.specificDate) {
+                    const eventDate = new Date(event.specificDate);
+                    const daysUntilEvent = Math.floor((eventDate - now) / (1000 * 60 * 60 * 24));
+                    
+                    // Notify 7 days before specific date
+                    if (daysUntilEvent === 7) {
+                        shouldNotify = true;
+                        desc = `Due on ${event.specificDate}`;
+                    }
+                }
+
+                if (shouldNotify) {
+                    sendNotification('maintenance_schedule', {
+                        name: asset.name,
+                        modelNumber: asset.modelNumber,
+                        eventName: event.name,
+                        schedule: desc,
+                        notes: event.notes,
+                        type: 'Asset'
+                    }, { appriseUrl });
+                    debugLog(`[DEBUG] Maintenance event notification sent for asset: ${asset.name}, event: ${event.name}`);
+                }
             }
         }
+
         if (asset.subAssets) {
             for (const sub of asset.subAssets) {
-                if (sub.maintenanceSchedule) {
-                    let shouldNotify = false;
-                    let desc = '';
-                    if (sub.maintenanceSchedule.unit === 'custom' && sub.maintenanceSchedule.custom) {
-                        shouldNotify = true;
-                        desc = sub.maintenanceSchedule.custom;
-                    } else if (sub.maintenanceSchedule.frequency && sub.maintenanceSchedule.unit) {
-                        shouldNotify = true;
-                        desc = `Every ${sub.maintenanceSchedule.frequency} ${sub.maintenanceSchedule.unit}`;
-                    }
-                    if (shouldNotify) {
-                        sendNotification('maintenance_schedule', {
-                            name: sub.name,
-                            modelNumber: sub.modelNumber,
-                            schedule: desc,
-                            type: 'Sub-Asset',
-                            parentAsset: asset.name
-                        }, { appriseUrl });
-                        debugLog(`[DEBUG] Maintenance schedule notification sent for sub-asset: ${sub.name}`);
+                if (sub.maintenanceEvents && sub.maintenanceEvents.length > 0) {
+                    for (const event of sub.maintenanceEvents) {
+                        let shouldNotify = false;
+                        let desc = '';
+
+                        if (event.type === 'frequency' && event.frequency && event.frequencyUnit) {
+                            shouldNotify = true;
+                            desc = `Every ${event.frequency} ${event.frequencyUnit}`;
+                        } else if (event.type === 'specific' && event.specificDate) {
+                            const eventDate = new Date(event.specificDate);
+                            const daysUntilEvent = Math.floor((eventDate - now) / (1000 * 60 * 60 * 24));
+                            
+                            // Notify 7 days before specific date
+                            if (daysUntilEvent === 7) {
+                                shouldNotify = true;
+                                desc = `Due on ${event.specificDate}`;
+                            }
+                        }
+
+                        if (shouldNotify) {
+                            sendNotification('maintenance_schedule', {
+                                name: sub.name,
+                                modelNumber: sub.modelNumber,
+                                eventName: event.name,
+                                schedule: desc,
+                                notes: event.notes,
+                                type: 'Sub-Asset',
+                                parentAsset: asset.name
+                            }, { appriseUrl });
+                            debugLog(`[DEBUG] Maintenance event notification sent for sub-asset: ${sub.name}, event: ${event.name}`);
+                        }
                     }
                 }
             }
