@@ -184,17 +184,17 @@ function generateAssetInfoHTML(asset) {
             <div class="info-label">Price</div>
             <div>${formatCurrency(asset.price || asset.purchasePrice)}</div>
         </div>
-        ${asset.warranty?.scope ? `
+        ${asset.warranty?.expirationDate || asset.warranty?.isLifetime ? `
         <div class="info-item">
             <div class="info-label">Warranty</div>
-            <div>${asset.warranty.scope}</div>
+            ${asset.warranty.scope ? `<div>${asset.warranty.scope}</div>` : ''}
             <div>${asset.warranty.isLifetime ? 'Lifetime' : formatDate(asset.warranty.expirationDate)}</div>
         </div>
         ` : ''}
-        ${asset.secondaryWarranty?.scope || asset.secondaryWarranty?.expirationDate ? `
+        ${asset.secondaryWarranty?.expirationDate || asset.secondaryWarranty?.isLifetime ? `
         <div class="info-item">
             <div class="info-label">Secondary Warranty</div>
-            <div>${asset.secondaryWarranty.scope || 'N/A'}</div>
+            ${asset.secondaryWarranty.scope ? `<div>${asset.secondaryWarranty.scope}</div>` : ''}
             <div>${asset.secondaryWarranty.isLifetime ? 'Lifetime' : formatDate(asset.secondaryWarranty.expirationDate)}</div>
         </div>
         ` : ''}
