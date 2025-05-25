@@ -96,24 +96,44 @@ export class SettingsManager {
                 if (dashboardSectionsContainer) {
                     const sections = dashboardSectionsContainer.querySelectorAll('.sortable-item');
                     const orderedSections = [];
-                    interfaceSettings.dashboardOrder.forEach(sectionName => {
+                    
+                    // Ensure Events is included in the order if it's missing
+                    let orderToUse = [...interfaceSettings.dashboardOrder];
+                    if (!orderToUse.includes('events')) {
+                        orderToUse.push('events');
+                    }
+                    
+                    orderToUse.forEach(sectionName => {
                         Array.from(sections).forEach(section => {
                             if (section.getAttribute('data-section') === sectionName) {
                                 orderedSections.push(section);
                             }
                         });
                     });
+                    
+                    // Add any sections that exist in HTML but not in saved order
+                    Array.from(sections).forEach(section => {
+                        if (!orderedSections.includes(section)) {
+                            orderedSections.push(section);
+                        }
+                    });
+                    
                     dashboardSectionsContainer.innerHTML = '';
                     orderedSections.forEach(section => {
                         dashboardSectionsContainer.appendChild(section);
                     });
                 }
             }
-            // Dashboard visibility
-            const vis = interfaceSettings.dashboardVisibility || { totals: true, warranties: true, analytics: true };
-            document.getElementById('toggleTotals').checked = !!vis.totals;
-            document.getElementById('toggleWarranties').checked = !!vis.warranties;
-            document.getElementById('toggleAnalytics').checked = !!vis.analytics;
+            // Dashboard visibility - ensure Events defaults to true
+            const vis = interfaceSettings.dashboardVisibility || {};
+            // Set defaults for any missing values
+            const visibilityDefaults = { totals: true, warranties: true, analytics: true, events: true };
+            const finalVisibility = { ...visibilityDefaults, ...vis };
+            
+            document.getElementById('toggleTotals').checked = finalVisibility.totals;
+            document.getElementById('toggleWarranties').checked = finalVisibility.warranties;
+            document.getElementById('toggleAnalytics').checked = finalVisibility.analytics;
+            document.getElementById('toggleEvents').checked = finalVisibility.events;
             // Card visibility toggles
             if (typeof window.renderCardVisibilityToggles === 'function') {
                 window.renderCardVisibilityToggles(settings);
@@ -121,6 +141,7 @@ export class SettingsManager {
             localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
         } catch (err) {
             console.error('Error loading settings:', err);
+            // Set default values when loading fails
             this.notificationForm.notifyAdd.checked = true;
             this.notificationForm.notifyDelete.checked = false;
             this.notificationForm.notifyEdit.checked = true;
@@ -128,6 +149,8 @@ export class SettingsManager {
             this.notificationForm.notify2Week.checked = false;
             this.notificationForm.notify7Day.checked = true;
             this.notificationForm.notify3Day.checked = false;
+            // Ensure Events toggle is enabled by default when loading fails
+            document.getElementById('toggleEvents').checked = true;
         }
     }
 
@@ -149,7 +172,8 @@ export class SettingsManager {
                 dashboardVisibility: {
                     totals: document.getElementById('toggleTotals').checked,
                     warranties: document.getElementById('toggleWarranties').checked,
-                    analytics: document.getElementById('toggleAnalytics').checked
+                    analytics: document.getElementById('toggleAnalytics').checked,
+                    events: document.getElementById('toggleEvents').checked
                 },
                 cardVisibility: {
                     assets: document.getElementById('toggleCardTotalAssets')?.checked !== false,
