@@ -2434,6 +2434,44 @@ a:hover {
     .app-container {
         grid-template-columns: 1fr; /* Single column layout on mobile */
         position: relative;
+        padding: 0; /* Remove horizontal padding on mobile */
+    }
+    
+    .main-content {
+        padding: 0; /* Remove padding from main content */
+    }
+    
+    .dashboard-legend {
+        margin: 0.5rem 0 0 0; /* Remove horizontal margins */
+        padding: 1rem 0.5rem 1rem 0.5rem; /* Reduce horizontal padding */
+    }
+    
+    .dashboard-legend-title {
+        font-size: 1rem;
+        padding: 0.5rem 0.5rem;
+    }
+    
+    .dashboard-cards {
+        padding: 0 0.25rem; /* Minimal horizontal padding for cards */
+        gap: 0.75rem; /* Slightly reduce gap */
+    }
+    
+    .dashboard-card {
+        padding: 1rem 0.5rem 0.75rem 0.5rem; /* Reduce horizontal padding */
+        min-height: 90px; /* Slightly reduce height */
+    }
+    
+    .chart-container {
+        padding: 1rem 0.5rem; /* Reduce horizontal padding */
+        margin: 0; /* Remove margins */
+    }
+    
+    .events-table-container {
+        margin: 0; /* Remove margins */
+    }
+    
+    .event-row {
+        padding: 0.5rem; /* Reduce padding */
     }
     
     .sidebar {
@@ -2486,10 +2524,6 @@ a:hover {
         font-size: 1.8rem;
         margin-top: 0.5rem;
     }
-    .dashboard-legend-title {
-        font-size: 1rem;
-        padding: 0.5rem 0.5rem;
-    }
     .header-actions {
         margin-right: 1rem;
     }
@@ -2498,6 +2532,7 @@ a:hover {
         flex-direction: column;
         align-items: stretch;
         gap: 0.75rem;
+        padding: 0 0.5rem; /* Add minimal horizontal padding */
     }
     
     .events-filters {
