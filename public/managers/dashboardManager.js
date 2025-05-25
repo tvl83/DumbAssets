@@ -7,6 +7,7 @@ export class DashboardManager {
     constructor({
         // DOM elements
         assetDetails,
+        subAssetContainer,
         searchInput,
         
         // Utility functions
@@ -34,6 +35,7 @@ export class DashboardManager {
     }) {
         // Store DOM elements
         this.assetDetails = assetDetails;
+        this.subAssetContainer = subAssetContainer;
         this.searchInput = searchInput;
         
         // Store utility functions
@@ -257,6 +259,7 @@ export class DashboardManager {
         });
         
         // Set the dashboard HTML with ordered sections
+        this.subAssetContainer.classList.add('hidden');
         this.assetDetails.innerHTML = `
             <fieldset class="dashboard-legend">
                 <legend class="dashboard-legend-title">Asset Overview</legend>

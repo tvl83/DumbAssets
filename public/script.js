@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const apiBaseUrl = getApiBaseUrl();
             const isEditMode = !!asset.id;
-            
+
             // Create a copy to avoid mutation issues
             const assetToSave = { ...asset };
             
@@ -1248,6 +1248,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dashboardManager = new DashboardManager({
         // DOM elements
         assetDetails,
+        subAssetContainer,
         searchInput,
         
         // Utility functions
