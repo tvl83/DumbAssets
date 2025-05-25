@@ -42,6 +42,7 @@ import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 import { ImportManager } from './managers/import.js';
 import { MaintenanceManager } from './managers/maintenanceManager.js';
+import { ModalManager } from './managers/modalManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize global variables for DOM elements
@@ -53,11 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let subAssets = [];
     let selectedAssetId = null;
     let selectedSubAssetId = null;
-    let isEditMode = false;
     let dashboardFilter = 'all';
     let currentSort = { field: 'updatedAt', direction: 'desc' };
 
-    // Initialize variables for file deletion tracking
+    // File deletion tracking is now handled by ModalManager
+    // Keep window references for backward compatibility with existing save functions
     window.deletePhoto = false;
     window.deleteReceipt = false;
     window.deleteManual = false;
@@ -65,20 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteSubReceipt = false;
     window.deleteSubManual = false;
 
-    // Store local references for easier access
-    let deletePhoto = window.deletePhoto;
-    let deleteReceipt = window.deleteReceipt;
-    let deleteManual = window.deleteManual;
-    let deleteSubPhoto = window.deleteSubPhoto;
-    let deleteSubReceipt = window.deleteSubReceipt;
-    let deleteSubManual = window.deleteSubManual;
-
     // Initialize tag managers at the top with other app state variables
     let assetTagManager = null;
     let subAssetTagManager = null;
 
     // Initialize MaintenanceManager
     const maintenanceManager = new MaintenanceManager();
+
+    // Initialize ModalManager - will be set up after DOM elements are initialized
+    let modalManager;
 
     // DOM Elements
     const subAssetList = document.getElementById('subAssetList');
@@ -807,615 +803,21 @@ document.addEventListener('DOMContentLoaded', () => {
         subAssetContainer.classList.add('hidden');
     }
 
-    // Modal Functions
+    // Modal Functions - now handled by ModalManager
     function openAssetModal(asset = null) {
-        if (!assetModal || !assetForm) return;
-        isEditMode = !!asset;
-        document.getElementById('addAssetTitle').textContent = isEditMode ? 'Edit Asset' : 'Add Asset';
-        assetForm.reset();
-        let containsExistingFiles = false;
-
-        // Reset loading state of save button
-        const saveBtn = assetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, false);
-
-        // Reset delete flags both locally and on window
-        deletePhoto = window.deletePhoto = false;
-        deleteReceipt = window.deleteReceipt = false;
-        deleteManual = window.deleteManual = false;
-        
-        // Reset secondary warranty fields
-        const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
-        if (secondaryWarrantyFields) {
-            secondaryWarrantyFields.style.display = 'none';
-        }
-        
-        // Set up secondary warranty button
-        const addSecondaryWarrantyBtn = document.getElementById('addSecondaryWarranty');
-        if (addSecondaryWarrantyBtn) {
-            addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
-            addSecondaryWarrantyBtn.setAttribute('aria-controls', 'secondaryWarrantyFields');
-            addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
-            addSecondaryWarrantyBtn.onclick = () => {
-                const fields = document.getElementById('secondaryWarrantyFields');
-                const expanded = fields && fields.style.display !== 'none';
-                if (fields) {
-                    if (expanded) {
-                        fields.style.display = 'none';
-                        addSecondaryWarrantyBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Warranty`;
-                        addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
-                        addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
-                    } else {
-                        fields.style.display = 'block';
-                        addSecondaryWarrantyBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Remove Secondary Warranty`;
-                        addSecondaryWarrantyBtn.title = 'Remove Secondary Warranty';
-                        addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'true');
-                    }
-                }
-            };
-        }
-        
-        // Clear file inputs and previews
-        const photoInput = document.getElementById('assetPhoto');
-        const receiptInput = document.getElementById('assetReceipt');
-        const manualInput = document.getElementById('assetManual');
-        const photoPreview = document.getElementById('photoPreview');
-        const receiptPreview = document.getElementById('receiptPreview');
-        const manualPreview = document.getElementById('manualPreview');
-        
-        if (!isEditMode) {
-            // Clear file inputs and previews for new assets
-            if (photoInput) photoInput.value = '';
-            if (receiptInput) receiptInput.value = '';
-            if (manualInput) manualInput.value = '';
-            if (photoPreview) photoPreview.innerHTML = '';
-            if (receiptPreview) receiptPreview.innerHTML = '';
-            if (manualPreview) manualPreview.innerHTML = '';
-        }
-        
-        if (isEditMode && asset) {
-            const assetNameInput = document.getElementById('assetName');
-            if (assetNameInput) assetNameInput.value = asset.name || '';
-            const assetModelInput = document.getElementById('assetModel');
-            if (assetModelInput) assetModelInput.value = asset.modelNumber || '';
-            const assetManufacturerInput = document.getElementById('assetManufacturer');
-            if (assetManufacturerInput) assetManufacturerInput.value = asset.manufacturer || '';
-            const assetSerialInput = document.getElementById('assetSerial');
-            if (assetSerialInput) assetSerialInput.value = asset.serialNumber || '';
-            const assetPurchaseDateInput = document.getElementById('assetPurchaseDate');
-            if (assetPurchaseDateInput) assetPurchaseDateInput.value = asset.purchaseDate || '';
-            const assetPriceInput = document.getElementById('assetPrice');
-            if (assetPriceInput) assetPriceInput.value = asset.price || '';
-            const assetWarrantyScopeInput = document.getElementById('assetWarrantyScope');
-            if (assetWarrantyScopeInput) assetWarrantyScopeInput.value = asset.warranty?.scope || '';
-            const assetWarrantyLifetimeInput = document.getElementById('assetWarrantyLifetime');
-            if (assetWarrantyLifetimeInput) assetWarrantyLifetimeInput.checked = asset.warranty?.isLifetime || false;
-            const assetWarrantyExpirationInput = document.getElementById('assetWarrantyExpiration');
-            if (assetWarrantyExpirationInput) assetWarrantyExpirationInput.value = asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '';
-            const assetDescriptionInput = document.getElementById('assetNotes');
-            if (assetDescriptionInput) assetDescriptionInput.value = asset.description || '';
-            const assetLinkInput = document.getElementById('assetLink');
-            if (assetLinkInput) assetLinkInput.value = asset.link || '';
-            
-            // Set tags
-            assetTagManager.setTags(asset.tags || []);
-            
-            // Handle secondary warranty
-            if (asset.secondaryWarranty) {
-                const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
-                if (secondaryWarrantyFields) {
-                    secondaryWarrantyFields.style.display = 'block';
-                    document.getElementById('assetSecondaryWarrantyScope').value = asset.secondaryWarranty.scope || '';
-                    document.getElementById('assetSecondaryWarrantyExpiration').value = asset.secondaryWarranty.expirationDate ? new Date(asset.secondaryWarranty.expirationDate).toISOString().split('T')[0] : '';
-                    document.getElementById('assetSecondaryWarrantyLifetime').checked = asset.secondaryWarranty.isLifetime || false;
-                    if (addSecondaryWarrantyBtn) {
-                        addSecondaryWarrantyBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Remove Secondary Warranty`;
-                        addSecondaryWarrantyBtn.title = 'Remove Secondary Warranty';
-                        addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'true');
-                    }
-                }
-            } else {
-                if (addSecondaryWarrantyBtn) {
-                    addSecondaryWarrantyBtn.innerHTML = `
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Warranty`;
-                    addSecondaryWarrantyBtn.title = 'Add Secondary Warranty';
-                    addSecondaryWarrantyBtn.setAttribute('aria-expanded', 'false');
-                }
-            }
-            
-            // Set tags
-            assetTagManager.setTags(asset.tags || []);
-
-            // Preview existing files using our utility function
-            if (asset.photoPath) {
-                const photoInfo = asset.photoInfo?.[0] || {};
-                setupFilePreview(
-                    photoPreview, 
-                    'photo', 
-                    formatFilePath(asset.photoPath), 
-                    photoInput, 
-                    { deletePhoto }, 
-                    'deletePhoto',
-                    photoInfo.originalName || asset.photoPath.split('/').pop(),
-                    photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
-                );
-                containsExistingFiles = true;
-            }
-            
-            if (asset.receiptPath) {
-                const receiptInfo = asset.receiptInfo?.[0] || {};
-                setupFilePreview(
-                    receiptPreview, 
-                    'receipt', 
-                    formatFilePath(asset.receiptPath), 
-                    receiptInput, 
-                    { deleteReceipt }, 
-                    'deleteReceipt',
-                    receiptInfo.originalName || asset.receiptPath.split('/').pop(),
-                    receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
-                );
-                containsExistingFiles = true;
-            }
-            
-            if (asset.manualPath) {
-                const manualInfo = asset.manualInfo?.[0] || {};
-                setupFilePreview(
-                    manualPreview, 
-                    'manual', 
-                    formatFilePath(asset.manualPath), 
-                    manualInput, 
-                    { deleteManual }, 
-                    'deleteManual',
-                    manualInfo.originalName || asset.manualPath.split('/').pop(),
-                    manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size'
-                );
-                const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
-                if (deleteBtn) {
-                    deleteBtn.onclick = () => {
-                        if (confirm('Are you sure you want to delete this manual?')) {
-                            manualPreview.innerHTML = '';
-                            if (manualInput) manualInput.value = '';
-                            deleteManual = window.deleteManual = true;
-                        }
-                    };
-                }
-                containsExistingFiles = true;
-            }
-            maintenanceManager.setMaintenanceEvents('asset', asset.maintenanceEvents || []);
-        } else {
-            assetForm.reset();
-            assetTagManager.setTags([]);
-            maintenanceManager.setMaintenanceEvents('asset', []);
-        }
-        // Set up form submission
-        assetForm.onsubmit = (e) => {
-            e.preventDefault();
-            
-            const assetNameInput = document.getElementById('assetName');
-            const assetModelInput = document.getElementById('assetModel');
-            const assetManufacturerInput = document.getElementById('assetManufacturer');
-            const assetSerialInput = document.getElementById('assetSerial');
-            const assetPurchaseDateInput = document.getElementById('assetPurchaseDate');
-            const assetPriceInput = document.getElementById('assetPrice');
-            const assetWarrantyScopeInput = document.getElementById('assetWarrantyScope');
-            const assetWarrantyLifetimeInput = document.getElementById('assetWarrantyLifetime');
-            const assetWarrantyExpirationInput = document.getElementById('assetWarrantyExpiration');
-            const assetLinkInput = document.getElementById('assetLink');
-            const assetDescriptionInput = document.getElementById('assetNotes');
-
-            const assetTags = assetTagManager.getTags();
-            const tagsInput = document.getElementById('assetTags');
-            if (tagsInput && tagsInput.value.trim() !== '') assetTags.push(tagsInput.value);
-
-            const newAsset = {
-                name: assetNameInput ? assetNameInput.value : '',
-                modelNumber: assetModelInput ? assetModelInput.value : '',
-                manufacturer: assetManufacturerInput ? assetManufacturerInput.value : '',
-                serialNumber: assetSerialInput ? assetSerialInput.value : '',
-                purchaseDate: assetPurchaseDateInput ? assetPurchaseDateInput.value : '',
-                price: assetPriceInput ? parseFloat(assetPriceInput.value) || null : null,
-                warranty: {
-                    scope: assetWarrantyScopeInput ? assetWarrantyScopeInput.value : '',
-                    expirationDate: assetWarrantyLifetimeInput && assetWarrantyLifetimeInput.checked ? null : (assetWarrantyExpirationInput ? assetWarrantyExpirationInput.value : ''),
-                    isLifetime: assetWarrantyLifetimeInput ? assetWarrantyLifetimeInput.checked : false
-                },
-                link: assetLinkInput ? assetLinkInput.value : '',
-                description: assetDescriptionInput ? assetDescriptionInput.value : '',
-                tags: assetTags,
-                updatedAt: new Date().toISOString(),
-                maintenanceEvents: maintenanceManager.getMaintenanceEvents('asset')
-            };
-            
-            // Add secondary warranty if fields are visible and filled
-            const secondaryWarrantyFields = document.getElementById('secondaryWarrantyFields');
-            if (secondaryWarrantyFields && secondaryWarrantyFields.style.display !== 'none') {
-                const secondaryScopeInput = document.getElementById('assetSecondaryWarrantyScope');
-                const secondaryExpirationInput = document.getElementById('assetSecondaryWarrantyExpiration');
-                const secondaryLifetimeInput = document.getElementById('assetSecondaryWarrantyLifetime');
-                const secondaryScope = secondaryScopeInput ? secondaryScopeInput.value : '';
-                const secondaryExpiration = secondaryLifetimeInput && secondaryLifetimeInput.checked ? null : (secondaryExpirationInput ? secondaryExpirationInput.value : '');
-                if (secondaryScope || secondaryExpiration) {
-                    newAsset.secondaryWarranty = {
-                        scope: secondaryScope,
-                        expirationDate: secondaryExpiration,
-                        isLifetime: secondaryLifetimeInput ? secondaryLifetimeInput.checked : false
-                    };
-                }
-            }
-            
-            // Add ID if editing, generate new one if adding
-            if (isEditMode && asset) {
-                newAsset.id = asset.id;
-                newAsset.photoPath = asset.photoPath;
-                newAsset.receiptPath = asset.receiptPath;
-                newAsset.manualPath = asset.manualPath;
-                newAsset.createdAt = asset.createdAt;
-            } else {
-                newAsset.id = generateId();
-                newAsset.photoPath = null;
-                newAsset.receiptPath = null;
-                newAsset.manualPath = null;
-                newAsset.createdAt = new Date().toISOString();
-            }
-            
-            // Handle file uploads then save
-            handleFileUploads(newAsset, isEditMode)
-                .then(updatedAsset => saveAsset(updatedAsset));
-        };
-        
-        // Add Ctrl+Enter keyboard shortcut to save the asset form
-        const assetKeydownHandler = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                assetForm.dispatchEvent(new Event('submit'));
-            }
-        };
-        assetModal.addEventListener('keydown', assetKeydownHandler);
-        
-        // Set up cancel button
-        const cancelBtn = assetForm.querySelector('.cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.onclick = () => {
-                closeAssetModal();
-            };
-        }
-        
-        // Set up close button
-        const closeBtn = assetModal.querySelector('.close-btn');
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                closeAssetModal();
-            };
-        }
-        
-        // Show the modal
-        assetModal.style.display = 'block';
-        
-        if (containsExistingFiles) expandSection('#assetFileUploader');
-        else collapseSection('#assetFileUploader');
+        modalManager.openAssetModal(asset);
     }
 
     function closeAssetModal() {
-        if (!assetModal) return;
-        
-        // Reset loading state of save button
-        const saveBtn = assetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, false);
-
-        // Clear file inputs and previews
-        const photoInput = document.getElementById('assetPhoto');
-        const receiptInput = document.getElementById('assetReceipt');
-        const manualInput = document.getElementById('assetManual');
-        const photoPreview = document.getElementById('photoPreview');
-        const receiptPreview = document.getElementById('receiptPreview');
-        const manualPreview = document.getElementById('manualPreview');
-
-        if (photoInput) photoInput.value = '';
-        if (receiptInput) receiptInput.value = '';
-        if (manualInput) manualInput.value = '';
-        if (photoPreview) photoPreview.innerHTML = '';
-        if (receiptPreview) receiptPreview.innerHTML = '';
-        if (manualPreview) manualPreview.innerHTML = '';
-
-        assetModal.style.display = 'none';
+        modalManager.closeAssetModal();
     }
 
     function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null) {
-        if (!subAssetModal || !subAssetForm) return;
-        isEditMode = !!subAsset;
-        document.getElementById('addComponentTitle').textContent = isEditMode ? 'Edit Component' : 'Add Component';
-        subAssetForm.reset();
-        let containsExistingFiles = false;
-        
-        // Reset loading state of save button
-        const saveBtn = subAssetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, false);
-
-        // Reset delete flags both locally and on window
-        deleteSubPhoto = window.deleteSubPhoto = false;
-        deleteSubReceipt = window.deleteSubReceipt = false;
-        deleteSubManual = window.deleteSubManual = false;
-        
-        // Clear file inputs and previews
-        const photoInput = document.getElementById('subAssetPhoto');
-        const receiptInput = document.getElementById('subAssetReceipt');
-        const manualInput = document.getElementById('subAssetManual');
-        const photoPreview = document.getElementById('subPhotoPreview');
-        const receiptPreview = document.getElementById('subReceiptPreview');
-        const manualPreview = document.getElementById('subManualPreview');
-        
-        if (!isEditMode) {
-            // Clear file inputs and previews for new assets
-            if (photoInput) photoInput.value = '';
-            if (receiptInput) receiptInput.value = '';
-            if (manualInput) manualInput.value = '';
-            if (photoPreview) photoPreview.innerHTML = '';
-            if (receiptPreview) receiptPreview.innerHTML = '';
-            if (manualPreview) manualPreview.innerHTML = '';
-        }
-        
-        // Set parent ID - Add null checks to prevent errors
-        const parentIdInput = document.getElementById('parentAssetId');
-        const parentSubIdInput = document.getElementById('parentSubAssetId');
-        
-        if (parentIdInput) parentIdInput.value = '';
-        if (parentSubIdInput) parentSubIdInput.value = '';
-        
-        if (parentId && parentIdInput) {
-            parentIdInput.value = parentId;
-        }
-        if (parentSubId && parentSubIdInput) {
-            parentSubIdInput.value = parentSubId;
-        }
-        
-        if (isEditMode && subAsset) {
-            const idInput = document.getElementById('subAssetId');
-            if (idInput) idInput.value = subAsset.id;
-            const nameInput = document.getElementById('subAssetName');
-            if (nameInput) nameInput.value = subAsset.name || '';
-            const manufacturerInput = document.getElementById('subAssetManufacturer');
-            if (manufacturerInput) manufacturerInput.value = subAsset.manufacturer || '';
-            const modelInput = document.getElementById('subAssetModel');
-            if (modelInput) modelInput.value = subAsset.modelNumber || '';
-            const serialInput = document.getElementById('subAssetSerial');
-            if (serialInput) serialInput.value = subAsset.serialNumber || '';
-            const purchaseDateInput = document.getElementById('subAssetPurchaseDate');
-            if (purchaseDateInput) purchaseDateInput.value = subAsset.purchaseDate || '';
-            const purchasePriceInput = document.getElementById('subAssetPurchasePrice');
-            if (purchasePriceInput) purchasePriceInput.value = subAsset.purchasePrice || '';
-            const parentIdInput = document.getElementById('parentAssetId');
-            if (parentIdInput) parentIdInput.value = subAsset.parentId || parentId || '';
-            const parentSubIdInput = document.getElementById('parentSubAssetId');
-            if (parentSubIdInput) parentSubIdInput.value = subAsset.parentSubId || parentSubId || '';
-            const notesInput = document.getElementById('subAssetNotes');
-            if (notesInput) notesInput.value = subAsset.notes || '';
-            const warrantyScopeInput = document.getElementById('subAssetWarrantyScope');
-            if (warrantyScopeInput) warrantyScopeInput.value = subAsset.warranty?.scope || '';
-            const warrantyExpirationInput = document.getElementById('subAssetWarrantyExpiration');
-            if (warrantyExpirationInput) warrantyExpirationInput.value = subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : '';
-            
-            // Set tags
-            subAssetTagManager.setTags(subAsset.tags || []);
-
-            // Preview existing images if available
-            if (subAsset.photoPath) {
-                const photoInfo = subAsset.photoInfo?.[0] || {};
-                setupFilePreview(
-                    photoPreview, 
-                    'photo', 
-                    formatFilePath(subAsset.photoPath), 
-                    photoInput, 
-                    { deleteSubPhoto }, 
-                    'deleteSubPhoto',
-                    photoInfo.originalName || subAsset.photoPath.split('/').pop(),
-                    photoInfo.size ? formatFileSize(photoInfo.size) : 'Unknown size'
-                );
-                containsExistingFiles = true;
-            }
-            
-            if (subAsset.receiptPath) {
-                const receiptInfo = subAsset.receiptInfo?.[0] || {};
-                setupFilePreview(
-                    receiptPreview, 
-                    'receipt', 
-                    formatFilePath(subAsset.receiptPath), 
-                    receiptInput, 
-                    { deleteSubReceipt }, 
-                    'deleteSubReceipt',
-                    receiptInfo.originalName || subAsset.receiptPath.split('/').pop(),
-                    receiptInfo.size ? formatFileSize(receiptInfo.size) : 'Unknown size'
-                );
-                containsExistingFiles = true;
-            }
-            
-            if (subAsset.manualPath) {
-                const manualInfo = subAsset.manualInfo?.[0] || {};
-                setupFilePreview(
-                    manualPreview, 
-                    'manual', 
-                    formatFilePath(subAsset.manualPath), 
-                    manualInput, 
-                    { deleteSubManual }, 
-                    'deleteSubManual',
-                    manualInfo.originalName || subAsset.manualPath.split('/').pop(),
-                    manualInfo.size ? formatFileSize(manualInfo.size) : 'Unknown size');
-                const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
-                if (deleteBtn) {
-                    deleteBtn.onclick = () => {
-                        if (confirm('Are you sure you want to delete this manual?')) {
-                            manualPreview.innerHTML = '';
-                            if (manualInput) manualInput.value = '';
-                            deleteSubManual = window.deleteSubManual = true;
-                        }
-                    };
-                }
-                containsExistingFiles = true;
-            }
-            maintenanceManager.setMaintenanceEvents('subAsset', subAsset.maintenanceEvents || []);
-        } else {
-            subAssetForm.reset();
-            subAssetTagManager.setTags([]);
-            maintenanceManager.setMaintenanceEvents('subAsset', []);
-        }
-        
-        // Set up form submission
-        subAssetForm.onsubmit = (e) => {
-            e.preventDefault();
-            
-            // Create sub-asset object with null checks
-            const nameInput = document.getElementById('subAssetName');
-            const modelInput = document.getElementById('subAssetModel');
-            const serialInput = document.getElementById('subAssetSerial');
-            const purchaseDateInput = document.getElementById('subAssetPurchaseDate');
-            const purchasePriceInput = document.getElementById('subAssetPurchasePrice');
-            const parentIdInput = document.getElementById('parentAssetId');
-            const parentSubIdInput = document.getElementById('parentSubAssetId');
-            const notesInput = document.getElementById('subAssetNotes');
-            const idInput = document.getElementById('subAssetId');
-            const warrantyScopeInput = document.getElementById('subAssetWarrantyScope');
-            const warrantyExpirationInput = document.getElementById('subAssetWarrantyExpiration');
-            
-            // Ensure required fields exist and have values
-            if (!nameInput || !nameInput.value.trim()) {
-                alert('Name is required');
-                return;
-            }
-            
-            if (!parentIdInput || !parentIdInput.value.trim()) {
-                console.error('Missing parent ID!');
-                alert('Parent ID is required. Please try again.');
-                return;
-            }
-            
-            const subAssetTags = subAssetTagManager.getTags();
-            const subAssetTagsInput = document.getElementById('subAssetTags');
-            if (subAssetTagsInput && subAssetTagsInput.value !== '') subAssetTags.push(subAssetTagsInput.value);
-
-            const newSubAsset = {
-                id: idInput && idInput.value ? idInput.value : generateId(), // Generate new ID if not editing
-                name: nameInput ? nameInput.value : '',
-                manufacturer: document.getElementById('subAssetManufacturer').value,
-                modelNumber: modelInput ? modelInput.value : '',
-                serialNumber: serialInput ? serialInput.value : '',
-                purchaseDate: purchaseDateInput ? purchaseDateInput.value : '',
-                purchasePrice: purchasePriceInput ? parseFloat(purchasePriceInput.value) || null : null,
-                parentId: parentIdInput ? parentIdInput.value : '',
-                parentSubId: parentSubIdInput ? parentSubIdInput.value : '',
-                notes: notesInput ? notesInput.value : '',
-                tags: subAssetTags,
-                warranty: {
-                    scope: warrantyScopeInput ? warrantyScopeInput.value : '',
-                    expirationDate: document.getElementById('subAssetWarrantyLifetime').checked ? null : warrantyExpirationInput.value,
-                    isLifetime: document.getElementById('subAssetWarrantyLifetime').checked
-                },
-                updatedAt: new Date().toISOString(),
-                maintenanceEvents: maintenanceManager.getMaintenanceEvents('subAsset')
-            };
-            
-            // Debug log the sub-asset data before file uploads
-            console.log('Sub-asset data before file uploads:', {
-                id: newSubAsset.id,
-                name: newSubAsset.name,
-                parentId: newSubAsset.parentId,
-                parentSubId: newSubAsset.parentSubId,
-                warranty: newSubAsset.warranty
-            });
-            
-            // Add file info if editing, generate new paths if adding
-            if (isEditMode && subAsset) {
-                newSubAsset.photoPath = subAsset.photoPath;
-                newSubAsset.receiptPath = subAsset.receiptPath;
-                newSubAsset.manualPath = subAsset.manualPath;
-                newSubAsset.createdAt = subAsset.createdAt;
-                
-                // Handle file deletions
-                if (deleteSubPhoto) newSubAsset.photoPath = null;
-                if (deleteSubReceipt) newSubAsset.receiptPath = null;
-                if (deleteSubManual) newSubAsset.manualPath = null;
-            } else {
-                newSubAsset.photoPath = null;
-                newSubAsset.receiptPath = null;
-                newSubAsset.manualPath = null;
-                newSubAsset.createdAt = new Date().toISOString();
-            }
-            
-            // Handle file uploads then save
-            handleFileUploads(newSubAsset, isEditMode, true)
-                .then(updatedSubAsset => saveSubAsset(updatedSubAsset));
-        };
-        
-        // Add Ctrl+Enter keyboard shortcut to save the component form
-        const subAssetKeydownHandler = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                subAssetForm.dispatchEvent(new Event('submit'));
-            }
-        };
-        subAssetModal.addEventListener('keydown', subAssetKeydownHandler);
-        
-        // Set up cancel button
-        const cancelBtn = subAssetForm.querySelector('.cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.onclick = () => {
-                closeSubAssetModal();
-            };
-        }
-        
-        // Set up close button
-        const closeBtn = subAssetModal.querySelector('.close-btn');
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                closeSubAssetModal();
-            };
-        }
-        
-        // Show the modal
-        subAssetModal.style.display = 'block';
-        
-        if (containsExistingFiles) expandSection('#subAssetFileUploader');
-        else collapseSection('#subAssetFileUploader');
+        modalManager.openSubAssetModal(subAsset, parentId, parentSubId);
     }
 
     function closeSubAssetModal() {
-        if (!subAssetModal) return;
-        
-        // Reset loading state of save button
-        const saveBtn = subAssetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, false);
-
-        // Clear file inputs and previews
-        const photoInput = document.getElementById('subAssetPhoto');
-        const receiptInput = document.getElementById('subAssetReceipt');
-        const manualInput = document.getElementById('subAssetManual');
-        const photoPreview = document.getElementById('subPhotoPreview');
-        const receiptPreview = document.getElementById('subReceiptPreview');
-        const manualPreview = document.getElementById('subManualPreview');
-
-        if (photoInput) photoInput.value = '';
-        if (receiptInput) receiptInput.value = '';
-        if (manualInput) manualInput.value = '';
-        if (photoPreview) photoPreview.innerHTML = '';
-        if (receiptPreview) receiptPreview.innerHTML = '';
-        if (manualPreview) manualPreview.innerHTML = '';
-
-        subAssetModal.style.display = 'none';
+        modalManager.closeSubAssetModal();
     }
 
     function closeSidebar() {
@@ -1998,8 +1400,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add click-off-to-close for modals
-    [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+    // Add click-off-to-close for non-modal-manager modals
+    [importModal, settingsModal].forEach(modal => {
         if (modal) {
             modal.addEventListener('mousedown', function(e) {
                 if (e.target === modal) {
@@ -2511,10 +1913,49 @@ document.addEventListener('DOMContentLoaded', () => {
             clearSearchBtn: !!clearSearchBtn
         });
         
-        // Initialize tag managers
-        assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
-        subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
-        setupDragIcons();
+            // Initialize tag managers
+    assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
+    subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
+    setupDragIcons();
+
+    // Initialize ModalManager after DOM elements and tag managers are ready
+    modalManager = new ModalManager({
+        // DOM elements
+        assetModal,
+        assetForm,
+        subAssetModal,
+        subAssetForm,
+        
+        // Utility functions
+        formatDate,
+        formatCurrency,
+        formatFileSize,
+        generateId,
+        
+        // File handling
+        handleFileUploads,
+        setupFilePreview,
+        formatFilePath,
+        
+        // UI functions
+        setButtonLoading,
+        showToast,
+        expandSection,
+        collapseSection,
+        
+        // Data functions
+        saveAsset,
+        saveSubAsset,
+        
+        // Tag and maintenance managers
+        assetTagManager,
+        subAssetTagManager,
+        maintenanceManager,
+        
+        // Global state
+        getAssets: () => assets,
+        getSubAssets: () => subAssets
+    });
     }
 
     function setupDragIcons() {
