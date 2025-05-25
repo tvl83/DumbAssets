@@ -135,7 +135,7 @@ function generateMaintenanceEventsHTML(maintenanceEvents) {
         return `
             <div class="maintenance-event-item">
                 <div class="maintenance-event-line">
-                    <strong>Event:${event.name}</strong>
+                    <strong>Event: ${event.name}</strong>
                     <span class="maintenance-schedule-inline">${typeText} - ${scheduleText}</span>
                 </div>
                 ${event.notes ? `
