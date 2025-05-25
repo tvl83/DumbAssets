@@ -2850,3 +2850,12 @@ a:hover {
 .maintenance-notes-line strong {
     color: var(--text-color);
 }
+
+.frequency-due-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+    min-width: fit-content;
+    margin-right: 0.5rem;
+}

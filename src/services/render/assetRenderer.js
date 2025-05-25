@@ -63,9 +63,6 @@ function initRenderer(config) {
     assetList = config.assetList;
     assetDetails = config.assetDetails;
     subAssetContainer = config.subAssetContainer;
-
-    setupMaintenanceScheduleFields('asset');
-    setupMaintenanceScheduleFields('subAsset');
 }
 
 /**
@@ -468,62 +465,11 @@ function renderAssetDetails(assetId, isSubAsset = false) {
     handleSidebarNav();
 }
 
-/**
- * Maintenance Schedule helpers
- */
-function getMaintenanceScheduleFromModal(prefix) {
-    const freq = document.getElementById(prefix + 'MaintenanceScheduleFrequency').value;
-    const unit = document.getElementById(prefix + 'MaintenanceScheduleUnit').value;
-    const custom = document.getElementById(prefix + 'MaintenanceScheduleCustom').value;
-    if (unit === 'custom') {
-        return { frequency: '', unit, custom };
-    }
-    return { frequency: freq, unit, custom: '' };
-}
-
-function setMaintenanceScheduleInModal(prefix, schedule) {
-    const freqInput = document.getElementById(prefix + 'MaintenanceScheduleFrequency');
-    const unitSelect = document.getElementById(prefix + 'MaintenanceScheduleUnit');
-    const customInput = document.getElementById(prefix + 'MaintenanceScheduleCustom');
-    // Default to days if not set
-    const unit = schedule?.unit || 'days';
-    unitSelect.value = unit;
-    freqInput.value = schedule?.frequency || '';
-    customInput.value = schedule?.custom || '';
-    // Always update visibility based on unit value
-    if (unitSelect.value === 'custom') {
-        freqInput.classList.add('hidden');
-        customInput.classList.remove('hidden');
-    } else {
-        customInput.classList.add('hidden');
-        freqInput.classList.remove('hidden');
-    }
-}
-
-function setupMaintenanceScheduleFields(prefix) {
-    const freqInput = document.getElementById(prefix + 'MaintenanceScheduleFrequency');
-    const unitSelect = document.getElementById(prefix + 'MaintenanceScheduleUnit');
-    const customInput = document.getElementById(prefix + 'MaintenanceScheduleCustom');
-    if (!freqInput || !unitSelect || !customInput) return;
-    unitSelect.addEventListener('change', function() {
-        if (unitSelect.value === 'custom') {
-            freqInput.classList.add('hidden');
-            customInput.classList.remove('hidden');
-        } else {
-            freqInput.classList.remove('hidden');
-            customInput.classList.add('hidden');
-        }
-    });
-}
-
 // Export the module functions
 export {
     initRenderer,
     updateState,
     updateSelectedIds,
     renderAssetDetails,
-    formatFilePath,
-    getMaintenanceScheduleFromModal,
-    setMaintenanceScheduleInModal,
-    setupMaintenanceScheduleFields
+    formatFilePath
 };

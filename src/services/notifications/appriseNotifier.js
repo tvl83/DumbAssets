@@ -33,7 +33,7 @@ function formatNotification(eventType, assetData) {
     if (assetData.expirationDate) lines.push(`Expires: ${assetData.expirationDate}`);
   } else if (eventType === 'maintenance_schedule') {
     lines.push('🛠️ Maintenance Schedule');
-    if (assetData.type === 'Sub-Asset') {
+    if (assetData.type === 'Component') {
       lines.push(`Component: ${assetData.name}`);
       if (assetData.parentAsset) lines.push(`Parent Asset: ${assetData.parentAsset}`);
     } else {

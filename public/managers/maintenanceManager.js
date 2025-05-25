@@ -93,6 +93,10 @@ export class MaintenanceManager {
                             <option value="years">Years</option>
                         </select>
                     </div>
+                    <div class="maintenance-event-row frequency-fields">
+                        <label for="nextDueDate" class="frequency-due-label">Next Due Date:</label>
+                        <input type="date" name="nextDueDate" title="When should this maintenance be performed next?">
+                    </div>
                     <div class="maintenance-event-row specific-date-fields" style="display: none;">
                         <input type="date" name="specificDate">
                     </div>
@@ -138,6 +142,7 @@ export class MaintenanceManager {
             if (event.type === 'frequency') {
                 event.frequency = eventElement.querySelector('[name="frequency"]').value;
                 event.frequencyUnit = eventElement.querySelector('[name="frequencyUnit"]').value;
+                event.nextDueDate = eventElement.querySelector('[name="nextDueDate"]').value;
             } else {
                 event.specificDate = eventElement.querySelector('[name="specificDate"]').value;
             }
@@ -180,6 +185,7 @@ export class MaintenanceManager {
                 if (event.type === 'frequency') {
                     eventElement.querySelector('[name="frequency"]').value = event.frequency || '';
                     eventElement.querySelector('[name="frequencyUnit"]').value = event.frequencyUnit || 'days';
+                    eventElement.querySelector('[name="nextDueDate"]').value = event.nextDueDate || '';
                 } else {
                     eventElement.querySelector('[name="specificDate"]').value = event.specificDate || '';
                 }

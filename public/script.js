@@ -41,11 +41,6 @@ import {
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 import { ImportManager } from './managers/import.js';
-import {     
-    getMaintenanceScheduleFromModal,
-    setMaintenanceScheduleInModal,
-    setupMaintenanceScheduleFields 
-} from '../src/services/render/assetRenderer.js';
 import { MaintenanceManager } from './managers/maintenanceManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
