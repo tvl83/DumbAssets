@@ -124,6 +124,7 @@ export class ModalManager {
         document.getElementById('addAssetTitle').textContent = this.isEditMode ? 'Edit Asset' : 'Add Asset';
         this.assetForm.reset();
         let containsExistingFiles = false;
+        let containsExistingMaintenanceEvents = false;
 
         // Reset loading state of save button
         const saveBtn = this.assetForm.querySelector('.save-btn');
@@ -150,10 +151,12 @@ export class ModalManager {
             this.populateAssetForm(asset);
             containsExistingFiles = this.setupAssetFilePreviews(asset);
             this.maintenanceManager.setMaintenanceEvents('asset', asset.maintenanceEvents || []);
+            containsExistingMaintenanceEvents = asset.maintenanceEvents && asset.maintenanceEvents.length > 0;
         } else {
             this.assetForm.reset();
             this.assetTagManager.setTags([]);
             this.maintenanceManager.setMaintenanceEvents('asset', []);
+            containsExistingMaintenanceEvents = false;
         }
         
         // Set up form submission
@@ -165,15 +168,16 @@ export class ModalManager {
         // Set up cancel and close buttons
         this.setupAssetModalButtons();
         
-        // Show the modal
-        this.assetModal.style.display = 'block';
+        // Handle maintenance section expansion
+        if (containsExistingMaintenanceEvents) this.expandSection('#assetMaintenanceSection');
+        else this.collapseSection('#assetMaintenanceSection');
         
         // Handle file section expansion
-        if (containsExistingFiles) {
-            this.expandSection('#assetFileUploader');
-        } else {
-            this.collapseSection('#assetFileUploader');
-        }
+        if (containsExistingFiles) this.expandSection('#assetFileUploader');
+        else this.collapseSection('#assetFileUploader');
+        
+        // Show the modal
+        this.assetModal.style.display = 'block';
     }
     
     closeAssetModal() {
