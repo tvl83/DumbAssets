@@ -1,5 +1,46 @@
 # 🔧 **MAINTENANCE NOTIFICATION SYSTEM - CRITICAL FIXES**
 
+## 🚨 **CRITICAL DATE CALCULATION BUG - FIXED ✅**
+
+### **ISSUE: "Today" Events Showing as -1 Days Remaining (CRITICAL)**
+
+**Problem:** 
+- Warranties and maintenance events expiring "today" were showing as `-1` days remaining instead of `0`
+- This was causing missed notifications for events due on the current day
+- Root cause: Time-based date comparison instead of date-only comparison
+
+**Technical Details:**
+- Cron runs at 12:01 PM daily
+- When comparing a warranty expiring "today" (2025-05-26 00:00:00) with current time (2025-05-26 12:01:00)
+- The difference is approximately -0.5 days (12 hours past midnight)
+- `Math.floor(-0.5)` = `-1` instead of expected `0`
+
+**Solution:**
+- Modified both warranty and maintenance date calculations to compare dates at start-of-day level
+- This ensures events due "today" correctly show as `0` days remaining
+
+```javascript
+// OLD (PROBLEMATIC):
+const daysOut = Math.floor(expDate.diff(now, 'days').days);
+const daysUntilEvent = Math.floor(eventDate.diff(now, 'days').days);
+
+// NEW (FIXED):
+const todayStart = now.startOf('day');
+const expDateStart = expDate.startOf('day');
+const daysOut = Math.floor(expDateStart.diff(todayStart, 'days').days);
+
+const eventDateStart = eventDate.startOf('day');
+const daysUntilEvent = Math.floor(eventDateStart.diff(todayStart, 'days').days);
+```
+
+**Impact:**
+- ✅ Warranties expiring today now correctly show `0` days remaining
+- ✅ Maintenance events due today now correctly show `0` days remaining  
+- ✅ All other date calculations remain accurate
+- ✅ No missed notifications for events due on current day
+
+---
+
 ## 🚨 **ISSUES IDENTIFIED & RESOLVED**
 
 ### **1. TIMEZONE MISMATCH (HIGH RISK) - FIXED ✅**

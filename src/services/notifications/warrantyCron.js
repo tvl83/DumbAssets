@@ -149,7 +149,7 @@ function toDateString(dateTime) {
 // File paths
 const assetsFilePath = path.join(__dirname, '..', '..', '..', 'data', 'Assets.json');
 const subAssetsFilePath = path.join(__dirname, '..', '..', '..', 'data', 'SubAssets.json');
-const notificationSettingsPath = path.join(__dirname, '..', '..', '..', 'data', 'notificationSettings.json');
+const configFilePath = path.join(__dirname, '..', '..', '..', 'data', 'config.json');
 const maintenanceTrackingPath = path.join(__dirname, '..', '..', '..', 'data', 'maintenanceTracking.json');
 
 function readJsonFile(filePath) {
@@ -180,7 +180,7 @@ async function startWarrantyCron() {
         const subAssets = readJsonFile(subAssetsFilePath);
         const now = DateTime.now().setZone(TIMEZONE);
         const today = getTodayString();
-        const settings = readJsonFile(notificationSettingsPath);
+        const settings = readJsonFile(configFilePath);
         const notificationSettings = settings.notificationSettings || {};
         const appriseUrl = process.env.APPRISE_URL;
 
@@ -200,7 +200,12 @@ async function startWarrantyCron() {
                     return;
                 }
                 
-                const daysOut = Math.floor(expDate.diff(now, 'days').days);
+                // Fix: Compare dates at start of day to avoid time-based calculation errors
+                // This ensures warranties expiring "today" show as 0 days remaining, not -1
+                const todayStart = now.startOf('day');
+                const expDateStart = expDate.startOf('day');
+                const daysOut = Math.floor(expDateStart.diff(todayStart, 'days').days);
+                
                 const warrantyType = isSecondary ? 'Secondary Warranty' : 'Warranty';
                 const assetType = isSubAsset ? 'Component' : 'Asset';
 
@@ -330,7 +335,7 @@ async function startWarrantyCron() {
 
 // Maintenance Schedule notification logic
 async function checkMaintenanceSchedules() {
-    const settings = readJsonFile(notificationSettingsPath);
+    const settings = readJsonFile(configFilePath);
     const notificationSettings = settings.notificationSettings || {};
     if (!notificationSettings.notifyMaintenance) return;
     
@@ -475,7 +480,11 @@ async function checkMaintenanceSchedules() {
                     }
                     
                     const eventDateStr = toDateString(eventDate);
-                    const daysUntilEvent = Math.floor(eventDate.diff(now, 'days').days);
+                    // Fix: Compare dates at start of day to avoid time-based calculation errors
+                    // This ensures maintenance events due "today" show as 0 days remaining, not -1
+                    const todayStart = now.startOf('day');
+                    const eventDateStart = eventDate.startOf('day');
+                    const daysUntilEvent = Math.floor(eventDateStart.diff(todayStart, 'days').days);
                     
                     debugLog(`[DEBUG] Checking specific date maintenance: ${event.name} on asset ${asset.id} - Event date: ${eventDateStr}, Days until: ${daysUntilEvent}`);
                     
