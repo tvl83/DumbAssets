@@ -441,24 +441,40 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             // --- Modern legend/fieldset for sub-sub-assets ---
             const fieldset = document.createElement('fieldset');
             fieldset.className = 'dashboard-legend';
-            fieldset.innerHTML = `
-                <legend class="dashboard-legend-title">Components</legend>
-                <div class="sub-asset-header">
-                    <button class="add-sub-asset-btn" style="margin-top:0.5rem;">+ Add Sub-Component</button>
-                </div>
-                <div class="sub-asset-list">
-                    ${subSubAssets.length === 0
-                        ? '<div class="empty-state"><p>No components found. Add your first component.</p></div>'
-                        : subSubAssets.map(child => {
-                            const wrapper = document.createElement('div');
-                            wrapper.appendChild(createSubAssetElement(child));
-                            return wrapper.innerHTML;
-                        }).join('')
-                    }
-                </div>
-            `;
-            // Add event for add button
-            fieldset.querySelector('.add-sub-asset-btn').onclick = () => openSubAssetModal(null, asset.parentId, asset.id);
+            
+            const legend = document.createElement('legend');
+            legend.className = 'dashboard-legend-title';
+            legend.textContent = 'Components';
+            fieldset.appendChild(legend);
+            
+            const subAssetHeader = document.createElement('div');
+            subAssetHeader.className = 'sub-asset-header';
+            subAssetHeader.style.marginTop = '0.5rem';
+            
+            const addSubAssetBtn = document.createElement('button');
+            addSubAssetBtn.className = 'add-sub-asset-btn';
+            addSubAssetBtn.textContent = '+ Add Sub-Component';
+            addSubAssetBtn.onclick = () => openSubAssetModal(null, asset.parentId, asset.id);
+            subAssetHeader.appendChild(addSubAssetBtn);
+            fieldset.appendChild(subAssetHeader);
+            
+            const subAssetList = document.createElement('div');
+            subAssetList.className = 'sub-asset-list';
+            
+            if (subSubAssets.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = '<p>No components found. Add your first component.</p>';
+                subAssetList.appendChild(emptyState);
+            } else {
+                // Create DOM elements properly to maintain event listeners
+                subSubAssets.forEach(child => {
+                    const childElement = createSubAssetElement(child);
+                    subAssetList.appendChild(childElement);
+                });
+            }
+            
+            fieldset.appendChild(subAssetList);
             assetDetails.appendChild(fieldset);
         }
     }
