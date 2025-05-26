@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationForm = document.getElementById('notificationForm');
     const saveSettings = document.getElementById('saveSettings');
     const cancelSettings = document.getElementById('cancelSettings');
-    const settingsClose = settingsModal.querySelector('.close-btn');
+    const settingsClose = settingsModal ? settingsModal.querySelector('.close-btn') : null;
     const testNotificationSettings = document.getElementById('testNotificationSettings');
 
     // Instantiate SettingsManager - will be initialized after DashboardManager
@@ -124,18 +124,21 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsModal.addEventListener('keydown', settingsKeydownHandler);
     }
 
-    // Instantiate ImportManager
-    const importManager = new ImportManager({
-        importModal,
-        importBtn,
-        importFile,
-        startImportBtn,
-        columnSelects,
-        showToast,
-        setButtonLoading,
-        loadAssets
-    });
-    window.importManager = importManager;
+    // Instantiate ImportManager - only if elements exist
+    let importManager = null;
+    if (importModal && importBtn && importFile && startImportBtn) {
+        importManager = new ImportManager({
+            importModal,
+            importBtn,
+            importFile,
+            startImportBtn,
+            columnSelects,
+            showToast,
+            setButtonLoading,
+            loadAssets
+        });
+        window.importManager = importManager;
+    }
 
     // Save settings to backend
     function showToast(message) {
@@ -1281,19 +1284,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initialize SettingsManager after DashboardManager is ready
-    settingsManager = new SettingsManager({
-        settingsBtn,
-        settingsModal,
-        notificationForm,
-        saveSettings,
-        cancelSettings,
-        settingsClose,
-        testNotificationSettings,
-        setButtonLoading,
-        showToast,
-        renderDashboard,
-        getDashboardOrder: () => dashboardManager.getDashboardOrder()
-    });
+    if (settingsBtn && settingsModal && notificationForm && saveSettings && cancelSettings && settingsClose && testNotificationSettings) {
+        settingsManager = new SettingsManager({
+            settingsBtn,
+            settingsModal,
+            notificationForm,
+            saveSettings,
+            cancelSettings,
+            settingsClose,
+            testNotificationSettings,
+            setButtonLoading,
+            showToast,
+            renderDashboard,
+            getDashboardOrder: () => dashboardManager.getDashboardOrder()
+        });
+    }
     }
 
     function setupDragIcons() {
