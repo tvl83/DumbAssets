@@ -185,8 +185,11 @@ function authMiddleware(req, res, next) {
         });
     } else {
         req.session.authenticated = false;
-        // Redirect to login for page requests
-        return res.redirect(BASE_PATH + '/login');
+        // Preserve the original URL with query parameters for post-login redirect
+        const originalUrl = req.originalUrl;
+        const loginUrl = `${BASE_PATH}/login${originalUrl ? `?returnTo=${encodeURIComponent(originalUrl)}` : ''}`;
+        debugLog('Redirecting to login with return URL:', loginUrl);
+        return res.redirect(loginUrl);
     }
 };
 
@@ -253,8 +256,26 @@ app.get(BASE_PATH + "/asset-manifest.json", (req, res) => {
 
 // Unprotected routes and files (accessible without login)
 app.get(BASE_PATH + '/login', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
-    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
+    // If no PIN is set, redirect to return URL or main page (preserving any asset parameters)
+    if (!PIN || PIN.trim() === '') {
+        const returnTo = req.query.returnTo || (BASE_PATH + '/');
+        debugLog('No PIN set, redirecting to:', returnTo);
+        return res.redirect(returnTo);
+    }
+    
+    // If already authenticated, redirect to return URL or main page
+    if (req.session.authenticated) {
+        const returnTo = req.query.returnTo || (BASE_PATH + '/');
+        debugLog('Already authenticated, redirecting to:', returnTo);
+        return res.redirect(returnTo);
+    }
+    
+    // Store the return URL in the session if provided
+    if (req.query.returnTo) {
+        req.session.returnTo = req.query.returnTo;
+        debugLog('Stored return URL in session:', req.query.returnTo);
+    }
+    
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
@@ -270,7 +291,17 @@ app.post(BASE_PATH + '/verify-pin', (req, res) => {
     if (!PIN || PIN.trim() === '') {
         debugLog('PIN verification bypassed - No PIN configured');
         req.session.authenticated = true;
-        return res.status(200).json({ success: true });
+        
+        // Get the return URL from session, or default to main page
+        const returnTo = req.session.returnTo || (BASE_PATH + '/');
+        
+        // Clear the return URL from session
+        delete req.session.returnTo;
+        
+        debugLog('No PIN set, redirecting to:', returnTo);
+        
+        // Redirect to the intended destination
+        return res.redirect(returnTo);
     }
 
     // Check if IP is locked out
@@ -308,8 +339,16 @@ app.post(BASE_PATH + '/verify-pin', (req, res) => {
             maxAge: 24 * 60 * 60 * 1000
         });
         
-        // Redirect to main page on success
-        res.redirect(BASE_PATH + '/');
+        // Get the return URL from session, or default to main page
+        const returnTo = req.session.returnTo || (BASE_PATH + '/');
+        
+        // Clear the return URL from session
+        delete req.session.returnTo;
+        
+        debugLog('Redirecting after successful login to:', returnTo);
+        
+        // Redirect to the intended destination
+        res.redirect(returnTo);
     } else {
         debugLog('PIN verification failed - Invalid PIN');
         // Record failed attempt
