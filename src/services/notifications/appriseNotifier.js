@@ -25,8 +25,16 @@ function formatNotification(eventType, assetData, baseUrl = '') {
   
   if (eventType === 'asset_added') {
     lines.push('✅ Asset Added');
+    // Add component identifier if this is a sub-asset
+    if (assetData.parentId) {
+      lines.push('📦 Component');
+    }
   } else if (eventType === 'asset_deleted') {
     lines.push('❌ Asset Deleted');
+    // Add component identifier if this is a sub-asset
+    if (assetData.parentId) {
+      lines.push('📦 Component');
+    }
     // Add detailed asset information for deletion
     if (assetData.name) lines.push(`Name: ${assetData.name}`);
     if (assetData.modelNumber) lines.push(`Model #: ${assetData.modelNumber}`);
@@ -39,6 +47,10 @@ function formatNotification(eventType, assetData, baseUrl = '') {
     }
   } else if (eventType === 'asset_edited') {
     lines.push('✏️ Asset Edited');
+    // Add component identifier if this is a sub-asset
+    if (assetData.parentId) {
+      lines.push('📦 Component');
+    }
   } else if (eventType === 'warranty_expiring') {
     lines.push(`⏰ Warranty Expiring in ${assetData.days ? assetData.days + ' days' : assetData.time || ''}`);
     if (assetData.warrantyType) lines.push(assetData.warrantyType);

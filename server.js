@@ -672,7 +672,7 @@ app.delete('/api/asset/:id', (req, res) => {
 });
 
 // Create a new sub-asset
-app.post('/api/subasset', (req, res) => {
+app.post('/api/subasset', async (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const newSubAsset = req.body;
     // Remove legacy maintenanceReminder if present
@@ -697,6 +697,39 @@ app.post('/api/subasset', (req, res) => {
     subAssets.push(newSubAsset);
     
     if (writeJsonFile(subAssetsFilePath, subAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset added:', { id: newSubAsset.id, name: newSubAsset.name, parentId: newSubAsset.parentId });
+        }
+        // Notification logic for sub-asset creation
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (add):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyAdd && appriseUrl) {
+                await sendNotification('asset_added', {
+                    id: newSubAsset.id,
+                    parentId: newSubAsset.parentId,
+                    name: `${newSubAsset.name} (Component)`,
+                    modelNumber: newSubAsset.modelNumber,
+                    description: newSubAsset.description || newSubAsset.notes
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset added notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset added notification:', err.message);
+        }
         res.status(201).json(newSubAsset);
     } else {
         res.status(500).json({ error: 'Failed to create sub-asset' });
@@ -704,7 +737,7 @@ app.post('/api/subasset', (req, res) => {
 });
 
 // Update an existing sub-asset
-app.put('/api/subasset', (req, res) => {
+app.put('/api/subasset', async (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const updatedSubAsset = req.body;
     // Remove legacy maintenanceReminder if present
@@ -731,6 +764,39 @@ app.put('/api/subasset', (req, res) => {
     subAssets[index] = updatedSubAsset;
     
     if (writeJsonFile(subAssetsFilePath, subAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset edited:', { id: updatedSubAsset.id, name: updatedSubAsset.name, parentId: updatedSubAsset.parentId });
+        }
+        // Notification logic for sub-asset edit
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (edit):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyEdit && appriseUrl) {
+                await sendNotification('asset_edited', {
+                    id: updatedSubAsset.id,
+                    parentId: updatedSubAsset.parentId,
+                    name: `${updatedSubAsset.name} (Component)`,
+                    modelNumber: updatedSubAsset.modelNumber,
+                    description: updatedSubAsset.description || updatedSubAsset.notes
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset edited notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset edited notification:', err.message);
+        }
         res.json(updatedSubAsset);
     } else {
         res.status(500).json({ error: 'Failed to update sub-asset' });
@@ -738,7 +804,7 @@ app.put('/api/subasset', (req, res) => {
 });
 
 // Delete a sub-asset
-app.delete('/api/subasset/:id', (req, res) => {
+app.delete('/api/subasset/:id', async (req, res) => {
     const subAssetId = req.params.id;
     const subAssets = readJsonFile(subAssetsFilePath);
     
@@ -785,6 +851,41 @@ app.delete('/api/subasset/:id', (req, res) => {
     
     // Write updated sub-assets
     if (writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset deleted:', { id: deletedSubAsset.id, name: deletedSubAsset.name, parentId: deletedSubAsset.parentId });
+        }
+        // Notification logic for sub-asset deletion
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (delete):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyDelete && appriseUrl) {
+                await sendNotification('asset_deleted', {
+                    name: `${deletedSubAsset.name} (Component)`,
+                    modelNumber: deletedSubAsset.modelNumber,
+                    serialNumber: deletedSubAsset.serialNumber,
+                    purchaseDate: deletedSubAsset.purchaseDate,
+                    price: deletedSubAsset.price || deletedSubAsset.purchasePrice,
+                    warranty: deletedSubAsset.warranty
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset deleted notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset deleted notification:', err.message);
+        }
+        
         // Try to delete image and receipt files if they exist
         try {
             if (deletedSubAsset.photoPath) {
