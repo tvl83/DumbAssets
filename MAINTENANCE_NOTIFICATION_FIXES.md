@@ -108,6 +108,44 @@ if (!nextDate) {
 - Detailed logging for debugging
 - Summary reports after each maintenance check
 - Graceful handling of individual failures without stopping the entire process
+- **Enhanced warranty notifications with same comprehensive logging and error handling**
+
+### **7. WARRANTY NOTIFICATION ENHANCEMENTS - ADDED ✅**
+
+**Problem:**
+- Warranty notifications had basic logging compared to maintenance notifications
+- No comprehensive error handling or summary reports
+- Missing timezone consistency and robust date parsing
+
+**Solution:**
+- Applied same robust date parsing using `parseDate()` function
+- Added comprehensive error handling for individual warranty processing
+- Implemented detailed summary reporting matching maintenance system
+- Added expired warranty detection (1-7 days past expiration)
+- Enhanced logging with asset type differentiation (Asset vs Component)
+- Consolidated notification threshold logic for cleaner code
+
+**New Warranty Features:**
+```javascript
+// Robust date parsing and validation
+const expDate = parseDate(warranty.expirationDate);
+if (!expDate) {
+    debugLog(`[WARNING] Invalid warranty expiration date for ${assetType}: ${asset.name}`);
+    return;
+}
+
+// Comprehensive summary reporting
+debugLog(`[SUMMARY] Warranty check completed for ${today}:`);
+debugLog(`  - Assets checked: ${totalChecked} (${assets.length} main assets, ${subAssets.length} components)`);
+debugLog(`  - Total warranties: ${totalWarranties}`);
+debugLog(`  - Notifications sent successfully: ${successfulNotifications}`);
+debugLog(`  - Notification settings: 1M=${notify1Month}, 2W=${notify2Week}, 7D=${notify7Day}, 3D=${notify3Day}`);
+
+// Expired warranty safety checks
+if (daysOut >= -7 && daysOut < 0) {
+    debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago for ${assetType}: ${asset.name}`);
+}
+```
 
 ## 🛡️ **SAFETY MECHANISMS ADDED**
 
@@ -116,6 +154,11 @@ if (!nextDate) {
 // Safety net: notify for overdue specific dates (1-3 days past due)
 if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
     // Send overdue notification (only once)
+}
+
+// Warranty expiration safety check (1-7 days past expiration)
+if (daysOut >= -7 && daysOut < 0) {
+    debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago`);
 }
 ```
 
@@ -130,10 +173,20 @@ if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
 
 ### **4. Comprehensive Logging**
 ```javascript
+// Maintenance Summary
 debugLog(`[SUMMARY] Maintenance check completed for ${today}:`);
 debugLog(`  - Assets checked: ${totalChecked}`);
 debugLog(`  - Notifications sent successfully: ${successfulNotifications}`);
 debugLog(`  - Notifications failed: ${failedNotifications}`);
+
+// Warranty Summary (NEW)
+debugLog(`[SUMMARY] Warranty check completed for ${today}:`);
+debugLog(`  - Assets checked: ${totalChecked} (${assets.length} main assets, ${subAssets.length} components)`);
+debugLog(`  - Total warranties: ${totalWarranties}`);
+debugLog(`  - Notifications queued: ${notificationsToSend.length}`);
+debugLog(`  - Notifications sent successfully: ${successfulNotifications}`);
+debugLog(`  - Notifications failed: ${failedNotifications}`);
+debugLog(`  - Notification settings: 1M=${notify1Month}, 2W=${notify2Week}, 7D=${notify7Day}, 3D=${notify3Day}`);
 ```
 
 ## 🧪 **TESTING RECOMMENDATIONS**
@@ -172,17 +225,24 @@ Watch for these log messages after deployment:
 
 **Good Signs:**
 - `[SUMMARY] Maintenance check completed`
+- `[SUMMARY] Warranty check completed`
 - `[DEBUG] Maintenance tracking data saved successfully`
 - `Maintenance check completed: X/Y notifications sent successfully`
+- `Warranty check completed: X/Y notifications sent successfully`
 
 **Warning Signs:**
 - `[WARNING] Invalid frequency unit`
 - `[WARNING] Maintenance event missing nextDueDate`
+- `[WARNING] Invalid warranty expiration date`
+- `[WARNING] Secondary Warranty expired X days ago`
 - `[ERROR] Failed to send maintenance notification`
+- `[ERROR] Failed to send warranty notification`
 
 **Critical Issues:**
 - `[ERROR] Date parsing failed`
 - `[ERROR] Failed to save maintenance tracking data`
 - `[ERROR] Exception while updating asset files`
+- `[ERROR] Error processing asset`
+- `[ERROR] Error processing sub-asset`
 
 The maintenance notification system is now robust, with proper timezone handling, comprehensive validation, error recovery, and safety mechanisms to ensure users never miss critical maintenance events. 

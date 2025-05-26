@@ -175,127 +175,146 @@ function writeJsonFile(filePath, data) {
 
 async function startWarrantyCron() {
     // Warranty expiration checks at 12:01 PM daily
-    cron.schedule('1 12 * * *', () => {
+    cron.schedule('1 12 * * *', async () => {
         const assets = readJsonFile(assetsFilePath);
-        const now = DateTime.now();
+        const subAssets = readJsonFile(subAssetsFilePath);
+        const now = DateTime.now().setZone(TIMEZONE);
+        const today = getTodayString();
         const settings = readJsonFile(notificationSettingsPath);
         const notificationSettings = settings.notificationSettings || {};
         const appriseUrl = process.env.APPRISE_URL;
+
+        debugLog(`[DEBUG] Starting warranty check for ${today} in timezone ${TIMEZONE}`);
 
         // Collect all warranty notifications to send
         const notificationsToSend = [];
 
         // Helper function to check and queue warranty notifications
-        function checkAndQueueWarranty(asset, warranty, isSecondary = false) {
+        function checkAndQueueWarranty(asset, warranty, isSecondary = false, isSubAsset = false) {
             if (!warranty || !warranty.expirationDate) return;
-            const expDate = DateTime.fromISO(warranty.expirationDate, { zone: process.env.TZ || 'America/Chicago' });
-            if (!expDate.isValid) return;
-            const daysOut = Math.floor(expDate.diff(now, 'days').days);
-            const warrantyType = isSecondary ? 'Secondary Warranty' : 'Warranty';
+            
+            try {
+                const expDate = parseDate(warranty.expirationDate);
+                if (!expDate) {
+                    debugLog(`[WARNING] Invalid warranty expiration date for ${isSubAsset ? 'component' : 'asset'}: ${asset.name} - date: ${warranty.expirationDate}`);
+                    return;
+                }
+                
+                const daysOut = Math.floor(expDate.diff(now, 'days').days);
+                const warrantyType = isSecondary ? 'Secondary Warranty' : 'Warranty';
+                const assetType = isSubAsset ? 'Component' : 'Asset';
 
-            if (notificationSettings.notify1Month && daysOut === 30) {
-                notificationsToSend.push({
-                    type: 'warranty_expiring',
-                    data: {
-                        id: asset.id,
-                        parentId: asset.parentId, // For sub-assets
-                        name: asset.name,
-                        modelNumber: asset.modelNumber,
-                        expirationDate: warranty.expirationDate,
-                        days: 30,
-                        warrantyType
-                    },
-                    config: { 
-                        appriseUrl,
-                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                debugLog(`[DEBUG] Checking ${warrantyType.toLowerCase()} for ${assetType.toLowerCase()}: ${asset.name} - Expires: ${toDateString(expDate)}, Days remaining: ${daysOut}`);
+
+                // Check each notification threshold
+                const thresholds = [
+                    { setting: 'notify1Month', days: 30 },
+                    { setting: 'notify2Week', days: 14 },
+                    { setting: 'notify7Day', days: 7 },
+                    { setting: 'notify3Day', days: 3 }
+                ];
+
+                thresholds.forEach(threshold => {
+                    if (notificationSettings[threshold.setting] && daysOut === threshold.days) {
+                        notificationsToSend.push({
+                            type: 'warranty_expiring',
+                            data: {
+                                id: asset.id,
+                                parentId: asset.parentId, // For sub-assets
+                                name: asset.name,
+                                modelNumber: asset.modelNumber,
+                                expirationDate: warranty.expirationDate,
+                                days: threshold.days,
+                                warrantyType,
+                                assetType
+                            },
+                            config: { 
+                                appriseUrl,
+                                baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                            }
+                        });
+                        debugLog(`[DEBUG] ${warrantyType} ${threshold.days}-day notification queued for ${assetType.toLowerCase()}: ${asset.name}`);
                     }
                 });
-                debugLog(`[DEBUG] ${warrantyType} 30-day notification queued for asset: ${asset.name}`);
-            }
-            if (notificationSettings.notify2Week && daysOut === 14) {
-                notificationsToSend.push({
-                    type: 'warranty_expiring',
-                    data: {
-                        id: asset.id,
-                        parentId: asset.parentId, // For sub-assets
-                        name: asset.name,
-                        modelNumber: asset.modelNumber,
-                        expirationDate: warranty.expirationDate,
-                        days: 14,
-                        warrantyType
-                    },
-                    config: { 
-                        appriseUrl,
-                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
-                    }
-                });
-                debugLog(`[DEBUG] ${warrantyType} 14-day notification queued for asset: ${asset.name}`);
-            }
-            if (notificationSettings.notify7Day && daysOut === 7) {
-                notificationsToSend.push({
-                    type: 'warranty_expiring',
-                    data: {
-                        id: asset.id,
-                        parentId: asset.parentId, // For sub-assets
-                        name: asset.name,
-                        modelNumber: asset.modelNumber,
-                        expirationDate: warranty.expirationDate,
-                        days: 7,
-                        warrantyType
-                    },
-                    config: { 
-                        appriseUrl,
-                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
-                    }
-                });
-                debugLog(`[DEBUG] ${warrantyType} 7-day notification queued for asset: ${asset.name}`);
-            }
-            if (notificationSettings.notify3Day && daysOut === 3) {
-                notificationsToSend.push({
-                    type: 'warranty_expiring',
-                    data: {
-                        id: asset.id,
-                        parentId: asset.parentId, // For sub-assets
-                        name: asset.name,
-                        modelNumber: asset.modelNumber,
-                        expirationDate: warranty.expirationDate,
-                        days: 3,
-                        warrantyType
-                    },
-                    config: { 
-                        appriseUrl,
-                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
-                    }
-                });
-                debugLog(`[DEBUG] ${warrantyType} 3-day notification queued for asset: ${asset.name}`);
+
+                // Safety check for expired warranties (1-7 days past expiration)
+                if (daysOut >= -7 && daysOut < 0) {
+                    debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago for ${assetType.toLowerCase()}: ${asset.name}`);
+                }
+            } catch (error) {
+                debugLog(`[ERROR] Error processing ${warrantyType.toLowerCase()} for ${isSubAsset ? 'component' : 'asset'} "${asset.name}":`, error.message);
             }
         }
 
+        // Check assets for warranty notifications
+        debugLog(`[DEBUG] Checking ${assets.length} assets for warranty notifications`);
         assets.forEach(asset => {
-            // Check primary warranty
-            checkAndQueueWarranty(asset, asset.warranty);
-            
-            // Check secondary warranty
-            checkAndQueueWarranty(asset, asset.secondaryWarranty, true);
+            try {
+                // Check primary warranty
+                checkAndQueueWarranty(asset, asset.warranty, false, false);
+                
+                // Check secondary warranty
+                checkAndQueueWarranty(asset, asset.secondaryWarranty, true, false);
+            } catch (error) {
+                debugLog(`[ERROR] Error processing asset "${asset.name}":`, error.message);
+                // Continue with other assets
+            }
         });
 
-        // Also check sub-assets for warranty notifications
-        const subAssets = readJsonFile(subAssetsFilePath);
+        // Check sub-assets for warranty notifications
+        debugLog(`[DEBUG] Checking ${subAssets.length} sub-assets for warranty notifications`);
         subAssets.forEach(subAsset => {
-            // Check primary warranty
-            checkAndQueueWarranty(subAsset, subAsset.warranty);
-            
-            // Check secondary warranty
-            checkAndQueueWarranty(subAsset, subAsset.secondaryWarranty, true);
+            try {
+                // Check primary warranty
+                checkAndQueueWarranty(subAsset, subAsset.warranty, false, true);
+                
+                // Check secondary warranty
+                checkAndQueueWarranty(subAsset, subAsset.secondaryWarranty, true, true);
+            } catch (error) {
+                debugLog(`[ERROR] Error processing sub-asset "${subAsset.name}":`, error.message);
+                // Continue with other sub-assets
+            }
         });
 
-        // Send all queued notifications (they will be processed with 5-second delays)
-        notificationsToSend.forEach(notification => {
-            sendNotification(notification.type, notification.data, notification.config);
-        });
+        // Send all queued warranty notifications with error handling
+        let successfulNotifications = 0;
+        let failedNotifications = 0;
+
+        for (const notification of notificationsToSend) {
+            try {
+                await sendNotification(notification.type, notification.data, notification.config);
+                successfulNotifications++;
+            } catch (error) {
+                debugLog(`[ERROR] Failed to send warranty notification for ${notification.data.assetType} "${notification.data.name}", ${notification.data.warrantyType}:`, error.message);
+                failedNotifications++;
+            }
+        }
+
+        // Calculate summary statistics
+        const totalChecked = assets.length + subAssets.length;
+        const totalWarranties = assets.reduce((sum, a) => {
+            let count = 0;
+            if (a.warranty && a.warranty.expirationDate) count++;
+            if (a.secondaryWarranty && a.secondaryWarranty.expirationDate) count++;
+            return sum + count;
+        }, 0) + subAssets.reduce((sum, a) => {
+            let count = 0;
+            if (a.warranty && a.warranty.expirationDate) count++;
+            if (a.secondaryWarranty && a.secondaryWarranty.expirationDate) count++;
+            return sum + count;
+        }, 0);
+
+        // Log comprehensive summary
+        debugLog(`[SUMMARY] Warranty check completed for ${today}:`);
+        debugLog(`  - Assets checked: ${totalChecked} (${assets.length} main assets, ${subAssets.length} components)`);
+        debugLog(`  - Total warranties: ${totalWarranties}`);
+        debugLog(`  - Notifications queued: ${notificationsToSend.length}`);
+        debugLog(`  - Notifications sent successfully: ${successfulNotifications}`);
+        debugLog(`  - Notifications failed: ${failedNotifications}`);
+        debugLog(`  - Notification settings: 1M=${notificationSettings.notify1Month}, 2W=${notificationSettings.notify2Week}, 7D=${notificationSettings.notify7Day}, 3D=${notificationSettings.notify3Day}`);
 
         if (notificationsToSend.length > 0) {
-            debugLog(`[DEBUG] ${notificationsToSend.length} warranty notifications queued for processing`);
+            console.log(`Warranty check completed: ${successfulNotifications}/${notificationsToSend.length} notifications sent successfully`);
         }
     }, {
         timezone: process.env.TZ || 'America/Chicago'
