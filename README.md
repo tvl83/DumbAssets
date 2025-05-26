@@ -93,6 +93,23 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 - 🌗 Light/Dark mode with theme persistence
 - 🛡️ PIN authentication with brute force protection
 - 📦 Docker support for easy deployment
+- **Direct Asset Linking**: Notifications now include clickable links that directly open the specific asset in your browser
+
+## Direct Asset Linking
+
+When you receive notifications (warranty expiring, asset added/edited, maintenance due), they now include direct links to view the specific asset. Simply click the "🔗 View Asset" link in the notification to be taken directly to that asset's details page.
+
+### URL Format
+- Main assets: `yoursite.com?ass=asset-id`  
+- Sub-assets: `yoursite.com?ass=parent-id&sub=sub-asset-id`
+
+### Configuration
+To use this feature, set the `BASE_URL` environment variable to your domain:
+```bash
+BASE_URL=https://assets.yourcompany.com
+```
+
+If not set, it defaults to `http://localhost:3000`.
 
 ---
 

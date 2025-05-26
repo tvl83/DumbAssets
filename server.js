@@ -458,11 +458,13 @@ app.post('/api/asset', async (req, res) => {
             }
             if (notificationSettings.notifyAdd && appriseUrl) {
                 await sendNotification('asset_added', {
+                    id: newAsset.id,
                     name: newAsset.name,
                     modelNumber: newAsset.modelNumber,
                     description: newAsset.description
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset added notification sent.');
@@ -521,11 +523,13 @@ app.put('/api/asset', (req, res) => {
             }
             if (notificationSettings.notifyEdit && appriseUrl) {
                 sendNotification('asset_edited', {
+                    id: updatedAsset.id,
                     name: updatedAsset.name,
                     modelNumber: updatedAsset.modelNumber,
                     description: updatedAsset.description
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset edited notification sent.');
@@ -612,7 +616,8 @@ app.delete('/api/asset/:id', (req, res) => {
                     price: deletedAsset.price,
                     warranty: deletedAsset.warranty
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset deleted notification sent.');
@@ -1265,3 +1270,23 @@ app.listen(PORT, () => {
     console.log(`Server running on: ${BASE_URL}`);
 }); 
 // --- END ---
+
+// Add helper function to get base URL for notifications
+function getBaseUrl(req) {
+    // Try to get from environment variable first
+    if (process.env.BASE_URL) {
+        return process.env.BASE_URL;
+    }
+    
+    // Try to construct from request headers
+    if (req) {
+        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
+        const host = req.get('Host') || req.get('X-Forwarded-Host');
+        if (host) {
+            return `${protocol}://${host}`;
+        }
+    }
+    
+    // Fallback to localhost with default port
+    return 'http://localhost:3000';
+}

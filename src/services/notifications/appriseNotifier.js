@@ -9,8 +9,20 @@ const path = require('path');
 const { formatDate, sanitizeText } = require('./utils');
 const notificationQueue = require('./notificationQueue');
 
-function formatNotification(eventType, assetData) {
+function formatNotification(eventType, assetData, baseUrl = '') {
   let lines = [];
+  
+  // Create direct link to asset if we have an ID and baseUrl
+  let assetLink = '';
+  if (assetData.id && baseUrl) {
+    // For sub-assets, we need to include both parent and sub-asset info
+    if (assetData.parentId) {
+      assetLink = `${baseUrl}?ass=${assetData.parentId}&sub=${assetData.id}`;
+    } else {
+      assetLink = `${baseUrl}?ass=${assetData.id}`;
+    }
+  }
+  
   if (eventType === 'asset_added') {
     lines.push('✅ Asset Added');
   } else if (eventType === 'asset_deleted') {
@@ -56,6 +68,12 @@ function formatNotification(eventType, assetData) {
     if (assetData.description) lines.push(assetData.description);
   }
   
+  // Add direct link if available
+  if (assetLink) {
+    lines.push('');
+    lines.push(`🔗 View Asset: ${assetLink}`);
+  }
+  
   return lines.join('\n');
 }
 
@@ -67,7 +85,7 @@ function formatNotification(eventType, assetData) {
  * @returns {Promise<void>}
  */
 async function _sendNotificationImmediate(eventType, assetData, config) {
-  const { appriseUrl, appriseMessage } = config;
+  const { appriseUrl, appriseMessage, baseUrl } = config;
   if (!appriseUrl) return;
 
   try {
@@ -83,7 +101,7 @@ async function _sendNotificationImmediate(eventType, assetData, config) {
     // Use formatted message for known event types
     let message = appriseMessage;
     if (!appriseMessage || ['asset_added','asset_deleted','asset_edited','warranty_expiring','test'].includes(eventType)) {
-      message = formatNotification(eventType, safeData);
+      message = formatNotification(eventType, safeData, baseUrl);
     } else {
       Object.entries(safeData).forEach(([key, value]) => {
         message = message.replace(new RegExp(`{${key}}`, 'g'), value);

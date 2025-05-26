@@ -1410,8 +1410,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Keep at the end
-    // Initialize DOM elements
+    // Add URL parameter handling for direct asset links
+    function handleUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const assetId = urlParams.get('ass');
+        const subAssetId = urlParams.get('sub');
+        
+        if (assetId) {
+            console.log('URL parameter detected - navigating to asset:', assetId, subAssetId ? `sub-asset: ${subAssetId}` : '');
+            
+            // Clear URL parameters from browser history without page reload
+            if (window.history && window.history.replaceState) {
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+            
+            // Navigate to the asset/sub-asset
+            if (subAssetId) {
+                // Navigate to sub-asset
+                updateSelectedIds(assetId, subAssetId);
+                renderAssetDetails(subAssetId, true);
+            } else {
+                // Navigate to main asset
+                updateSelectedIds(assetId, null);
+                renderAssetDetails(assetId, false);
+            }
+            
+            // Close sidebar on mobile after navigation
+            handleSidebarNav();
+            
+            return true; // Indicates we handled URL parameters
+        }
+        
+        return false; // No URL parameters to handle
+    }
+
+    // Load initial data
+    loadAllData().then(() => {
+        // After data is loaded, check for URL parameters
+        if (!handleUrlParameters()) {
+            // No URL parameters, show empty state as normal
+            renderEmptyState();
+        }
+    });
+
+    // Keep at the end - Initialize DOM elements
     initializeDOMElements();
     
     // Check if DOM elements exist
@@ -1619,7 +1662,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Load initial data
-    loadAllData();
     registerServiceWorker();
 });

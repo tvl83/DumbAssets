@@ -68,13 +68,18 @@ async function startWarrantyCron() {
                 notificationsToSend.push({
                     type: 'warranty_expiring',
                     data: {
+                        id: asset.id,
+                        parentId: asset.parentId, // For sub-assets
                         name: asset.name,
                         modelNumber: asset.modelNumber,
                         expirationDate: warranty.expirationDate,
                         days: 30,
                         warrantyType
                     },
-                    config: { appriseUrl }
+                    config: { 
+                        appriseUrl,
+                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                    }
                 });
                 debugLog(`[DEBUG] ${warrantyType} 30-day notification queued for asset: ${asset.name}`);
             }
@@ -82,13 +87,18 @@ async function startWarrantyCron() {
                 notificationsToSend.push({
                     type: 'warranty_expiring',
                     data: {
+                        id: asset.id,
+                        parentId: asset.parentId, // For sub-assets
                         name: asset.name,
                         modelNumber: asset.modelNumber,
                         expirationDate: warranty.expirationDate,
                         days: 14,
                         warrantyType
                     },
-                    config: { appriseUrl }
+                    config: { 
+                        appriseUrl,
+                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                    }
                 });
                 debugLog(`[DEBUG] ${warrantyType} 14-day notification queued for asset: ${asset.name}`);
             }
@@ -96,13 +106,18 @@ async function startWarrantyCron() {
                 notificationsToSend.push({
                     type: 'warranty_expiring',
                     data: {
+                        id: asset.id,
+                        parentId: asset.parentId, // For sub-assets
                         name: asset.name,
                         modelNumber: asset.modelNumber,
                         expirationDate: warranty.expirationDate,
                         days: 7,
                         warrantyType
                     },
-                    config: { appriseUrl }
+                    config: { 
+                        appriseUrl,
+                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                    }
                 });
                 debugLog(`[DEBUG] ${warrantyType} 7-day notification queued for asset: ${asset.name}`);
             }
@@ -110,13 +125,18 @@ async function startWarrantyCron() {
                 notificationsToSend.push({
                     type: 'warranty_expiring',
                     data: {
+                        id: asset.id,
+                        parentId: asset.parentId, // For sub-assets
                         name: asset.name,
                         modelNumber: asset.modelNumber,
                         expirationDate: warranty.expirationDate,
                         days: 3,
                         warrantyType
                     },
-                    config: { appriseUrl }
+                    config: { 
+                        appriseUrl,
+                        baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                    }
                 });
                 debugLog(`[DEBUG] ${warrantyType} 3-day notification queued for asset: ${asset.name}`);
             }
@@ -128,6 +148,16 @@ async function startWarrantyCron() {
             
             // Check secondary warranty
             checkAndQueueWarranty(asset, asset.secondaryWarranty, true);
+        });
+
+        // Also check sub-assets for warranty notifications
+        const subAssets = readJsonFile(subAssetsFilePath);
+        subAssets.forEach(subAsset => {
+            // Check primary warranty
+            checkAndQueueWarranty(subAsset, subAsset.warranty);
+            
+            // Check secondary warranty
+            checkAndQueueWarranty(subAsset, subAsset.secondaryWarranty, true);
         });
 
         // Send all queued notifications (they will be processed with 5-second delays)
@@ -259,6 +289,7 @@ async function checkMaintenanceSchedules() {
                     notificationsToSend.push({
                         type: 'maintenance_schedule',
                         data: {
+                            id: asset.id,
                             name: asset.name,
                             modelNumber: asset.modelNumber,
                             eventName: event.name,
@@ -266,7 +297,10 @@ async function checkMaintenanceSchedules() {
                             notes: event.notes,
                             type: 'Asset'
                         },
-                        config: { appriseUrl }
+                        config: { 
+                            appriseUrl,
+                            baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                        }
                     });
                     debugLog(`[DEBUG] Maintenance event notification queued for asset: ${asset.name}, event: ${event.name}`);
                 }
@@ -303,6 +337,8 @@ async function checkMaintenanceSchedules() {
                     notificationsToSend.push({
                         type: 'maintenance_schedule',
                         data: {
+                            id: subAsset.id,
+                            parentId: subAsset.parentId,
                             name: subAsset.name,
                             modelNumber: subAsset.modelNumber,
                             eventName: event.name,
@@ -311,7 +347,10 @@ async function checkMaintenanceSchedules() {
                             type: 'Component',
                             parentAsset: parentName
                         },
-                        config: { appriseUrl }
+                        config: { 
+                            appriseUrl,
+                            baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+                        }
                     });
                     debugLog(`[DEBUG] Maintenance event notification queued for sub-asset: ${subAsset.name}, event: ${event.name}`);
                 }
