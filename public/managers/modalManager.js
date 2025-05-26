@@ -707,7 +707,6 @@ export class ModalManager {
         }
 
         const newSubAsset = {
-            id: document.getElementById('subAssetId')?.value || this.generateId(),
             name: document.getElementById('subAssetName')?.value || '',
             manufacturer: document.getElementById('subAssetManufacturer')?.value || '',
             modelNumber: document.getElementById('subAssetModel')?.value || '',
@@ -727,8 +726,10 @@ export class ModalManager {
             maintenanceEvents: this.maintenanceManager.getMaintenanceEvents('subAsset')
         };
         
-        // Add file info if editing
+        // Add ID and file paths
         if (this.isEditMode && this.currentSubAsset) {
+            console.log('ModalManager: Edit mode - using existing sub-asset ID:', this.currentSubAsset.id);
+            newSubAsset.id = this.currentSubAsset.id;
             newSubAsset.photoPath = this.currentSubAsset.photoPath;
             newSubAsset.receiptPath = this.currentSubAsset.receiptPath;
             newSubAsset.manualPath = this.currentSubAsset.manualPath;
@@ -739,11 +740,22 @@ export class ModalManager {
             if (this.deleteSubReceipt) newSubAsset.receiptPath = null;
             if (this.deleteSubManual) newSubAsset.manualPath = null;
         } else {
+            const generatedId = this.generateId();
+            console.log('ModalManager: Create mode - generating new ID:', generatedId);
+            newSubAsset.id = generatedId;
             newSubAsset.photoPath = null;
             newSubAsset.receiptPath = null;
             newSubAsset.manualPath = null;
             newSubAsset.createdAt = new Date().toISOString();
         }
+        
+        console.log('ModalManager: Final sub-asset data collected:', {
+            id: newSubAsset.id,
+            name: newSubAsset.name,
+            parentId: newSubAsset.parentId,
+            parentSubId: newSubAsset.parentSubId,
+            isEditMode: this.isEditMode
+        });
         
         return newSubAsset;
     }

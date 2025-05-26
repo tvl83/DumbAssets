@@ -238,7 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const apiBaseUrl = getApiBaseUrl();
-            const isEditMode = !!asset.id;
+            // Get the actual edit mode from the modal manager instead of just checking for ID
+            const isEditMode = modalManager ? modalManager.isEditMode : false;
 
             // Create a copy to avoid mutation issues
             const assetToSave = { ...asset };
@@ -250,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 receiptPath: assetToSave.receiptPath,
                 manualPath: assetToSave.manualPath
             });
+            console.log('Edit mode determined as:', isEditMode);
             
             // Log the current state of delete flags
             console.log('Current delete flags:', {
@@ -365,10 +367,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const apiBaseUrl = getApiBaseUrl();
-            const isEditMode = !!subAsset.id;
+            // Get the actual edit mode from the modal manager instead of just checking for ID
+            const isEditMode = modalManager ? modalManager.isEditMode : false;
             
             // Debug logging to see what we're sending
             console.log('Saving sub-asset with data:', JSON.stringify(subAsset, null, 2));
+            console.log('Edit mode determined as:', isEditMode);
             
             // Check for required fields that server expects
             if (!subAsset.id) {
