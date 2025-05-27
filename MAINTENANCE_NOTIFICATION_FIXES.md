@@ -190,31 +190,17 @@ if (daysOut >= -7 && daysOut < 0) {
 
 ## 🛡️ **SAFETY MECHANISMS ADDED**
 
-### **1. ~~Overdue Detection~~ REMOVED**
-~~```javascript
-// Safety net: notify for overdue specific dates (1-3 days past due)
-if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
-    // Send overdue notification (only once)
-}
 
-// Warranty expiration safety check (1-7 days past expiration)
-if (daysOut >= -7 && daysOut < 0) {
-    debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago`);
-}
-```~~
-
-**REMOVED** - Overdue detection has been completely removed. The system no longer checks for or sends notifications about overdue maintenance events or expired warranties. If the server goes down and misses a notification, it will not attempt to catch up.
-
-### **2. Duplicate Prevention**
+### **1. Duplicate Prevention**
 - Tracking keys prevent duplicate notifications
 - Separate tracking for advance, due date, and overdue notifications
 
-### **3. Data Validation**
+### **2. Data Validation**
 - All dates parsed and validated before processing
 - Invalid events are skipped with logging
 - Malformed data doesn't crash the system
 
-### **4. Comprehensive Logging**
+### **3. Comprehensive Logging**
 ```javascript
 // Maintenance Summary
 debugLog(`[SUMMARY] Maintenance check completed for ${today}:`);
