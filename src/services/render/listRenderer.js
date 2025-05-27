@@ -77,17 +77,44 @@ function updateSort(newSort) {
  * Get the appropriate warranty dot type based on expiration date
  * 
  * @param {Object} asset Asset to check for warranty
- * @returns {String|null} Dot type ('red', 'yellow', or null)
+ * @returns {String|null} Dot type ('red', 'yellow', 'expired', or null)
  */
 function getWarrantyDotType(asset) {
-    const exp = asset?.warranty?.expirationDate;
-    if (!exp) return null;
-    const expDate = new Date(exp);
-    if (isNaN(expDate)) return null;
+    // Check both primary and secondary warranties
+    const warranties = [
+        { exp: asset?.warranty?.expirationDate, isLifetime: asset?.warranty?.isLifetime },
+        { exp: asset?.secondaryWarranty?.expirationDate, isLifetime: asset?.secondaryWarranty?.isLifetime }
+    ].filter(w => w.exp || w.isLifetime);
+
+    if (warranties.length === 0) return null;
+
     const now = new Date();
-    const diff = (expDate - now) / (1000 * 60 * 60 * 24);
-    if (diff >= 0 && diff <= 30) return 'red';
-    if (diff > 30 && diff <= 60) return 'yellow';
+    let hasExpiring = false;
+    let hasWarning = false;
+    let hasExpired = false;
+
+    warranties.forEach(warranty => {
+        // Skip lifetime warranties
+        if (warranty.isLifetime) return;
+        
+        const expDate = new Date(warranty.exp);
+        if (isNaN(expDate)) return;
+        const diff = (expDate - now) / (1000 * 60 * 60 * 24);
+        if (diff < 0) {
+            // Warranty has expired
+            hasExpired = true;
+        } else if (diff >= 0 && diff <= 30) {
+            // Expiring within 30 days
+            hasExpiring = true;
+        } else if (diff > 30 && diff <= 60) {
+            // Warning (31-60 days)
+            hasWarning = true;
+        }
+    });
+
+    if (hasExpired) return 'expired';
+    if (hasExpiring) return 'red';
+    if (hasWarning) return 'yellow';
     return null;
 }
 
@@ -110,7 +137,8 @@ function renderAssetList(searchQuery = '') {
             asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
             asset.modelNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             asset.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            asset.location?.toLowerCase().includes(searchQuery.toLowerCase()))
+            asset.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            asset.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
         : assets;
 
     // Apply dashboard filter
@@ -134,6 +162,19 @@ function renderAssetList(searchQuery = '') {
                 if (!exp) return false;
                 return new Date(exp) < now;
             });
+            
+            // Also include assets with sub-assets that have expired warranties
+            const assetsWithExpiredComponents = assets.filter(a => 
+                !filteredAssets.includes(a) && // Don't duplicate
+                subAssets.some(sa => {
+                    if (sa.parentId !== a.id) return false;
+                    const exp = sa.warranty?.expirationDate;
+                    if (!exp) return false;
+                    return new Date(exp) < now;
+                })
+            );
+            
+            filteredAssets = [...filteredAssets, ...assetsWithExpiredComponents];
         } else if (dashboardFilter === 'within30') {
             // Assets with warranties expiring within 30 days
             filteredAssets = filteredAssets.filter(a => {
@@ -182,7 +223,9 @@ function renderAssetList(searchQuery = '') {
             // Assets with active warranties (more than 60 days)
             filteredAssets = filteredAssets.filter(a => {
                 const exp = a.warranty?.expirationDate;
-                if (!exp) return false;
+                const isLifetime = a.warranty?.isLifetime;
+                if (!exp && !isLifetime) return false;
+                if (isLifetime) return true;
                 const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
                 return diff > 60;
             });
@@ -193,13 +236,25 @@ function renderAssetList(searchQuery = '') {
                 subAssets.some(sa => {
                     if (sa.parentId !== a.id) return false;
                     const exp = sa.warranty?.expirationDate;
-                    if (!exp) return false;
+                    const isLifetime = sa.warranty?.isLifetime;
+                    if (!exp && !isLifetime) return false;
+                    if (isLifetime) return true;
                     const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
                     return diff > 60;
                 })
             );
             
-            filteredAssets = [...filteredAssets, ...assetsWithActiveComponents];
+            // Also include assets with sub-assets that have any warranty (since they're all active)
+            const assetsWithWarrantyComponents = assets.filter(a => 
+                !filteredAssets.includes(a) && // Don't duplicate
+                !assetsWithActiveComponents.includes(a) && // Don't duplicate
+                subAssets.some(sa => {
+                    if (sa.parentId !== a.id) return false;
+                    return (sa.warranty && sa.warranty.expirationDate) || sa.warranty?.isLifetime;
+                })
+            );
+            
+            filteredAssets = [...filteredAssets, ...assetsWithActiveComponents, ...assetsWithWarrantyComponents];
         }
     }
 
@@ -218,7 +273,7 @@ function renderAssetList(searchQuery = '') {
             assetItem.classList.add('active');
         }
         
-        // Add warranty dot if expiring soon
+        // Add warranty dot or expired icon if needed
         const dotType = getWarrantyDotType(asset);
         if (dotType === 'red') {
             const dot = document.createElement('div');
@@ -228,15 +283,36 @@ function renderAssetList(searchQuery = '') {
             const dot = document.createElement('div');
             dot.className = 'warranty-warning-dot';
             assetItem.appendChild(dot);
+        } else if (dotType === 'expired') {
+            const expiredIcon = document.createElement('div');
+            expiredIcon.className = 'warranty-expired-icon';
+            expiredIcon.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+            `;
+            assetItem.appendChild(expiredIcon);
         }
         
-        // Format asset item with name and model only
+        // Format asset item with name, model, and tags
         assetItem.innerHTML += `
             <div class="asset-item-name">${asset.name || 'Unnamed Asset'}</div>
             ${asset.modelNumber ? `<div class="asset-item-model">${asset.modelNumber}</div>` : ''}
+            ${asset.tags && asset.tags.length > 0 ? `
+                <div class="asset-item-tags">
+                    ${asset.tags.map(tag => `<span class="asset-tag" data-tag="${tag}">${tag}</span>`).join('')}
+                </div>
+            ` : ''}
         `;
             
-        assetItem.addEventListener('click', () => {
+        assetItem.addEventListener('click', (e) => {
+            // Don't trigger asset click if clicking on a tag
+            if (e.target.classList.contains('asset-tag')) {
+                return;
+            }
+            
             // Remove active class from all asset items
             document.querySelectorAll('.asset-item').forEach(item => {
                 item.classList.remove('active');
@@ -250,6 +326,35 @@ function renderAssetList(searchQuery = '') {
             
             renderAssetDetails(asset.id);
             handleSidebarNav();
+        });
+        
+        // Add click event listeners to tags
+        const tagElements = assetItem.querySelectorAll('.asset-tag');
+        tagElements.forEach(tagElement => {
+            tagElement.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent asset click
+                const tagName = tagElement.dataset.tag;
+                
+                // Set the search input value to the tag name
+                if (searchInput) {
+                    searchInput.value = tagName;
+                    
+                    // Show the clear search button
+                    const clearSearchBtn = document.getElementById('clearSearchBtn');
+                    if (clearSearchBtn) {
+                        clearSearchBtn.style.display = 'flex';
+                    }
+                    
+                    // Trigger the search by calling renderAssetList with the tag
+                    renderAssetList(tagName);
+                    
+                    // Focus the search input
+                    searchInput.focus();
+                }
+            });
+            
+            // Add cursor pointer style to make it clear tags are clickable
+            tagElement.style.cursor = 'pointer';
         });
         
         assetList.appendChild(assetItem);
@@ -268,21 +373,66 @@ function renderAssetList(searchQuery = '') {
  * @returns {Array} Sorted assets array
  */
 function sortAssets(assets, field, direction) {
+    if (!assets || !Array.isArray(assets)) {
+        console.warn('sortAssets called with invalid assets array');
+        return [];
+    }
+    
     return [...assets].sort((a, b) => {
         let valueA, valueB;
         
+        // Safely extract values based on field
         if (field === 'name') {
-            valueA = a.name?.toLowerCase() || '';
-            valueB = b.name?.toLowerCase() || '';
-        } else if (field === 'warranty') {
-            valueA = a.warranty?.expirationDate || '';
-            valueB = b.warranty?.expirationDate || '';
+            // Handle name field (as string)
+            valueA = (a.name ? a.name.toLowerCase() : '');
+            valueB = (b.name ? b.name.toLowerCase() : '');
+            
+            // Compare as strings
+            if (direction === 'asc') {
+                return valueA.localeCompare(valueB);
+            } else {
+                return valueB.localeCompare(valueA);
+            }
+        } 
+        else if (field === 'warranty') {
+            // Handle warranty expiration dates
+            const dateA = a.warranty?.expirationDate ? new Date(a.warranty.expirationDate) : null;
+            const dateB = b.warranty?.expirationDate ? new Date(b.warranty.expirationDate) : null;
+            
+            // Handle cases with null dates (always put null dates at the end)
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return direction === 'asc' ? 1 : -1;
+            if (!dateB) return direction === 'asc' ? -1 : 1;
+            
+            // Compare valid dates
+            return direction === 'asc' 
+                ? dateA.getTime() - dateB.getTime()
+                : dateB.getTime() - dateA.getTime();
         }
-        
-        if (direction === 'asc') {
-            return valueA.localeCompare(valueB);
-        } else {
-            return valueB.localeCompare(valueA);
+        else if (field === 'updatedAt') {
+            // Handle updatedAt dates
+            const dateA = a.updatedAt ? new Date(a.updatedAt) : null;
+            const dateB = b.updatedAt ? new Date(b.updatedAt) : null;
+            
+            // Handle cases with null dates (always put null dates at the end)
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return direction === 'asc' ? 1 : -1;
+            if (!dateB) return direction === 'asc' ? -1 : 1;
+            
+            // Compare valid dates
+            return direction === 'asc' 
+                ? dateA.getTime() - dateB.getTime()
+                : dateB.getTime() - dateA.getTime();
+        }
+        else {
+            // Default to sorting by name for unknown fields
+            console.warn(`Unknown sort field: ${field}, defaulting to name`);
+            valueA = (a.name ? a.name.toLowerCase() : '');
+            valueB = (b.name ? a.name.toLowerCase() : '');
+            
+            return direction === 'asc'
+                ? valueA.localeCompare(valueB)
+                : valueB.localeCompare(valueA);
         }
     });
 }
@@ -295,4 +445,4 @@ export {
     updateSort,
     renderAssetList,
     sortAssets
-}; 
+};

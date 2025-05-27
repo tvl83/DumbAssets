@@ -5,24 +5,36 @@
 
 // --- SECURITY & CONFIG IMPORTS ---
 require('dotenv').config();
-console.log('process.env:', process.env);
+// console.log('process.env:', process.env);
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
 const crypto = require('crypto');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const XLSX = require('xlsx');
 const { sendNotification } = require('./src/services/notifications/appriseNotifier');
 const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
+const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
+const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
+const packageJson = require('./package.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DEBUG = process.env.DEBUG === 'TRUE';
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)` : (process.env.SITE_TITLE || 'DumbAssets');
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const VERSION = packageJson.version;
 
+generatePWAManifest(SITE_TITLE);
 // Set timezone from environment variable or default to America/Chicago
 process.env.TZ = process.env.TZ || 'America/Chicago';
 
@@ -34,27 +46,27 @@ function debugLog(...args) {
 
 // --- BASE PATH & PIN CONFIG ---
 const BASE_PATH = (() => {
-    if (!process.env.BASE_URL) {
+    if (!BASE_URL) {
         debugLog('No BASE_URL set, using empty base path');
         return '';
     }
     try {
-        const url = new URL(process.env.BASE_URL);
+        const url = new URL(BASE_URL);
         const path = url.pathname.replace(/\/$/, '');
         debugLog('Base URL Configuration:', {
-            originalUrl: process.env.BASE_URL,
+            originalUrl: BASE_URL,
             extractedPath: path,
             protocol: url.protocol,
             hostname: url.hostname
         });
         return path;
     } catch {
-        const path = process.env.BASE_URL.replace(/\/$/, '');
+        const path = BASE_URL.replace(/\/$/, '');
         debugLog('Using direct path as BASE_URL:', path);
         return path;
     }
 })();
-const projectName = require('./package.json').name.toUpperCase().replace(/-/g, '_');
+const projectName = packageJson.name.toUpperCase().replace(/-/g, '_');
 const PIN = process.env.DUMBASSETS_PIN;
 console.log('PIN:', PIN);
 if (!PIN || PIN.trim() === '') {
@@ -87,29 +99,61 @@ function recordAttempt(ip) {
 
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "blob:"],
-        },
-    },
+  noSniff: true, // Prevent MIME type sniffing
+  frameguard: { action: 'deny' }, // Prevent clickjacking
+  hsts: { maxAge: 31536000, includeSubDomains: true }, // Enforce HTTPS for one year
+  crossOriginEmbedderPolicy: true,
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  referrerPolicy: { policy: 'no-referrer-when-downgrade' }, // Set referrer policy
+  ieNoOpen: true, // Prevent IE from executing downloads
+  // Disabled Helmet middlewares:
+  contentSecurityPolicy: false, // Disable CSP for now
+  dnsPrefetchControl: true, // Disable DNS prefetching
+  permittedCrossDomainPolicies: false,
+  originAgentCluster: false,
+  xssFilter: false,
 }));
 app.use(express.json());
+app.set('trust proxy', 1);
+app.use(cors(getCorsOptions(BASE_URL)));
 app.use(cookieParser());
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
-        sameSite: 'lax',
+        secure: (BASE_URL.startsWith('https') && NODE_ENV === 'production'),
+        sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
+
+// --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
+app.use(BASE_PATH, (req, res, next) => {
+    // List of paths that should be publicly accessible
+    const publicPaths = [
+        '/login',
+        '/pin-length',
+        '/verify-pin',
+        '/config.js',
+        '/assets/',
+        '/styles.css',
+        '/manifest.json',
+        '/asset-manifest.json',
+    ];
+
+    // Check if the current path matches any of the public paths
+    if (publicPaths.some(path => req.path.startsWith(path))) {
+        return next();
+    }
+
+    // For all other paths, apply both origin validation and auth middleware
+    originValidationMiddleware(req, res, () => {
+        authMiddleware(req, res, next);
+    });
+});
 
 // --- PIN VERIFICATION ---
 function verifyPin(storedPin, providedPin) {
@@ -121,26 +165,32 @@ function verifyPin(storedPin, providedPin) {
 }
 
 // --- AUTH MIDDLEWARE ---
-const authMiddleware = (req, res, next) => {
+function authMiddleware(req, res, next) {
     debugLog('Auth check for path:', req.path, 'Method:', req.method);
     if (!PIN || PIN.trim() === '') return next();
-    if (!req.session.authenticated) {
-        debugLog('Auth failed - No valid session');
-        
-        // Check if this is an API request
-        if (req.path.startsWith('/api/') || req.xhr) {
-            // Return JSON error for API requests
-            return res.status(401).json({ 
-                error: 'Authentication required', 
-                redirectTo: BASE_PATH + '/login'
-            });
-        } else {
-            // Redirect to login for page requests
-        return res.redirect(BASE_PATH + '/login');
-        }
+
+    const pinCookie = req.cookies[`${projectName}_PIN`];
+    if (req.session.authenticated || verifyPin(PIN, pinCookie)) {
+        debugLog('Auth successful - Valid cookie found');
+        req.session.authenticated = true;
+        return next();
     }
-    debugLog('Auth successful - Valid session found');
-    next();
+
+    if (req.path.startsWith('/api/') || req.xhr) {
+        req.session.authenticated = false;
+        // Return JSON error for API requests
+        return res.status(401).json({ 
+            error: 'Authentication required', 
+            redirectTo: BASE_PATH + '/login'
+        });
+    } else {
+        req.session.authenticated = false;
+        // Preserve the original URL with query parameters for post-login redirect
+        const originalUrl = req.originalUrl;
+        const loginUrl = `${BASE_PATH}/login${originalUrl ? `?returnTo=${encodeURIComponent(originalUrl)}` : ''}`;
+        debugLog('Redirecting to login with return URL:', loginUrl);
+        return res.redirect(loginUrl);
+    }
 };
 
 // --- STATIC FILES & CONFIG ---
@@ -155,7 +205,8 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
         window.appConfig = {
             basePath: '${BASE_PATH}',
             debug: ${DEBUG},
-            siteTitle: '${process.env.SITE_TITLE || 'DumbTitle'}'
+            siteTitle: '${SITE_TITLE}',
+            version: '${VERSION}',
         };
     `);
     
@@ -170,10 +221,61 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
     res.end();
 });
 
+// Dynamic service worker with correct version
+app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
+    debugLog('Serving service-worker.js with version:', VERSION);
+    
+    // Set proper MIME type
+    res.setHeader('Content-Type', 'application/javascript');
+    
+    try {
+        let swContent = await fs.promises.readFile(path.join(__dirname, 'public', 'service-worker.js'), 'utf8');
+        
+        // Replace the version initialization with the actual version from package.json
+        swContent = swContent.replace(
+            /let APP_VERSION = ".*?";/,
+            `let APP_VERSION = "${VERSION}";`
+        );
+        
+        res.write(swContent);
+        res.end();
+    } catch (error) {
+        console.error('Error reading service-worker.js:', error);
+        res.status(500).send('Error loading service worker');
+    }
+});
+
+// Serve static files for public assets
+app.use(BASE_PATH + '/', express.static(path.join(PUBLIC_DIR)));
+app.get(BASE_PATH + "/manifest.json", (req, res) => {
+    res.sendFile(path.join(ASSETS_DIR, "manifest.json"));
+});
+app.get(BASE_PATH + "/asset-manifest.json", (req, res) => {
+    res.sendFile(path.join(ASSETS_DIR, "asset-manifest.json"));
+});
+
 // Unprotected routes and files (accessible without login)
 app.get(BASE_PATH + '/login', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
-    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
+    // If no PIN is set, redirect to return URL or main page (preserving any asset parameters)
+    if (!PIN || PIN.trim() === '') {
+        const returnTo = req.query.returnTo || (BASE_PATH + '/');
+        debugLog('No PIN set, redirecting to:', returnTo);
+        return res.redirect(returnTo);
+    }
+    
+    // If already authenticated, redirect to return URL or main page
+    if (req.session.authenticated) {
+        const returnTo = req.query.returnTo || (BASE_PATH + '/');
+        debugLog('Already authenticated, redirecting to:', returnTo);
+        return res.redirect(returnTo);
+    }
+    
+    // Store the return URL in the session if provided
+    if (req.query.returnTo) {
+        req.session.returnTo = req.query.returnTo;
+        debugLog('Stored return URL in session:', req.query.returnTo);
+    }
+    
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
@@ -184,39 +286,82 @@ app.get(BASE_PATH + '/pin-length', (req, res) => {
 
 app.post(BASE_PATH + '/verify-pin', (req, res) => {
     debugLog('PIN verification attempt from IP:', req.ip);
+    
+    // If no PIN is set, authentication is successful
     if (!PIN || PIN.trim() === '') {
+        debugLog('PIN verification bypassed - No PIN configured');
         req.session.authenticated = true;
-        return res.status(200).json({ success: true });
+        
+        // Get the return URL from session, or default to main page
+        const returnTo = req.session.returnTo || (BASE_PATH + '/');
+        
+        // Clear the return URL from session
+        delete req.session.returnTo;
+        
+        debugLog('No PIN set, redirecting to:', returnTo);
+        
+        // Redirect to the intended destination
+        return res.redirect(returnTo);
     }
+
+    // Check if IP is locked out
     const ip = req.ip;
     if (isLockedOut(ip)) {
         const attempts = loginAttempts.get(ip);
         const timeLeft = Math.ceil((LOCKOUT_TIME - (Date.now() - attempts.lastAttempt)) / 1000 / 60);
-        return res.status(429).json({ error: `Too many attempts. Please try again in ${timeLeft} minutes.` });
+        debugLog('PIN verification blocked - IP is locked out:', ip);
+        return res.status(429).json({ 
+            error: `Too many attempts. Please try again in ${timeLeft} minutes.`
+        });
     }
+
     const { pin } = req.body;
     if (!pin || typeof pin !== 'string') {
+        debugLog('PIN verification failed - Invalid PIN format');
         return res.status(400).json({ error: 'Invalid PIN format' });
     }
-    const delay = crypto.randomInt(50, 150);
-    setTimeout(() => {
-        if (verifyPin(PIN, pin)) {
-            resetAttempts(ip);
-            req.session.authenticated = true;
-            res.cookie(`${projectName}_PIN`, pin, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 24 * 60 * 60 * 1000
-            });
-            res.status(200).json({ success: true });
-        } else {
-            recordAttempt(ip);
-            const attempts = loginAttempts.get(ip);
-            const attemptsLeft = MAX_ATTEMPTS - attempts.count;
-            res.status(401).json({ error: 'Invalid PIN', attemptsLeft: Math.max(0, attemptsLeft) });
-        }
-    }, delay);
+
+    // Verify PIN first
+    const isPinValid = verifyPin(PIN, pin);
+    if (isPinValid) {
+        debugLog('PIN verification successful');
+        // Reset attempts on successful login
+        resetAttempts(ip);
+        
+        // Set authentication in session immediately
+        req.session.authenticated = true;
+        
+        // Set secure cookie
+        res.cookie(`${projectName}_PIN`, pin, {
+            httpOnly: true,
+            secure: req.secure || (BASE_URL.startsWith('https') && NODE_ENV === 'production'),
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+        
+        // Get the return URL from session, or default to main page
+        const returnTo = req.session.returnTo || (BASE_PATH + '/');
+        
+        // Clear the return URL from session
+        delete req.session.returnTo;
+        
+        debugLog('Redirecting after successful login to:', returnTo);
+        
+        // Redirect to the intended destination
+        res.redirect(returnTo);
+    } else {
+        debugLog('PIN verification failed - Invalid PIN');
+        // Record failed attempt
+        recordAttempt(ip);
+        
+        const attempts = loginAttempts.get(ip);
+        const attemptsLeft = MAX_ATTEMPTS - attempts.count;
+        
+        res.status(401).json({ 
+            error: 'Invalid PIN',
+            attemptsLeft: Math.max(0, attemptsLeft)
+        });
+    }
 });
 
 // Login page static assets (need to be accessible without authentication)
@@ -227,28 +372,13 @@ app.use(BASE_PATH + '/script.js', express.static('public/script.js'));
 app.use(BASE_PATH + '/src/services/fileUpload', express.static('src/services/fileUpload'));
 app.use(BASE_PATH + '/src/services/render', express.static('src/services/render'));
 
-// --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
-app.use((req, res, next) => {
-    // Skip auth for login page and login-related resources
-    if (req.path === BASE_PATH + '/login' || 
-        req.path === BASE_PATH + '/pin-length' || 
-        req.path === BASE_PATH + '/verify-pin' ||
-        req.path === BASE_PATH + '/styles.css' ||
-        req.path === BASE_PATH + '/script.js' ||
-        req.path === BASE_PATH + '/config.js' ||
-        req.path.startsWith(BASE_PATH + '/src/services/fileUpload/') ||
-        req.path.startsWith(BASE_PATH + '/src/services/render/')) {
-        return next();
-    }
-    
-    // Apply authentication middleware
-    authMiddleware(req, res, next);
-});
+// Serve Chart.js from node_modules
+app.use(BASE_PATH + '/js/chart.js', express.static('node_modules/chart.js/dist/chart.umd.js'));
 
-// Protected static file serving (only accessible after authentication)
-app.use('/Images', authMiddleware, express.static(path.join(__dirname, 'data', 'Images')));
-app.use('/Receipts', authMiddleware, express.static(path.join(__dirname, 'data', 'Receipts')));
-app.use('/Manuals', authMiddleware, express.static(path.join(__dirname, 'data', 'Manuals')));
+// Serve uploaded files
+app.use(BASE_PATH + '/Images', express.static('data/Images'));
+app.use(BASE_PATH + '/Receipts', express.static('data/Receipts'));
+app.use(BASE_PATH + '/Manuals', express.static('data/Manuals'));
 
 // Protected API routes
 app.use('/api', (req, res, next) => {
@@ -329,6 +459,9 @@ app.get('/api/subassets', (req, res) => {
 app.post('/api/asset', async (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const newAsset = req.body;
+
+    // Ensure maintenanceEvents is always present (even if empty)
+    newAsset.maintenanceEvents = newAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!newAsset.name) {
@@ -364,11 +497,13 @@ app.post('/api/asset', async (req, res) => {
             }
             if (notificationSettings.notifyAdd && appriseUrl) {
                 await sendNotification('asset_added', {
+                    id: newAsset.id,
                     name: newAsset.name,
                     modelNumber: newAsset.modelNumber,
                     description: newAsset.description
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset added notification sent.');
@@ -387,6 +522,9 @@ app.post('/api/asset', async (req, res) => {
 app.put('/api/asset', (req, res) => {
     const assets = readJsonFile(assetsFilePath);
     const updatedAsset = req.body;
+
+    // Ensure maintenanceEvents is always present (even if empty)
+    updatedAsset.maintenanceEvents = updatedAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!updatedAsset.id || !updatedAsset.name) {
@@ -424,11 +562,13 @@ app.put('/api/asset', (req, res) => {
             }
             if (notificationSettings.notifyEdit && appriseUrl) {
                 sendNotification('asset_edited', {
+                    id: updatedAsset.id,
                     name: updatedAsset.name,
                     modelNumber: updatedAsset.modelNumber,
                     description: updatedAsset.description
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset edited notification sent.');
@@ -510,9 +650,13 @@ app.delete('/api/asset/:id', (req, res) => {
                 sendNotification('asset_deleted', {
                     name: deletedAsset.name,
                     modelNumber: deletedAsset.modelNumber,
-                    description: deletedAsset.description
+                    serialNumber: deletedAsset.serialNumber,
+                    purchaseDate: deletedAsset.purchaseDate,
+                    price: deletedAsset.price,
+                    warranty: deletedAsset.warranty
                 }, {
-                    appriseUrl
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
                 });
                 if (DEBUG) {
                     console.log('[DEBUG] Asset deleted notification sent.');
@@ -528,9 +672,13 @@ app.delete('/api/asset/:id', (req, res) => {
 });
 
 // Create a new sub-asset
-app.post('/api/subasset', (req, res) => {
+app.post('/api/subasset', async (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const newSubAsset = req.body;
+    // Remove legacy maintenanceReminder if present
+    if (newSubAsset.maintenanceReminder) delete newSubAsset.maintenanceReminder;
+    // Ensure maintenanceEvents is always present (even if empty)
+    newSubAsset.maintenanceEvents = newSubAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!newSubAsset.name || !newSubAsset.parentId) {
@@ -549,6 +697,39 @@ app.post('/api/subasset', (req, res) => {
     subAssets.push(newSubAsset);
     
     if (writeJsonFile(subAssetsFilePath, subAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset added:', { id: newSubAsset.id, name: newSubAsset.name, parentId: newSubAsset.parentId });
+        }
+        // Notification logic for sub-asset creation
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (add):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyAdd && appriseUrl) {
+                await sendNotification('asset_added', {
+                    id: newSubAsset.id,
+                    parentId: newSubAsset.parentId,
+                    name: `${newSubAsset.name} (Component)`,
+                    modelNumber: newSubAsset.modelNumber,
+                    description: newSubAsset.description || newSubAsset.notes
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset added notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset added notification:', err.message);
+        }
         res.status(201).json(newSubAsset);
     } else {
         res.status(500).json({ error: 'Failed to create sub-asset' });
@@ -556,9 +737,13 @@ app.post('/api/subasset', (req, res) => {
 });
 
 // Update an existing sub-asset
-app.put('/api/subasset', (req, res) => {
+app.put('/api/subasset', async (req, res) => {
     const subAssets = readJsonFile(subAssetsFilePath);
     const updatedSubAsset = req.body;
+    // Remove legacy maintenanceReminder if present
+    if (updatedSubAsset.maintenanceReminder) delete updatedSubAsset.maintenanceReminder;
+    // Ensure maintenanceEvents is always present (even if empty)
+    updatedSubAsset.maintenanceEvents = updatedSubAsset.maintenanceEvents || [];
     
     // Ensure required fields
     if (!updatedSubAsset.id || !updatedSubAsset.name || !updatedSubAsset.parentId) {
@@ -579,6 +764,39 @@ app.put('/api/subasset', (req, res) => {
     subAssets[index] = updatedSubAsset;
     
     if (writeJsonFile(subAssetsFilePath, subAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset edited:', { id: updatedSubAsset.id, name: updatedSubAsset.name, parentId: updatedSubAsset.parentId });
+        }
+        // Notification logic for sub-asset edit
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (edit):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyEdit && appriseUrl) {
+                await sendNotification('asset_edited', {
+                    id: updatedSubAsset.id,
+                    parentId: updatedSubAsset.parentId,
+                    name: `${updatedSubAsset.name} (Component)`,
+                    modelNumber: updatedSubAsset.modelNumber,
+                    description: updatedSubAsset.description || updatedSubAsset.notes
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset edited notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset edited notification:', err.message);
+        }
         res.json(updatedSubAsset);
     } else {
         res.status(500).json({ error: 'Failed to update sub-asset' });
@@ -586,7 +804,7 @@ app.put('/api/subasset', (req, res) => {
 });
 
 // Delete a sub-asset
-app.delete('/api/subasset/:id', (req, res) => {
+app.delete('/api/subasset/:id', async (req, res) => {
     const subAssetId = req.params.id;
     const subAssets = readJsonFile(subAssetsFilePath);
     
@@ -600,24 +818,74 @@ app.delete('/api/subasset/:id', (req, res) => {
     // Get the sub-asset to delete
     const deletedSubAsset = subAssets[subAssetIndex];
     
-    // Find all child sub-assets (recursively)
-    const subAssetIdsToDelete = [subAssetId];
-    let childrenToCheck = subAssets.filter(sa => sa.parentSubId === subAssetId);
+    // Ensure we don't delete a component that still has other parents
+    const subAssetIdsToDelete = new Set([subAssetId]);
+    let childrenToProcess = [deletedSubAsset];
     
-    while (childrenToCheck.length > 0) {
-        const currentChild = childrenToCheck.shift();
-        subAssetIdsToDelete.push(currentChild.id);
+    while (childrenToProcess.length > 0) {
+        const current = childrenToProcess.shift();
         
-        // Find any children of this child
-        const grandchildren = subAssets.filter(sa => sa.parentSubId === currentChild.id);
-        childrenToCheck = [...childrenToCheck, ...grandchildren];
+        // Find all direct children of this component
+        const directChildren = subAssets.filter(sa => 
+            // Only include components where this is the direct parent
+            sa.parentSubId === current.id && 
+            // Don't include already processed components
+            !subAssetIdsToDelete.has(sa.id) &&
+            // Ensure the component isn't a child of any component we're not deleting
+            !subAssets.some(other => 
+                other.id !== current.id && 
+                !subAssetIdsToDelete.has(other.id) && 
+                sa.parentSubId === other.id
+            )
+        );
+        
+        // Add valid children to deletion set and processing queue
+        directChildren.forEach(child => {
+            subAssetIdsToDelete.add(child.id);
+            childrenToProcess.push(child);
+        });
     }
     
     // Filter out all sub-assets that need to be deleted
-    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.includes(sa.id));
+    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.has(sa.id));
     
     // Write updated sub-assets
     if (writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
+        if (DEBUG) {
+            console.log('[DEBUG] Sub-asset deleted:', { id: deletedSubAsset.id, name: deletedSubAsset.name, parentId: deletedSubAsset.parentId });
+        }
+        // Notification logic for sub-asset deletion
+        try {
+            const configPath = path.join(__dirname, 'data', 'config.json');
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            const notificationSettings = config.notificationSettings || {};
+            const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+            if (DEBUG) {
+                console.log('[DEBUG] Sub-asset notification settings (delete):', notificationSettings, 'Apprise URL:', appriseUrl);
+            }
+            if (notificationSettings.notifyDelete && appriseUrl) {
+                await sendNotification('asset_deleted', {
+                    name: `${deletedSubAsset.name} (Component)`,
+                    modelNumber: deletedSubAsset.modelNumber,
+                    serialNumber: deletedSubAsset.serialNumber,
+                    purchaseDate: deletedSubAsset.purchaseDate,
+                    price: deletedSubAsset.price || deletedSubAsset.purchasePrice,
+                    warranty: deletedSubAsset.warranty
+                }, {
+                    appriseUrl,
+                    baseUrl: getBaseUrl(req)
+                });
+                if (DEBUG) {
+                    console.log('[DEBUG] Sub-asset deleted notification sent.');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to send sub-asset deleted notification:', err.message);
+        }
+        
         // Try to delete image and receipt files if they exist
         try {
             if (deletedSubAsset.photoPath) {
@@ -631,6 +899,13 @@ app.delete('/api/subasset/:id', (req, res) => {
                 const receiptPath = path.join(__dirname, deletedSubAsset.receiptPath.substring(1));
                 if (fs.existsSync(receiptPath)) {
                     fs.unlinkSync(receiptPath);
+                }
+            }
+            
+            if (deletedSubAsset.manualPath) {
+                const manualPath = path.join(__dirname, deletedSubAsset.manualPath.substring(1));
+                if (fs.existsSync(manualPath)) {
+                    fs.unlinkSync(manualPath);
                 }
             }
         } catch (error) {
@@ -647,31 +922,28 @@ app.delete('/api/subasset/:id', (req, res) => {
 // File upload endpoints
 const imageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Images');
+        cb(null, path.join(__dirname, 'data', 'Images'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
 const receiptStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Receipts');
+        cb(null, path.join(__dirname, 'data', 'Receipts'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
 const manualStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'data/Manuals');
+        cb(null, path.join(__dirname, 'data', 'Manuals'));
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${req.body.id || uuidv4()}${ext}`);
+        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
     }
 });
 
@@ -714,30 +986,51 @@ const uploadManual = multer({
 });
 
 app.post('/api/upload/image', uploadImage.single('photo'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const photoPath = `/Images/${req.file.filename}`;
-    res.json({ path: photoPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Images/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 app.post('/api/upload/receipt', uploadReceipt.single('receipt'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const receiptPath = `/Receipts/${req.file.filename}`;
-    res.json({ path: receiptPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Receipts/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 app.post('/api/upload/manual', uploadManual.single('manual'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    const manualPath = `/Manuals/${req.file.filename}`;
-    res.json({ path: manualPath });
+    // Get file stats
+    const stats = fs.statSync(req.file.path);
+    
+    res.json({
+        path: `/Manuals/${req.file.filename}`,
+        fileInfo: {
+            originalName: req.file.originalname,
+            size: stats.size,
+            fileName: req.file.filename
+        }
+    });
 });
 
 // Delete a file (image, receipt, or manual)
@@ -804,137 +1097,152 @@ function parseExcelDate(value) {
 // Import assets route
 app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
     try {
-        if (!req.file) {
+        const file = req.file;
+        if (!file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        
-        // First get column headers
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // If this is the first request (no mappings provided), return the headers
+        // If only headers are requested (first step), return headers
         if (!req.body.mappings) {
-            const headers = data[0] || [];
+            let workbook = XLSX.read(file.buffer, { type: 'buffer' });
+            let sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const headers = json[0] || [];
             return res.json({ headers });
         }
-
-        // When processing with mappings, use raw sheet data for better parsing
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-        console.log("Sample row:", jsonData.length > 0 ? jsonData[0] : "No data");
-        
-        // Get column mappings from request
+        // Parse mappings
         const mappings = JSON.parse(req.body.mappings);
-        console.log("Mappings:", mappings);
-        
-        // Convert column index mappings to actual column names
-        const headers = data[0] || [];
-        const columnMappings = {
-            name: mappings.name !== '' ? headers[parseInt(mappings.name, 10)] : '',
-            model: mappings.model !== '' ? headers[parseInt(mappings.model, 10)] : '',
-            serial: mappings.serial !== '' ? headers[parseInt(mappings.serial, 10)] : '',
-            purchaseDate: mappings.purchaseDate !== '' ? headers[parseInt(mappings.purchaseDate, 10)] : '',
-            purchasePrice: mappings.purchasePrice !== '' ? headers[parseInt(mappings.purchasePrice, 10)] : '',
-            notes: mappings.notes !== '' ? headers[parseInt(mappings.notes, 10)] : '',
-            url: mappings.url !== '' ? headers[parseInt(mappings.url, 10)] : '',
-            warranty: mappings.warranty !== '' ? headers[parseInt(mappings.warranty, 10)] : '',
-            warrantyExpiration: mappings.warrantyExpiration !== '' ? headers[parseInt(mappings.warrantyExpiration, 10)] : ''
-        };
-        console.log("Column name mappings:", columnMappings);
-        
-        // Transform data using header-based mappings
-        const transformedData = jsonData.map(row => {
-            // Create a unique ID for each asset
-            const assetId = uuidv4();
-            console.log("Processing row:", row);
-            
-            // Use column names to access the data
+        let workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        let sheet = workbook.Sheets[workbook.SheetNames[0]];
+        let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const headers = json[0] || [];
+        const rows = json.slice(1);
+        let importedCount = 0;
+        let assets = readJsonFile(assetsFilePath);
+        for (const row of rows) {
+            if (!row.length) continue;
+            const get = idx => (mappings[idx] !== undefined && mappings[idx] !== "" && row[mappings[idx]] !== undefined) ? row[mappings[idx]] : "";
+            const name = get('name');
+            if (!name) continue;
             const asset = {
-                id: assetId,
-                name: columnMappings.name ? (row[columnMappings.name] || '') : '',
-                modelNumber: columnMappings.model ? (row[columnMappings.model] || '') : '',
-                serialNumber: columnMappings.serial ? (row[columnMappings.serial] || '') : '',
-                purchaseDate: columnMappings.purchaseDate ? parseExcelDate(row[columnMappings.purchaseDate]) : '',
-                price: columnMappings.purchasePrice ? (row[columnMappings.purchasePrice] || '') : '',
-                description: columnMappings.notes ? (row[columnMappings.notes] || '') : '',
-                link: columnMappings.url ? (row[columnMappings.url] || '') : '',
-                photoPath: null,
-                receiptPath: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                id: generateId(),
+                name: name,
+                manufacturer: get('manufacturer'),
+                modelNumber: get('model'),
+                serialNumber: get('serial'),
+                purchaseDate: parseExcelDate(get('purchaseDate')),
+                price: get('purchasePrice'),
+                description: get('notes'),
+                link: get('url'),
                 warranty: {
-                    scope: columnMappings.warranty ? (row[columnMappings.warranty] || '') : '',
-                    expirationDate: columnMappings.warrantyExpiration ? parseExcelDate(row[columnMappings.warrantyExpiration]) : ''
-                }
+                    scope: get('warranty'),
+                    expirationDate: parseExcelDate(get('warrantyExpiration'))
+                },
+                secondaryWarranty: {
+                    scope: get('secondaryWarranty'),
+                    expirationDate: parseExcelDate(get('secondaryWarrantyExpiration'))
+                },
+                tags: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
-            return asset;
-        });
-
-        // Sample the first asset for debugging
-        console.log("Sample transformed asset:", transformedData.length > 0 ? transformedData[0] : "No data");
-
-        // Save transformed data to assets.json
-        const assetsPath = path.join(__dirname, 'data', 'Assets.json');
-        let existingAssets = [];
-        
-        if (fs.existsSync(assetsPath)) {
-            const fileContent = fs.readFileSync(assetsPath, 'utf8');
-            existingAssets = JSON.parse(fileContent);
+            // Parse tags if mapped
+            if (mappings.tags !== undefined && mappings.tags !== "" && row[mappings.tags] !== undefined) {
+                const tagsRaw = row[mappings.tags];
+                if (typeof tagsRaw === 'string') {
+                    asset.tags = tagsRaw.split(/[,;]+/).map(t => t.trim()).filter(Boolean);
+                } else if (Array.isArray(tagsRaw)) {
+                    asset.tags = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+                }
+            }
+            assets.push(asset);
+            importedCount++;
         }
-
-        // Add new assets to existing ones
-        const updatedAssets = [...existingAssets, ...transformedData];
-        
-        // Write back to file
-        fs.writeFileSync(assetsPath, JSON.stringify(updatedAssets, null, 2));
-
-        res.json({ 
-            message: 'Import successful', 
-            importedCount: transformedData.length 
-        });
-    } catch (error) {
-        console.error('Import error:', error);
-        res.status(500).json({ error: 'Failed to import assets: ' + error.message });
+        writeJsonFile(assetsFilePath, assets);
+        res.json({ importedCount });
+    } catch (err) {
+        console.error('Import error:', err);
+        res.status(500).json({ error: 'Failed to import assets' });
     }
 });
 
-// Get notification settings
-app.get('/api/notification-settings', authMiddleware, (req, res) => {
+// Get all settings
+app.get('/api/settings', authMiddleware, (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
         if (!fs.existsSync(configPath)) {
             // Default settings if config does not exist
             return res.json({
-                notifyAdd: true,
-                notifyDelete: false,
-                notifyEdit: true,
-                notify1Month: true,
-                notify2Week: false,
-                notify7Day: true,
-                notify3Day: false
+                notificationSettings: {
+                    notifyAdd: true,
+                    notifyDelete: false,
+                    notifyEdit: true,
+                    notify1Month: true,
+                    notify2Week: false,
+                    notify7Day: true,
+                    notify3Day: false,
+                    notifyMaintenance: false
+                },
+                interfaceSettings: {
+                    dashboardOrder: ["totals", "warranties", "analytics"],
+                    dashboardVisibility: { totals: true, warranties: true, analytics: true }
+                }
             });
         }
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        res.json(config.notificationSettings || {});
+        // Ensure dashboardVisibility always present
+        if (!config.interfaceSettings) config.interfaceSettings = {};
+        if (!config.interfaceSettings.dashboardVisibility) {
+            config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
+        }
+        // Ensure cardVisibility is present in interfaceSettings
+        if (!config.interfaceSettings.cardVisibility) {
+            config.interfaceSettings.cardVisibility = {
+                assets: true,
+                components: true,
+                value: true,
+                warranties: true,
+                within60: true,
+                within30: true,
+                expired: true,
+                active: true
+            };
+        }
+        res.json(config);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to load notification settings' });
+        res.status(500).json({ error: 'Failed to load settings' });
     }
 });
 
-// Save notification settings
-app.post('/api/notification-settings', authMiddleware, express.json(), (req, res) => {
+// Save all settings
+app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
         let config = {};
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }
-        config.notificationSettings = req.body;
+        // Update settings with the new values
+        Object.keys(req.body).forEach(section => {
+            if (section === 'interfaceSettings') {
+                if (!config.interfaceSettings) config.interfaceSettings = {};
+                // Merge dashboardOrder and dashboardVisibility
+                if (req.body.interfaceSettings.dashboardOrder) {
+                    config.interfaceSettings.dashboardOrder = req.body.interfaceSettings.dashboardOrder;
+                }
+                if (req.body.interfaceSettings.dashboardVisibility) {
+                    config.interfaceSettings.dashboardVisibility = req.body.interfaceSettings.dashboardVisibility;
+                }
+                if (req.body.interfaceSettings.cardVisibility) {
+                    config.interfaceSettings.cardVisibility = req.body.interfaceSettings.cardVisibility;
+                }
+            } else {
+                config[section] = req.body[section];
+            }
+        });
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to save notification settings' });
+        res.status(500).json({ error: 'Failed to save settings' });
     }
 });
 
@@ -951,61 +1259,128 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
         }
         // Use APPRISE_URL from env or config
         const appriseUrl = process.env.APPRISE_URL || (config.appriseUrl || null);
+        // Get notification settings from request body
+        const notificationSettings = req.body || {};
+        // Ensure notification settings are present
+        if (!notificationSettings) {
+            return res.status(400).json({ error: 'No notification settings provided.' });
+        }
+        // Ensure notification settings are valid
+        if (!notificationSettings.enabledTypes || !Array.isArray(notificationSettings.enabledTypes)) {
+            return res.status(400).json({ error: 'Invalid notification settings provided.' });
+        }
+        // Ensure APPRISE_URL is present
+        if (!appriseUrl) {
+            return res.status(400).json({ error: 'No Apprise URL configured.' });
+        }
+        // Log the notification settings and Apprise URL for debugging
         if (DEBUG) {
-            console.log('[DEBUG] Notification settings (test):', config.notificationSettings, 'Apprise URL:', appriseUrl);
+            console.log('[DEBUG] Notification settings (test):', notificationSettings, 'Apprise URL:', appriseUrl);
         }
         if (!appriseUrl) return res.status(400).json({ error: 'No Apprise URL configured.' });
-        // Send test notification
-        await sendNotification('test', { name: 'Test Notification', eventType: 'test' }, {
-            appriseUrl,
-            appriseMessage: 'This is a test notification from DumbAssets.'
-        });
+
+        // Get enabled notification types from request body
+        const { enabledTypes } = notificationSettings;;
+        if (!enabledTypes || !Array.isArray(enabledTypes)) {
+            return res.status(400).json({ error: 'No enabled notification types provided.' });
+        }
+
+        // Send test notifications for each enabled type
+        console.log('Enabled notification types:', enabledTypes);
+        for (const type of enabledTypes) {
+            let notificationData = {};
+            let message = '';
+
+            switch (type) {
+                case 'notifyAdd':
+                    notificationData = {
+                        name: 'Quantum Router (notifyAdd Test)',
+                        modelNumber: 'Q-Bit-9000',
+                        serialNumber: '0xDEADBEEF',
+                        description: "✅ It's in a superposition of working and not working."
+                    };
+                    message = `Test: Asset Added Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been added to your inventory. ${notificationData.description}`;
+                    break;
+                case 'notifyDelete':
+                    notificationData = {
+                        name: 'Stack Overflow Generator (notifyDelete Test)',
+                        modelNumber: 'SO-404',
+                        serialNumber: 'NULL-PTR',
+                        description: '❌ It finally found the answer it was looking for.'
+                    };
+                    message = `Test: Asset Deleted Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been removed from your inventory. ${notificationData.description}`;
+                    break;
+                case 'notifyEdit':
+                    notificationData = {
+                        name: 'Recursive Coffee Maker (notifyEdit Test)',
+                        modelNumber: 'Java-8',
+                        serialNumber: 'Stack-Overflow',
+                        description: '✏️ It now makes coffee while making coffee.'
+                    };
+                    message = `Test: Asset Edited Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) has been updated. ${notificationData.description}`;
+                    break;
+                case 'notify1Month':
+                    notificationData = {
+                        name: 'Infinite Loop Detector (notify1Month Test)',
+                        modelNumber: 'Break-1',
+                        serialNumber: 'While-True',
+                        description: '⏳ Without it, you might be stuck in an endless cycle of debugging.'
+                    };
+                    message = `Test: Warranty Expiring in 1 Month\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 1 month. ${notificationData.description}`;
+                    break;
+                case 'notify2Week':
+                    notificationData = {
+                        name: 'Memory Leak Plug (notify2Week Test)',
+                        modelNumber: 'GC-2023',
+                        serialNumber: 'OutOfMemory',
+                        description: '⏳ Without warranty, it might forget to forget things.'
+                    };
+                    message = `Test: Warranty Expiring in 2 Weeks\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 2 weeks. ${notificationData.description}`;
+                    break;
+                case 'notify7Day':
+                    notificationData = {
+                        name: 'Binary Clock (notify7Day Test)',
+                        modelNumber: '0x10',
+                        serialNumber: '0b1010',
+                        description: '⏳ Without warranty, it might start counting in hexadecimal.'
+                    };
+                    message = `Test: Warranty Expiring in 7 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 7 days. ${notificationData.description}`;
+                    break;
+                case 'notify3Day':
+                    notificationData = {
+                        name: 'Cache Warmer (notify3Day Test)',
+                        modelNumber: 'L1-L2-L3',
+                        serialNumber: 'Miss-Rate',
+                        description: '⏳ Without warranty, your data might get cold feet.'
+                    };
+                    message = `Test: Warranty Expiring in 3 Days\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) warranty expires in 3 days. ${notificationData.description}`;
+                    break;
+                case 'notifyMaintenance':
+                    notificationData = {
+                        name: 'Entropy Reducer (notifyMaintenance Test)',
+                        modelNumber: 'MTN-42',
+                        serialNumber: 'SCH-2025',
+                        description: '🛠️ Scheduled maintenance is due soon. Keep your assets running smoothly!'
+                    };
+                    message = `Test: Maintenance Schedule Notification\n\nTest Asset: ${notificationData.name} (Model: ${notificationData.modelNumber}, Serial: ${notificationData.serialNumber}) is due for scheduled maintenance. ${notificationData.description}`;
+                    break;
+            }
+
+            // Send the notification
+            await sendNotification('test', notificationData, {
+                appriseUrl,
+                appriseMessage: message
+            });
+
+            // Note: No manual delay needed - the notification queue handles delays automatically
+        }
+
         if (DEBUG) {
-            console.log('[DEBUG] Test notification sent.');
+            console.log('[DEBUG] Test notifications sent.');
         }
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to send test notification.' });
-    }
-});
-
-// --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
-const SITE_TITLE = process.env.SITE_TITLE || 'DumbAssets';
-
-// Serve index.html with dynamic SITE_TITLE for main app
-app.get(BASE_PATH + '/', authMiddleware, (req, res) => {
-    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-    res.send(html);
-});
-
-// Serve login.html with dynamic SITE_TITLE
-app.get(BASE_PATH + '/login', (req, res) => {
-    if (!PIN || PIN.trim() === '') return res.redirect(BASE_PATH + '/');
-    if (req.session.authenticated) return res.redirect(BASE_PATH + '/');
-    let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
-    html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-    res.send(html);
-});
-
-// Redirect /index.html to /
-app.get(BASE_PATH + '/index.html', (req, res) => res.redirect(BASE_PATH + '/'));
-// Redirect /login.html to /login
-app.get(BASE_PATH + '/login.html', (req, res) => res.redirect(BASE_PATH + '/login'));
-
-// --- CATCH-ALL: Serve index.html if authenticated, else redirect to login ---
-app.get('*', (req, res, next) => {
-    // Skip API and static asset requests
-    if (req.path.startsWith('/api/') || req.path.startsWith('/Images/') || req.path.startsWith('/Receipts/') || req.path.endsWith('.css') || req.path.endsWith('.js') || req.path.endsWith('.ico')) {
-        return next();
-    }
-    // Auth check
-    if (!PIN || PIN.trim() === '' || req.session.authenticated) {
-        let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-        html = html.replace(/\{\{SITE_TITLE\}\}/g, SITE_TITLE);
-        return res.send(html);
-    } else {
-        return res.redirect(BASE_PATH + '/login');
+        res.status(500).json({ error: 'Failed to send test notifications.' });
     }
 });
 
@@ -1028,9 +1403,30 @@ app.listen(PORT, () => {
         port: PORT,
         basePath: BASE_PATH,
         pinProtection: !!PIN,
-        nodeEnv: process.env.NODE_ENV || 'development',
-        debug: DEBUG
+        nodeEnv: NODE_ENV,
+        debug: DEBUG,
+        version: VERSION,
     });
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on: ${BASE_URL}`);
 }); 
-// --- END --- 
+// --- END ---
+
+// Add helper function to get base URL for notifications
+function getBaseUrl(req) {
+    // Try to get from environment variable first
+    if (process.env.BASE_URL) {
+        return process.env.BASE_URL;
+    }
+    
+    // Try to construct from request headers
+    if (req) {
+        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
+        const host = req.get('Host') || req.get('X-Forwarded-Host');
+        if (host) {
+            return `${protocol}://${host}`;
+        }
+    }
+    
+    // Fallback to localhost with default port
+    return 'http://localhost:3000';
+}

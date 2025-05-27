@@ -4,26 +4,48 @@
  */
 
 import { validateFileType, formatFileSize } from './utils.js';
+import { createPhotoPreview, createDocumentPreview } from '../render/previewRenderer.js';
+
+// Get access to the global flags
+let deletePhoto = false, deleteReceipt = false, deleteManual = false;
+let deleteSubPhoto = false, deleteSubReceipt = false, deleteSubManual = false;
+
+// Look for these flags in the window object to access them across modules
+function getDeleteFlags() {
+    // For main assets
+    if (typeof window !== 'undefined') {
+        deletePhoto = window.deletePhoto || false;
+        deleteReceipt = window.deleteReceipt || false;
+        deleteManual = window.deleteManual || false;
+        // For sub-assets
+        deleteSubPhoto = window.deleteSubPhoto || false;
+        deleteSubReceipt = window.deleteSubReceipt || false;
+        deleteSubManual = window.deleteSubManual || false;
+    }
+    return { deletePhoto, deleteReceipt, deleteManual, deleteSubPhoto, deleteSubReceipt, deleteSubManual };
+}
 
 /**
  * Upload a file to the server
  * @param {File} file - The file to upload
  * @param {string} type - The type of file ('image', 'receipt', or 'manual')
  * @param {string} id - The ID of the associated asset
- * @returns {Promise<string|null>} - The path of the uploaded file, or null if the upload failed
+ * @returns {Promise<{path: string, fileInfo: Object}|null>} - The path and info of the uploaded file, or null if the upload failed
  */
 async function uploadFile(file, type, id) {
     let fieldName;
     let endpoint;
+    const apiBaseUrl = window.location.origin + (window.appConfig?.basePath || '');
+    
     if (type === 'image') {
         fieldName = 'photo';
-        endpoint = '/api/upload/image';
+        endpoint = `${apiBaseUrl}/api/upload/image`;
     } else if (type === 'manual') {
         fieldName = 'manual';
-        endpoint = '/api/upload/manual';
+        endpoint = `${apiBaseUrl}/api/upload/manual`;
     } else {
         fieldName = 'receipt';
-        endpoint = '/api/upload/receipt';
+        endpoint = `${apiBaseUrl}/api/upload/receipt`;
     }
     const formData = new FormData();
     formData.append(fieldName, file);
@@ -36,7 +58,7 @@ async function uploadFile(file, type, id) {
         });
         if (!response.ok) throw new Error('Upload failed');
         const data = await response.json();
-        return data.path;
+        return data;
     } catch (err) {
         console.error('File upload failed:', err);
         return null;
@@ -44,12 +66,13 @@ async function uploadFile(file, type, id) {
 }
 
 /**
- * Setup file preview functionality for a file input
+ * Setup file preview functionality for a file input element
  * @param {string} inputId - The ID of the file input element
  * @param {string} previewId - The ID of the preview container element
  * @param {boolean} isDocument - Whether the file is a document (true) or image (false)
+ * @param {string} fileType - The type of file ('image', 'receipt', or 'manual')
  */
-function setupFilePreview(inputId, previewId, isDocument = false) {
+function setupFileInputPreview(inputId, previewId, isDocument = false, fileType = 'image') {
     const input = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
     const uploadBox = document.querySelector(`[data-target="${inputId}"]`);
@@ -111,57 +134,26 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
         // Only show preview if there are files
         if (input.files && input.files.length > 0) {
             Array.from(input.files).forEach(file => {
+                // Create the preview element using component approach
                 const previewItem = document.createElement('div');
-                previewItem.className = 'file-preview-item';
                 
                 if (isDocument) {
-                    // For documents, show icon and filename
-                    previewItem.innerHTML = `
-                        <div class="manual-preview">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                            </svg>
-                            <span>${file.name}</span>
-                            <span class="file-size">${formatFileSize(file.size)}</span>
-                            <button type="button" class="delete-preview-btn" title="Delete File">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                                    <line x1="10" y1="11" x2="10" y2="17"/>
-                                    <line x1="14" y1="11" x2="14" y2="17"/>
-                                </svg>
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    // For images, show preview
+                    // For documents (receipt, manual, or import), use the document preview component
+                    let docType;
+                    if (fileType === 'receipt') {
+                        docType = 'receipt';
+                    } else if (fileType === 'import') {
+                        docType = 'import';
+                    } else if (fileType === 'manual') {
+                        docType = 'manual';
+                    } else {
+                        docType = 'document';
+                    }
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        previewItem.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
-                            <div class="file-info">
-                                <span>${file.name}</span>
-                                <span class="file-size">${formatFileSize(file.size)}</span>
-                            </div>
-                            <button type="button" class="delete-preview-btn" title="Delete Image">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                                    <line x1="10" y1="11" x2="10" y2="17"/>
-                                    <line x1="14" y1="11" x2="14" y2="17"/>
-                                </svg>
-                            </button>
-                        `;
-                    };
-                    reader.readAsDataURL(file);
-                }
-
-                // Add delete handler
-                const deleteBtn = previewItem.querySelector('.delete-preview-btn');
-                if (deleteBtn) {
-                    deleteBtn.onclick = () => {
-                        if (confirm('Are you sure you want to delete this file?')) {
+                    
+                    // Set up delete handler
+                    const deleteHandler = () => {
+                        if (confirm(`Are you sure you want to delete this ${docType}?`)) {
                             previewItem.remove();
                             // Update the input files
                             const dataTransfer = new DataTransfer();
@@ -171,8 +163,42 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
                                 }
                             });
                             input.files = dataTransfer.files;
+                            
+                            // If this is an import file, reset the import form
+                            if (fileType === 'import' && window.resetImportForm) {
+                                window.resetImportForm();
+                            }
                         }
                     };
+                    
+                    // Use createDocumentPreview for documents with filename and size
+                    const docPreview = createDocumentPreview(docType, file.name, deleteHandler, file.name, formatFileSize(file.size));
+                    previewItem.appendChild(docPreview);
+                    
+                } else {
+                    // For images, use the photo preview component
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        // Set up delete handler
+                        const deleteHandler = () => {
+                            if (confirm('Are you sure you want to delete this image?')) {
+                                previewItem.remove();
+                                // Update the input files
+                                const dataTransfer = new DataTransfer();
+                                Array.from(input.files).forEach((f, i) => {
+                                    if (f !== file) {
+                                        dataTransfer.items.add(f);
+                                    }
+                                });
+                                input.files = dataTransfer.files;
+                            }
+                        };
+                        
+                        // Use createPhotoPreview for images with filename and size
+                        const photoPreview = createPhotoPreview(e.target.result, deleteHandler, file.name, formatFileSize(file.size));
+                        previewItem.appendChild(photoPreview);
+                    };
+                    reader.readAsDataURL(file);
                 }
 
                 preview.appendChild(previewItem);
@@ -189,15 +215,23 @@ function setupFilePreview(inputId, previewId, isDocument = false) {
  * @returns {Promise<Object>} - The updated asset with file paths
  */
 async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
+    // Get the current delete flags
+    getDeleteFlags();
+    
     // Clone the asset to avoid modifying the original
     const assetCopy = { ...asset };
     
-    // Check and preserve required fields
+    // Log initial state of file paths
     console.log('handleFileUploads starting with asset:', {
         id: assetCopy.id,
         name: assetCopy.name,
         parentId: assetCopy.parentId || null
     });
+    
+    // Initialize file info arrays if they don't exist
+    assetCopy.photoInfo = assetCopy.photoInfo || [];
+    assetCopy.receiptInfo = assetCopy.receiptInfo || [];
+    assetCopy.manualInfo = assetCopy.manualInfo || [];
     
     // Get file inputs
     const photoInput = document.getElementById(isSubAsset ? 'subAssetPhoto' : 'assetPhoto');
@@ -211,7 +245,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
             receiptInput: !!receiptInput,
             manualInput: !!manualInput
         });
-        return assetCopy; // Return unmodified asset if inputs are missing
+        return assetCopy;
     }
     
     // Initialize arrays for multiple files
@@ -221,50 +255,71 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
     
     // Handle photo uploads
     if (photoInput.files && photoInput.files.length > 0) {
+        console.log(`Uploading ${photoInput.files.length} photo(s)`);
+        assetCopy.photoPaths = [];
+        assetCopy.photoInfo = [];
         for (const file of photoInput.files) {
-            const photoPath = await uploadFile(file, 'image', assetCopy.id);
-            if (photoPath) {
-                assetCopy.photoPaths.push(photoPath);
+            const result = await uploadFile(file, 'image', assetCopy.id);
+            if (result) {
+                assetCopy.photoPaths.push(result.path);
+                assetCopy.photoInfo.push(result.fileInfo);
             }
         }
         // Set the first photo as the main photo
         assetCopy.photoPath = assetCopy.photoPaths[0] || null;
+        console.log(`Setting main photoPath to: ${assetCopy.photoPath}`);
     } else if (isEditMode) {
-        // If editing and no new photos, preserve existing photo paths
-        assetCopy.photoPath = asset.photoPath;
-        assetCopy.photoPaths = asset.photoPaths || [];
+        if ((isSubAsset ? deleteSubPhoto : deletePhoto) && assetCopy.photoPath) {
+            assetCopy.photoPath = null;
+            assetCopy.photoPaths = [];
+            assetCopy.photoInfo = [];
+        }
     }
     
     // Handle receipt uploads
     if (receiptInput.files && receiptInput.files.length > 0) {
+        console.log(`Uploading ${receiptInput.files.length} receipt(s)`);
+        assetCopy.receiptPaths = [];
+        assetCopy.receiptInfo = [];
         for (const file of receiptInput.files) {
-            const receiptPath = await uploadFile(file, 'receipt', assetCopy.id);
-            if (receiptPath) {
-                assetCopy.receiptPaths.push(receiptPath);
+            const result = await uploadFile(file, 'receipt', assetCopy.id);
+            if (result) {
+                assetCopy.receiptPaths.push(result.path);
+                assetCopy.receiptInfo.push(result.fileInfo);
             }
         }
         // Set the first receipt as the main receipt
         assetCopy.receiptPath = assetCopy.receiptPaths[0] || null;
+        console.log(`Setting main receiptPath to: ${assetCopy.receiptPath}`);
     } else if (isEditMode) {
-        // If editing and no new receipts, preserve existing receipt paths
-        assetCopy.receiptPath = asset.receiptPath;
-        assetCopy.receiptPaths = asset.receiptPaths || [];
+        if ((isSubAsset ? deleteSubReceipt : deleteReceipt) && assetCopy.receiptPath) {
+            assetCopy.receiptPath = null;
+            assetCopy.receiptPaths = [];
+            assetCopy.receiptInfo = [];
+        }
     }
 
     // Handle manual uploads
     if (manualInput.files && manualInput.files.length > 0) {
+        console.log(`Uploading ${manualInput.files.length} manual(s)`);
+        assetCopy.manualPaths = [];
+        assetCopy.manualInfo = [];
         for (const file of manualInput.files) {
-            const manualPath = await uploadFile(file, 'manual', assetCopy.id);
-            if (manualPath) {
-                assetCopy.manualPaths.push(manualPath);
+            const result = await uploadFile(file, 'manual', assetCopy.id);
+            if (result) {
+                assetCopy.manualPaths.push(result.path);
+                assetCopy.manualInfo.push(result.fileInfo);
             }
         }
         // Set the first manual as the main manual
         assetCopy.manualPath = assetCopy.manualPaths[0] || null;
+        console.log(`Setting main manualPath to: ${assetCopy.manualPath}`);
     } else if (isEditMode) {
-        // If editing and no new manuals, preserve existing manual paths
-        assetCopy.manualPath = asset.manualPath;
-        assetCopy.manualPaths = asset.manualPaths || [];
+        if ((isSubAsset ? deleteSubManual : deleteManual) && assetCopy.manualPath) {
+            assetCopy.manualPath = null;
+            assetCopy.manualPaths = [];
+            assetCopy.manualInfo = [];
+        }
     }
     
     return assetCopy;
@@ -341,7 +396,7 @@ function setupDragAndDrop() {
 // Export the functions
 export {
     uploadFile,
-    setupFilePreview,
+    setupFileInputPreview,
     handleFileUploads,
     setupDragAndDrop
-}; 
+};

@@ -5,7 +5,7 @@
 
 import {
     uploadFile,
-    setupFilePreview,
+    setupFileInputPreview,
     handleFileUploads,
     setupDragAndDrop
 } from './fileUploader.js';
@@ -14,7 +14,7 @@ import { initializeFileUploads } from './init.js';
 
 export {
     uploadFile,
-    setupFilePreview,
+    setupFileInputPreview as setupFilePreview, // Export with the original name for backward compatibility
     handleFileUploads,
     setupDragAndDrop,
     initializeFileUploads

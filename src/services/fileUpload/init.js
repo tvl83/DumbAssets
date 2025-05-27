@@ -10,15 +10,18 @@ import { setupFilePreview, setupDragAndDrop } from './index.js';
  */
 export function initializeFileUploads() {
     // Initialize asset file uploads
-    setupFilePreview('assetPhoto', 'photoPreview', false);
-    setupFilePreview('assetReceipt', 'receiptPreview', true);
-    setupFilePreview('assetManual', 'manualPreview', true);
+    setupFilePreview('assetPhoto', 'photoPreview', false, 'image');
+    setupFilePreview('assetReceipt', 'receiptPreview', true, 'receipt');
+    setupFilePreview('assetManual', 'manualPreview', true, 'manual');
     
     // Initialize sub-asset file uploads
     setupFilePreview('subAssetPhoto', 'subPhotoPreview', false);
-    setupFilePreview('subAssetReceipt', 'subReceiptPreview', true);
-    setupFilePreview('subAssetManual', 'subManualPreview', true);
+    setupFilePreview('subAssetReceipt', 'subReceiptPreview', true, 'receipt');
+    setupFilePreview('subAssetManual', 'subManualPreview', true, 'manual');
     
+    // Initialize import file uploads
+    setupFilePreview('importFile', 'importFilePreview', true, 'import');
+
     // Initialize drag and drop functionality
     setupDragAndDrop();
     
