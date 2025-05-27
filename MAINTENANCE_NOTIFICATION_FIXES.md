@@ -137,9 +137,9 @@ if (!nextDate) {
 - No cleanup of old tracking records
 
 **Solution:**
-- Added overdue detection (notifications for 1-3 days past due)
+- ~~Added overdue detection (notifications for 1-3 days past due)~~ **REMOVED** - Overdue detection removed per user request
 - Implemented tracking record cleanup
-- Added safety checks for past-due maintenance
+- ~~Added safety checks for past-due maintenance~~ **REMOVED** - No longer checking for overdue events
 - Enhanced duplicate prevention
 
 ### **6. ERROR HANDLING & MONITORING - ADDED ✅**
@@ -190,8 +190,8 @@ if (daysOut >= -7 && daysOut < 0) {
 
 ## 🛡️ **SAFETY MECHANISMS ADDED**
 
-### **1. Overdue Detection**
-```javascript
+### **1. ~~Overdue Detection~~ REMOVED**
+~~```javascript
 // Safety net: notify for overdue specific dates (1-3 days past due)
 if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
     // Send overdue notification (only once)
@@ -201,7 +201,9 @@ if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
 if (daysOut >= -7 && daysOut < 0) {
     debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago`);
 }
-```
+```~~
+
+**REMOVED** - Overdue detection has been completely removed. The system no longer checks for or sends notifications about overdue maintenance events or expired warranties. If the server goes down and misses a notification, it will not attempt to catch up.
 
 ### **2. Duplicate Prevention**
 - Tracking keys prevent duplicate notifications

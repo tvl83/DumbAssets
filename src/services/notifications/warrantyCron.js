@@ -242,10 +242,7 @@ async function startWarrantyCron() {
                     }
                 });
 
-                // Safety check for expired warranties (1-7 days past expiration)
-                if (daysOut >= -7 && daysOut < 0) {
-                    debugLog(`[WARNING] ${warrantyType} expired ${Math.abs(daysOut)} days ago for ${assetType.toLowerCase()}: ${asset.name}`);
-                }
+                // Remove overdue detection - we don't care if server goes down and misses notifications
             } catch (error) {
                 debugLog(`[ERROR] Error processing ${warrantyType.toLowerCase()} for ${isSubAsset ? 'component' : 'asset'} "${asset.name}":`, error.message);
             }
@@ -439,12 +436,7 @@ async function checkMaintenanceSchedules() {
             return true;
         }
         
-        // Add safety check for overdue maintenance (more than 7 days past due)
-        const daysPastDue = -dueDate.diffNow('days').days;
-        if (daysPastDue > 7) {
-            debugLog(`[WARNING] Maintenance event is ${daysPastDue} days overdue: ${eventName} on asset: ${assetId}`);
-            // Could optionally send an overdue notification here
-        }
+        // Remove overdue detection - we don't care if server goes down and misses notifications
         
         return false;
     }
@@ -525,26 +517,6 @@ async function checkMaintenanceSchedules() {
                             });
                             
                             debugLog(`[DEBUG] Due date notification triggered for specific date maintenance: ${event.name} on asset ${asset.id}`);
-                        }
-                    }
-                    // Safety net: notify for overdue specific dates (1-3 days past due, only once)
-                    else if (daysUntilEvent >= -3 && daysUntilEvent < 0) {
-                        const overdueTrackingKey = `${asset.id}_${event.name}_specific_overdue_${eventDateStr}`;
-                        const overdueTracking = maintenanceTracking.find(t => t.key === overdueTrackingKey);
-                        
-                        if (!overdueTracking) {
-                            shouldNotify = true;
-                            desc = `OVERDUE (was due ${eventDateStr})`;
-                            
-                            // Add tracking for overdue notification
-                            maintenanceTracking.push({
-                                key: overdueTrackingKey,
-                                lastNotified: today,
-                                eventDate: eventDateStr,
-                                notificationType: 'overdue'
-                            });
-                            
-                            debugLog(`[DEBUG] Overdue notification triggered for specific date maintenance: ${event.name} on asset ${asset.id} - ${Math.abs(daysUntilEvent)} days overdue`);
                         }
                     }
                 }
