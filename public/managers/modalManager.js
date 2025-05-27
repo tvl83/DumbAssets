@@ -73,7 +73,7 @@ export class ModalManager {
         this.subAssetTagManager = subAssetTagManager;
         this.maintenanceManager = maintenanceManager;
         
-        // Store state getters
+        // Store global state getters
         this.getAssets = getAssets;
         this.getSubAssets = getSubAssets;
         
@@ -89,6 +89,10 @@ export class ModalManager {
         this.deleteSubPhoto = false;
         this.deleteSubReceipt = false;
         this.deleteSubManual = false;
+        
+        // Store keyboard event handlers to prevent duplication
+        this.assetKeydownHandler = null;
+        this.subAssetKeydownHandler = null;
         
         // Initialize event listeners
         this.initializeEventListeners();
@@ -190,6 +194,12 @@ export class ModalManager {
         // Clear file inputs and previews
         this.clearFileInputs();
 
+        // Remove keyboard event handler
+        if (this.assetKeydownHandler) {
+            this.assetModal.removeEventListener('keydown', this.assetKeydownHandler);
+            this.assetKeydownHandler = null;
+        }
+
         this.assetModal.style.display = 'none';
         this.currentAsset = null;
         this.isEditMode = false;
@@ -259,6 +269,12 @@ export class ModalManager {
 
         // Clear file inputs and previews
         this.clearSubAssetFileInputs();
+
+        // Remove keyboard event handler
+        if (this.subAssetKeydownHandler) {
+            this.subAssetModal.removeEventListener('keydown', this.subAssetKeydownHandler);
+            this.subAssetKeydownHandler = null;
+        }
 
         this.subAssetModal.style.display = 'none';
         this.currentSubAsset = null;
@@ -761,23 +777,39 @@ export class ModalManager {
     }
     
     setupAssetKeyboardShortcuts() {
-        const assetKeydownHandler = (e) => {
+        // Remove existing handler if it exists
+        if (this.assetKeydownHandler) {
+            this.assetModal.removeEventListener('keydown', this.assetKeydownHandler);
+        }
+        
+        // Create new handler
+        this.assetKeydownHandler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 this.assetForm.dispatchEvent(new Event('submit'));
             }
         };
-        this.assetModal.addEventListener('keydown', assetKeydownHandler);
+        
+        // Add the new handler
+        this.assetModal.addEventListener('keydown', this.assetKeydownHandler);
     }
     
     setupSubAssetKeyboardShortcuts() {
-        const subAssetKeydownHandler = (e) => {
+        // Remove existing handler if it exists
+        if (this.subAssetKeydownHandler) {
+            this.subAssetModal.removeEventListener('keydown', this.subAssetKeydownHandler);
+        }
+        
+        // Create new handler
+        this.subAssetKeydownHandler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 this.subAssetForm.dispatchEvent(new Event('submit'));
             }
         };
-        this.subAssetModal.addEventListener('keydown', subAssetKeydownHandler);
+        
+        // Add the new handler
+        this.subAssetModal.addEventListener('keydown', this.subAssetKeydownHandler);
     }
     
     setupAssetModalButtons() {
