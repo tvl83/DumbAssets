@@ -14,8 +14,9 @@ export class DashboardManager {
         formatDate,
         formatCurrency,
         
-        // Chart manager
+        // Managers
         chartManager,
+        settingsManager,
         
         // UI functions
         updateDashboardFilter,
@@ -44,6 +45,7 @@ export class DashboardManager {
         
         // Store chart manager
         this.chartManager = chartManager;
+        this.settingsManager = settingsManager;
         
         // Store UI functions
         this.updateDashboardFilter = updateDashboardFilter;
@@ -68,9 +70,9 @@ export class DashboardManager {
         this.eventsPerPage = 5;
     }
     
-    getDashboardSectionVisibility() {
+    async getDashboardSectionVisibility() {
         // Default: all visible
-        const defaultState = { totals: true, warranties: true, analytics: true, events: true };
+        const defaultState = { analytics: true, totals: true, warranties: true, events: true };
         try {
             const cachedSettings = localStorage.getItem('dumbAssetSettings');
             if (cachedSettings) {
@@ -78,29 +80,35 @@ export class DashboardManager {
                 if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
                     return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
                 }
+            } else {
+                const settings = await this.settingsManager.fetchSettings();
+                if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
+                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
+                }
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error(e);
+        }
         return defaultState;
     }
     
-    getDashboardOrder() {
+    async getDashboardOrder() {
         // Default order
         let order = ['analytics', 'totals', 'warranties', 'events'];
         
         try {
             // Try to get from localStorage as a quick cache
-            const cachedSettings = localStorage.getItem('dumbAssetSettings');
-            if (cachedSettings) {
-                const settings = JSON.parse(cachedSettings);
+            let settings = localStorage.getItem('dumbAssetSettings');
+            if (settings) {
+                settings = JSON.parse(settings);
                 if (settings.interfaceSettings?.dashboardOrder && 
                     Array.isArray(settings.interfaceSettings.dashboardOrder) && 
                     settings.interfaceSettings.dashboardOrder.length >= 3) {
                     order = settings.interfaceSettings.dashboardOrder;
-                    // Add events to existing orders that don't have it
-                    if (!order.includes('events')) {
-                        order.push('events');
-                    }
                 }
+            } else {
+                settings = await this.settingsManager.fetchSettings();
+                order = settings.interfaceSettings?.dashboardOrder || order;
             }
         } catch (err) {
             console.error('Error getting dashboard order', err);
@@ -109,16 +117,33 @@ export class DashboardManager {
         return order;
     }
     
-    getDashboardCardVisibility() {
+    async getDashboardCardVisibility() {
+        const defaultVisibility = {
+            assets: true,
+            components: true,
+            value: true,
+            warranties: true,
+            within60: true,
+            within30: true,
+            expired: true,
+            active: true
+        };
+
         try {
-            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings'));
-            return (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
+            let settings = localStorage.getItem('dumbAssetSettings');
+            if (settings) {
+                settings = JSON.parse(settings);
+                return settings.interfaceSettings.cardVisibility;
+            } else {
+                settings = await this.settingsManager.fetchSettings();
+                return settings.interfaceSettings?.cardVisibility || defaultVisibility;
+            }
         } catch {
-            return {};
+            return defaultVisibility;
         }
     }
     
-    renderDashboard(shouldAnimateCharts = true) {
+    async renderDashboard(shouldAnimateCharts = true) {
         const assets = this.getAssets();
         const subAssets = this.getSubAssets();
         const dashboardFilter = this.getDashboardFilter();
@@ -136,7 +161,7 @@ export class DashboardManager {
         const totalValue = totalAssetsValue + totalSubAssetsValue;
         
         // Get dashboard section order
-        const sectionOrder = this.getDashboardOrder();
+        const sectionOrder = await this.getDashboardOrder();
         
         const assetWarranties = assets.filter(a => a.warranty && (a.warranty.expirationDate || a.warranty.isLifetime));
         const subAssetWarranties = subAssets.filter(sa => sa.warranty && (sa.warranty.expirationDate || sa.warranty.isLifetime));
@@ -166,10 +191,10 @@ export class DashboardManager {
             }
         });
         
-        const sectionVisibility = this.getDashboardSectionVisibility();
+        const sectionVisibility = await this.getDashboardSectionVisibility();
 
         // Prepare per-card visibility
-        const cardVisibility = this.getDashboardCardVisibility();
+        const cardVisibility = await this.getDashboardCardVisibility();
         
         // Prepare HTML sections for each dashboard component
         const totalsSection = sectionVisibility.totals ? `
@@ -244,10 +269,10 @@ export class DashboardManager {
         
         // Map of section names to their HTML
         const sectionMap = {
+            'analytics': analyticsSection,
             'totals': totalsSection,
             'warranties': warrantiesSection,
-            'events': eventsSection,
-            'analytics': analyticsSection
+            'events': eventsSection
         };
         
         // Build the sections in the custom order
