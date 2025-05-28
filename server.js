@@ -33,6 +33,32 @@ const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
 const VERSION = packageJson.version;
+const DEFAULT_SETTINGS = {
+    notificationSettings: {
+        notifyAdd: true,
+        notifyDelete: false,
+        notifyEdit: true,
+        notify1Month: true,
+        notify2Week: false,
+        notify7Day: true,
+        notify3Day: false,
+        notifyMaintenance: false
+    },
+    interfaceSettings: {
+        dashboardOrder: ["analytics", "totals", "warranties", "events"],
+        dashboardVisibility: { analytics: true, totals: true, warranties: true, events: true }
+    },
+    cardVisibility: {
+        assets: true,
+        components: true,
+        value: true,
+        warranties: true,
+        within60: true,
+        within30: true,
+        expired: true,
+        active: true
+    }
+};
 
 generatePWAManifest(SITE_TITLE);
 // Set timezone from environment variable or default to America/Chicago
@@ -1260,43 +1286,24 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
 app.get('/api/settings', authMiddleware, (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
+        // Return default settings if config does not exist
         if (!fs.existsSync(configPath)) {
-            // Default settings if config does not exist
-            return res.json({
-                notificationSettings: {
-                    notifyAdd: true,
-                    notifyDelete: false,
-                    notifyEdit: true,
-                    notify1Month: true,
-                    notify2Week: false,
-                    notify7Day: true,
-                    notify3Day: false,
-                    notifyMaintenance: false
-                },
-                interfaceSettings: {
-                    dashboardOrder: ["totals", "warranties", "analytics"],
-                    dashboardVisibility: { totals: true, warranties: true, analytics: true }
-                }
-            });
+            return res.json(DEFAULT_SETTINGS);
         }
+
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        // Ensure dashboardVisibility always present
         if (!config.interfaceSettings) config.interfaceSettings = {};
-        if (!config.interfaceSettings.dashboardVisibility) {
-            config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
+        if (!config.notificationSettings) {
+            config.notificationSettings = DEFAULT_SETTINGS.notificationSettings;
         }
-        // Ensure cardVisibility is present in interfaceSettings
+        if (!config.interfaceSettings.dashboardOrder) {
+            config.interfaceSettings.dashboardOrder = DEFAULT_SETTINGS.interfaceSettings.dashboardOrder;
+        }
+        if (!config.interfaceSettings.dashboardVisibility) {
+            config.interfaceSettings.dashboardVisibility = DEFAULT_SETTINGS.interfaceSettings.dashboardVisibility;
+        }
         if (!config.interfaceSettings.cardVisibility) {
-            config.interfaceSettings.cardVisibility = {
-                assets: true,
-                components: true,
-                value: true,
-                warranties: true,
-                within60: true,
-                within30: true,
-                expired: true,
-                active: true
-            };
+            config.interfaceSettings.cardVisibility = DEFAULT_SETTINGS.cardVisibility;
         }
         res.json(config);
     } catch (err) {

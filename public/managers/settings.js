@@ -10,8 +10,7 @@ export class SettingsManager {
         testNotificationSettings,
         setButtonLoading,
         showToast,
-        renderDashboard,
-        getDashboardOrder
+        renderDashboard
     }) {
         this.settingsBtn = settingsBtn;
         this.settingsModal = settingsModal;
@@ -23,7 +22,6 @@ export class SettingsManager {
         this.setButtonLoading = setButtonLoading;
         this.showToast = showToast;
         this.renderDashboard = renderDashboard;
-        this.getDashboardOrder = getDashboardOrder;
         this.selectedAssetId = null;
         this.DEBUG = false;
         this._bindEvents();
@@ -72,11 +70,23 @@ export class SettingsManager {
         }
     }
 
+    async fetchSettings() {
+        try {
+            const response = await fetch('/api/settings', { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch settings');
+            const settings = await response.json();
+            return JSON.parse(JSON.stringify(settings)); // Deep clone to avoid mutation
+        } catch (err) {
+            console.error('Error fetching settings:', err);
+            return null;
+        }
+    }
+
     async loadSettings() {
         try {
             const response = await fetch('/api/settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to load settings');
-            const settings = await response.json();
+            const settings = await this.fetchSettings();
             const notificationSettings = settings.notificationSettings || {};
             this.notificationForm.notifyAdd.checked = !!notificationSettings.notifyAdd;
             this.notificationForm.notifyDelete.checked = !!notificationSettings.notifyDelete;
@@ -96,12 +106,7 @@ export class SettingsManager {
                 if (dashboardSectionsContainer) {
                     const sections = dashboardSectionsContainer.querySelectorAll('.sortable-item');
                     const orderedSections = [];
-                    
-                    // Ensure Events is included in the order if it's missing
                     let orderToUse = [...interfaceSettings.dashboardOrder];
-                    if (!orderToUse.includes('events')) {
-                        orderToUse.push('events');
-                    }
                     
                     orderToUse.forEach(sectionName => {
                         Array.from(sections).forEach(section => {
@@ -127,7 +132,7 @@ export class SettingsManager {
             // Dashboard visibility - ensure Events defaults to true
             const vis = interfaceSettings.dashboardVisibility || {};
             // Set defaults for any missing values
-            const visibilityDefaults = { totals: true, warranties: true, analytics: true, events: true };
+            const visibilityDefaults = { analytics: true, totals: true, warranties: true, events: true };
             const finalVisibility = { ...visibilityDefaults, ...vis };
             
             document.getElementById('toggleTotals').checked = finalVisibility.totals;
@@ -139,6 +144,7 @@ export class SettingsManager {
                 window.renderCardVisibilityToggles(settings);
             }
             localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+            return settings;
         } catch (err) {
             console.error('Error loading settings:', err);
             // Set default values when loading fails
@@ -170,9 +176,9 @@ export class SettingsManager {
             interfaceSettings: {
                 dashboardOrder: [],
                 dashboardVisibility: {
+                    analytics: document.getElementById('toggleAnalytics').checked,
                     totals: document.getElementById('toggleTotals').checked,
                     warranties: document.getElementById('toggleWarranties').checked,
-                    analytics: document.getElementById('toggleAnalytics').checked,
                     events: document.getElementById('toggleEvents').checked
                 },
                 cardVisibility: {

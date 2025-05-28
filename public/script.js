@@ -1252,19 +1252,36 @@ document.addEventListener('DOMContentLoaded', () => {
         getSubAssets: () => subAssets
     });
 
+    // Initialize SettingsManager after DashboardManager is ready
+    if (settingsBtn && settingsModal && notificationForm && saveSettings && cancelSettings && settingsClose && testNotificationSettings) {
+        settingsManager = new SettingsManager({
+            settingsBtn,
+            settingsModal,
+            notificationForm,
+            saveSettings,
+            cancelSettings,
+            settingsClose,
+            testNotificationSettings,
+            setButtonLoading,
+            showToast,
+            renderDashboard
+        });
+    }
+
     // Initialize DashboardManager after DOM elements are ready
     dashboardManager = new DashboardManager({
         // DOM elements
         assetDetails,
         subAssetContainer,
         searchInput,
-        
+
         // Utility functions
         formatDate,
         formatCurrency,
         
-        // Chart manager
+        // Managers
         chartManager,
+        settingsManager,
         
         // UI functions
         updateDashboardFilter,
@@ -1282,24 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         getCurrentSort: () => currentSort,
         getSelectedAssetId: () => selectedAssetId
     });
-
-    // Initialize SettingsManager after DashboardManager is ready
-    if (settingsBtn && settingsModal && notificationForm && saveSettings && cancelSettings && settingsClose && testNotificationSettings) {
-        settingsManager = new SettingsManager({
-            settingsBtn,
-            settingsModal,
-            notificationForm,
-            saveSettings,
-            cancelSettings,
-            settingsClose,
-            testNotificationSettings,
-            setButtonLoading,
-            showToast,
-            renderDashboard,
-            getDashboardOrder: () => dashboardManager.getDashboardOrder()
-        });
-    }
-    }
+}
 
     function setupDragIcons() {
         // --- Inject SVG into .sortable-handle elements (Settings UI) ---
