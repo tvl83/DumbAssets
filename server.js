@@ -1123,6 +1123,13 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
             const get = idx => (mappings[idx] !== undefined && mappings[idx] !== "" && row[mappings[idx]] !== undefined) ? row[mappings[idx]] : "";
             const name = get('name');
             if (!name) continue;
+            // Parse lifetime warranty value
+            const lifetimeValue = get('lifetime');
+            const isLifetime = lifetimeValue ? 
+                (lifetimeValue.toString().toLowerCase() === 'true' || 
+                 lifetimeValue.toString().toLowerCase() === '1' || 
+                 lifetimeValue.toString().toLowerCase() === 'yes') : false;
+
             const asset = {
                 id: generateId(),
                 name: name,
@@ -1135,7 +1142,8 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 link: get('url'),
                 warranty: {
                     scope: get('warranty'),
-                    expirationDate: parseExcelDate(get('warrantyExpiration'))
+                    expirationDate: isLifetime ? null : parseExcelDate(get('warrantyExpiration')),
+                    isLifetime: isLifetime
                 },
                 secondaryWarranty: {
                     scope: get('secondaryWarranty'),
