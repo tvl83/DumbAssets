@@ -267,8 +267,9 @@ export class SettingsManager {
                 this.renderDashboard();
             }
         } catch (err) {
-            alert('Failed to save settings.');
             console.error(err);
+            this.showToast('Failed to save settings', 'error');
+            // alert('Failed to save settings.');
         } finally {
             this.setButtonLoading(this.saveSettings, false);
         }
@@ -301,7 +302,7 @@ export class SettingsManager {
         })
         .catch(error => {
             console.error('Error sending test notifications:', error);
-            this.showToast('Failed to send test notifications');
+            this.showToast('Failed to send test notifications', 'error');
         })
         .finally(() => {
             this.setButtonLoading(this.testNotificationSettings, false);

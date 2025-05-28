@@ -395,9 +395,9 @@ function renderAssetDetails(assetId, isSubAsset = false) {
     }
     const deleteBtn = assetDetails.querySelector('.delete-asset-btn');
     if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
-            if (isSub) deleteSubAsset(asset.id);
-            else deleteAsset(asset.id);
+        deleteBtn.addEventListener('click', async () => {
+            if (isSub) await deleteSubAsset(asset.id);
+            else await deleteAsset(asset.id);
         });
     }
     

@@ -10,7 +10,8 @@ export class ImportManager {
         columnSelects,
         showToast,
         setButtonLoading,
-        loadAssets
+        loadAssets,
+        renderDashboard
     }) {
         this.importModal = importModal;
         this.importBtn = importBtn;
@@ -20,6 +21,7 @@ export class ImportManager {
         this.showToast = showToast;
         this.setButtonLoading = setButtonLoading;
         this.loadAssets = loadAssets;
+        this.renderDashboard = renderDashboard;
         this._bindEvents();
     }
 
@@ -100,7 +102,7 @@ export class ImportManager {
             this.startImportBtn.disabled = headers.length === 0;
         } catch (error) {
             console.error('Error reading file:', error);
-            alert('Failed to read file: ' + error.message);
+            this.showToast('Failed to read file: ' + error.message, 'error');
         }
     }
 
@@ -126,7 +128,7 @@ export class ImportManager {
             tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : ''
         };
         if (!mappings.name) {
-            alert('Please map the Name column');
+            this.showToast('Please map the Name column', 'error');
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
@@ -143,7 +145,8 @@ export class ImportManager {
                 // Validate name
                 const nameIdx = mappings.name !== '' ? parseInt(mappings.name) : -1;
                 if (nameIdx === -1 || !row[nameIdx] || !row[nameIdx].trim()) {
-                    alert(`Row ${i+2}: Name is required.`);
+                    // alert(`Row ${i+2}: Name is required.`);
+                    this.showToast(`Row ${i+2}: Name is required.`, 'error');
                     this.setButtonLoading(this.startImportBtn, false);
                     return;
                 }
@@ -153,7 +156,8 @@ export class ImportManager {
                     if (idx !== -1 && row[idx] && row[idx].trim()) {
                         const val = row[idx].replace(/"/g, '');
                         if (isNaN(Date.parse(val))) {
-                            alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
+                            // alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
+                            this.showToast(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`, 'error');
                             this.setButtonLoading(this.startImportBtn, false);
                             return;
                         }
@@ -161,7 +165,9 @@ export class ImportManager {
                 }
             }
         } catch (validationError) {
-            alert('Validation error: ' + validationError.message);
+            console.error('Validation error:', validationError);
+            // alert('Validation error: ' + validationError.message);
+            this.showToast(`Validation error: ${validationError.message}`, 'error');
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
@@ -184,7 +190,7 @@ export class ImportManager {
                 throw new Error(errorData.error || 'Import failed');
             }
             const result = await response.json();
-            alert(`Successfully imported ${result.importedCount} assets`);
+            this.showToast(`Successfully imported ${result.importedCount} assets`, 'success');
             this.importModal.style.display = 'none';
             this.importFile.value = '';
             this.startImportBtn.disabled = true;
@@ -194,10 +200,10 @@ export class ImportManager {
             });
             await this.loadAssets();
             // Rerender dashboard after import
-            if (window.renderDashboard) window.renderDashboard();
+            this.renderDashboard(true);
         } catch (error) {
             console.error('Import error:', error);
-            alert('Failed to import assets: ' + error.message);
+            this.showToast(`Import failed: ${error.message}`, 'error');
             this.setButtonLoading(this.startImportBtn, false);
         }
     }
@@ -323,16 +329,4 @@ export class ImportManager {
             URL.revokeObjectURL(url);
         }, 0);
     }
-}
-
-// Make resetImportForm globally accessible for fileUploader.js
-if (typeof window !== 'undefined') {
-    window.resetImportForm = (...args) => {
-        if (typeof ImportManager !== 'undefined' && ImportManager.prototype.resetImportForm) {
-            // Find the importManager instance if possible
-            if (window.importManager && typeof window.importManager.resetImportForm === 'function') {
-                window.importManager.resetImportForm(...args);
-            }
-        }
-    };
 }
