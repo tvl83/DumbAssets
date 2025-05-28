@@ -12,6 +12,8 @@ export class SettingsManager {
         showToast,
         renderDashboard
     }) {
+        this.localSettingsStorageKey = 'dumbAssetSettings';
+        this.localSettingsLastOpenedPaneKey = 'dumbAssetSettingsLastOpenedPane';
         this.settingsBtn = settingsBtn;
         this.settingsModal = settingsModal;
         this.notificationForm = notificationForm;
@@ -25,6 +27,37 @@ export class SettingsManager {
         this.selectedAssetId = null;
         this.DEBUG = false;
         this._bindEvents();
+        this.defaultSettings = window.appConfig?.defaultSettings || {
+            notificationSettings: {
+                notifyAdd: true,
+                notifyDelete: false,
+                notifyEdit: true,
+                notify1Month: true,
+                notify2Week: false,
+                notify7Day: true,
+                notify3Day: false,
+                notifyMaintenance: true // Default to true for compatibility
+            },
+            interfaceSettings: {
+                dashboardOrder: [],
+                dashboardVisibility: {
+                    analytics: true,
+                    totals: true,
+                    warranties: true,
+                    events: true
+                },
+                cardVisibility: {
+                    assets: true,
+                    components: true,
+                    value: true,
+                    warranties: true,
+                    within60: true,
+                    within30: true,
+                    expired: true,
+                    active: true
+                }
+            }
+        };
     }
 
     _bindEvents() {
@@ -32,7 +65,7 @@ export class SettingsManager {
             await this.loadSettings();
             this.settingsModal.style.display = 'block';
             // Use last opened tab if available
-            const lastTab = localStorage.getItem('dumbAssetSettingsLastOpenedPane') || 'notifications';
+            const lastTab = localStorage.getItem(this.localSettingsLastOpenedPaneKey) || 'notifications';
             this.showSettingsTab(lastTab);
         });
         this.settingsClose.addEventListener('click', () => this.closeSettingsModal());
@@ -43,7 +76,7 @@ export class SettingsManager {
             btn.addEventListener('click', () => {
                 const tabId = btn.getAttribute('data-tab');
                 // Save last opened tab to localStorage
-                localStorage.setItem('dumbAssetSettingsLastOpenedPane', tabId);
+                localStorage.setItem(this.localSettingsLastOpenedPaneKey, tabId);
                 this.showSettingsTab(tabId);
             });
         });
@@ -70,6 +103,10 @@ export class SettingsManager {
         }
     }
 
+    getDefaultSettings() {
+        return this.defaultSettings;
+    }
+
     async fetchSettings() {
         try {
             const response = await fetch('/api/settings', { credentials: 'include' });
@@ -77,17 +114,33 @@ export class SettingsManager {
             const settings = await response.json();
             return JSON.parse(JSON.stringify(settings)); // Deep clone to avoid mutation
         } catch (err) {
-            console.error('Error fetching settings:', err);
-            return null;
+            console.error('Error fetching settings - returning default settings:', err);
+            return this.getDefaultSettings(); // Return default settings on error
         }
+    }
+
+    getSettingsFromLocalStorage() {
+        const localSettings = localStorage.getItem(this.localSettingsStorageKey);
+        if (localSettings) {
+            try {
+                const parsedSettings = JSON.parse(localSettings);
+                const mergedSettings = {
+                    ...this.getDefaultSettings(),
+                    ...parsedSettings
+                };
+                return { ...mergedSettings };
+            } catch (err) {
+                console.error('Error parsing settings from localStorage:', err);
+                return null;
+            }
+        }
+        return null;
     }
 
     async loadSettings() {
         try {
-            const response = await fetch('/api/settings', { credentials: 'include' });
-            if (!response.ok) throw new Error('Failed to load settings');
-            const settings = await this.fetchSettings();
-            const notificationSettings = settings.notificationSettings || {};
+            const settings = { ...await this.fetchSettings() };
+            const notificationSettings = settings.notificationSettings;
             this.notificationForm.notifyAdd.checked = !!notificationSettings.notifyAdd;
             this.notificationForm.notifyDelete.checked = !!notificationSettings.notifyDelete;
             this.notificationForm.notifyEdit.checked = !!notificationSettings.notifyEdit;
@@ -99,7 +152,7 @@ export class SettingsManager {
                 ? !!notificationSettings.notifyMaintenance
                 : (settings.notifyMaintenance !== false);
                 
-            const interfaceSettings = settings.interfaceSettings || {};
+            const interfaceSettings = settings.interfaceSettings;
             // Dashboard order
             if (interfaceSettings.dashboardOrder && Array.isArray(interfaceSettings.dashboardOrder)) {
                 const dashboardSectionsContainer = document.getElementById('dashboardSections');
@@ -143,18 +196,18 @@ export class SettingsManager {
             if (typeof window.renderCardVisibilityToggles === 'function') {
                 window.renderCardVisibilityToggles(settings);
             }
-            localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+            localStorage.setItem(this.localSettingsStorageKey, JSON.stringify(settings));
             return settings;
         } catch (err) {
             console.error('Error loading settings:', err);
             // Set default values when loading fails
-            this.notificationForm.notifyAdd.checked = true;
-            this.notificationForm.notifyDelete.checked = false;
-            this.notificationForm.notifyEdit.checked = true;
-            this.notificationForm.notify1Month.checked = true;
-            this.notificationForm.notify2Week.checked = false;
-            this.notificationForm.notify7Day.checked = true;
-            this.notificationForm.notify3Day.checked = false;
+            this.notificationForm.notifyAdd.checked = this.defaultSettings.notificationSettings.notifyAdd;
+            this.notificationForm.notifyDelete.checked = this.defaultSettings.notificationSettings.notifyDelete;
+            this.notificationForm.notifyEdit.checked = this.defaultSettings.notificationSettings.notifyEdit;
+            this.notificationForm.notify1Month.checked = this.defaultSettings.notificationSettings.notify1Month;
+            this.notificationForm.notify2Week.checked = this.defaultSettings.notificationSettings.notify2Week;
+            this.notificationForm.notify7Day.checked = this.defaultSettings.notificationSettings.notify7Day;
+            this.notificationForm.notify3Day.checked = this.defaultSettings.notificationSettings.notify3Day;
             // Ensure Events toggle is enabled by default when loading fails
             document.getElementById('toggleEvents').checked = true;
         }
@@ -197,6 +250,7 @@ export class SettingsManager {
         dashboardSections.forEach(section => {
             settings.interfaceSettings.dashboardOrder.push(section.getAttribute('data-section'));
         });
+
         try {
             const response = await fetch('/api/settings', {
                 method: 'POST',
@@ -205,9 +259,8 @@ export class SettingsManager {
                 credentials: 'include'
             });
             if (!response.ok) throw new Error('Failed to save settings');
-            // Merge notifyMaintenance to root for legacy/compatibility
-            const mergedSettings = { ...settings, notifyMaintenance: settings.notificationSettings.notifyMaintenance };
-            localStorage.setItem('dumbAssetSettings', JSON.stringify(mergedSettings));
+            const settingsCopy = { ...settings };
+            localStorage.setItem(this.localSettingsStorageKey, JSON.stringify(settingsCopy));
             this.closeSettingsModal();
             this.showToast('Settings saved');
             if (!this.selectedAssetId && typeof this.renderDashboard === 'function') {
@@ -436,10 +489,9 @@ export class SettingsManager {
                 newOrder.push(item.getAttribute('data-section'));
             });
             try {
-                const settings = JSON.parse(localStorage.getItem('dumbAssetSettings')) || {};
-                if (!settings.interfaceSettings) settings.interfaceSettings = {};
+                const settings = self.getSettingsFromLocalStorage() || self.defaultSettings;
                 settings.interfaceSettings.dashboardOrder = newOrder;
-                localStorage.setItem('dumbAssetSettings', JSON.stringify(settings));
+                localStorage.setItem(self.localSettingsStorageKey, JSON.stringify(settings));
             } catch (err) {
                 console.error('Error updating local storage', err);
             }
