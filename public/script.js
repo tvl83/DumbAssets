@@ -28,7 +28,7 @@ import {
 } from '/src/services/render/index.js';
 import { ChartManager } from '/managers/charts.js';
 // Initialize chart manager
-const chartManager = new ChartManager();
+let chartManager = null;
 // Use setupFilePreview from the render index.js
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 // Import collapsible sections functionality
@@ -1268,7 +1268,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize DashboardManager after DOM elements are ready
+    // Initialize ChartManager and DashboardManager after SettingsManager is ready
+    chartManager = new ChartManager(settingsManager);
     dashboardManager = new DashboardManager({
         // DOM elements
         assetDetails,

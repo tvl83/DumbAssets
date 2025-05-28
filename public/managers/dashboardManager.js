@@ -71,76 +71,62 @@ export class DashboardManager {
     }
     
     async getDashboardSectionVisibility() {
-        // Default: all visible
-        const defaultState = { analytics: true, totals: true, warranties: true, events: true };
         try {
-            const cachedSettings = localStorage.getItem('dumbAssetSettings');
-            if (cachedSettings) {
-                const settings = JSON.parse(cachedSettings);
-                if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
-                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings) {
+                if (localSettings.interfaceSettings && localSettings.interfaceSettings.dashboardVisibility) {
+                    return { ...localSettings.interfaceSettings.dashboardVisibility };
                 }
             } else {
                 const settings = await this.settingsManager.fetchSettings();
                 if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
-                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
+                    return { ...settings.interfaceSettings.dashboardVisibility };
                 }
             }
         } catch (e) {
             console.error(e);
         }
-        return defaultState;
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return { ...defaultSettings.interfaceSettings.dashboardVisibility };
     }
     
     async getDashboardOrder() {
-        // Default order
-        let order = ['analytics', 'totals', 'warranties', 'events'];
-        
+        // DASHBOARD ORDER IS AN ARRAY
         try {
             // Try to get from localStorage as a quick cache
-            let settings = localStorage.getItem('dumbAssetSettings');
-            if (settings) {
-                settings = JSON.parse(settings);
-                if (settings.interfaceSettings?.dashboardOrder && 
-                    Array.isArray(settings.interfaceSettings.dashboardOrder) && 
-                    settings.interfaceSettings.dashboardOrder.length >= 3) {
-                    order = settings.interfaceSettings.dashboardOrder;
-                }
-            } else {
-                settings = await this.settingsManager.fetchSettings();
-                order = settings.interfaceSettings?.dashboardOrder || order;
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings && localSettings.interfaceSettings?.dashboardOrder) {
+                return [ ...localSettings.interfaceSettings.dashboardOrder] ;
+            }
+            else {
+                const settings = await this.settingsManager.fetchSettings();
+                return [ ...settings.interfaceSettings.dashboardOrder];
             }
         } catch (err) {
             console.error('Error getting dashboard order', err);
         }
-        
-        return order;
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return [ ...defaultSettings.interfaceSettings.dashboardOrder] ;
     }
     
     async getDashboardCardVisibility() {
-        const defaultVisibility = {
-            assets: true,
-            components: true,
-            value: true,
-            warranties: true,
-            within60: true,
-            within30: true,
-            expired: true,
-            active: true
-        };
-
         try {
-            let settings = localStorage.getItem('dumbAssetSettings');
-            if (settings) {
-                settings = JSON.parse(settings);
-                return settings.interfaceSettings.cardVisibility;
-            } else {
-                settings = await this.settingsManager.fetchSettings();
-                return settings.interfaceSettings?.cardVisibility || defaultVisibility;
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings && localSettings.interfaceSettings?.cardVisibility) {
+                return { ...localSettings.interfaceSettings.cardVisibility};
+            } 
+            else {
+                const settings = await this.settingsManager.fetchSettings();
+                return { ...settings.interfaceSettings.cardVisibility};
             }
-        } catch {
-            return defaultVisibility;
+        } catch (e) {
+            console.error('Error getting dashboard card visibility', e);
         }
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return { ...defaultSettings.interfaceSettings.cardVisibility};
     }
     
     async renderDashboard(shouldAnimateCharts = true) {
@@ -160,8 +146,6 @@ export class DashboardManager {
         const totalSubAssetsValue = subAssets.reduce((sum, sa) => sum + (parseFloat(sa.purchasePrice) || 0), 0);
         const totalValue = totalAssetsValue + totalSubAssetsValue;
         
-        // Get dashboard section order
-        const sectionOrder = await this.getDashboardOrder();
         
         const assetWarranties = assets.filter(a => a.warranty && (a.warranty.expirationDate || a.warranty.isLifetime));
         const subAssetWarranties = subAssets.filter(sa => sa.warranty && (sa.warranty.expirationDate || sa.warranty.isLifetime));
@@ -190,10 +174,9 @@ export class DashboardManager {
                 active++;
             }
         });
-        
-        const sectionVisibility = await this.getDashboardSectionVisibility();
 
-        // Prepare per-card visibility
+        const sectionOrder = await this.getDashboardOrder();
+        const sectionVisibility = await this.getDashboardSectionVisibility();
         const cardVisibility = await this.getDashboardCardVisibility();
         
         // Prepare HTML sections for each dashboard component
@@ -268,12 +251,11 @@ export class DashboardManager {
             </fieldset>` : '';
         
         // Map of section names to their HTML
-        const sectionMap = {
-            'analytics': analyticsSection,
-            'totals': totalsSection,
-            'warranties': warrantiesSection,
-            'events': eventsSection
-        };
+        const sectionMap = {};
+        if (sectionVisibility.analytics) sectionMap['analytics'] = analyticsSection;
+        if (sectionVisibility.totals) sectionMap['totals'] = totalsSection;
+        if (sectionVisibility.warranties) sectionMap['warranties'] = warrantiesSection;
+        if (sectionVisibility.events) sectionMap['events'] = eventsSection;
         
         // Build the sections in the custom order
         let orderedSections = '';
@@ -298,7 +280,10 @@ export class DashboardManager {
         }
         
         // Only create charts if shouldAnimateCharts is true
-        this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
+        if (sectionVisibility.analytics)
+            this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
+        else
+            this.chartManager.destroyAllCharts();
         
         // Add click handler for clear filters button
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');

@@ -46,18 +46,18 @@ const DEFAULT_SETTINGS = {
     },
     interfaceSettings: {
         dashboardOrder: ["analytics", "totals", "warranties", "events"],
-        dashboardVisibility: { analytics: true, totals: true, warranties: true, events: true }
+        dashboardVisibility: { analytics: true, totals: true, warranties: true, events: true },
+        cardVisibility: {
+            assets: true,
+            components: true,
+            value: true,
+            warranties: true,
+            within60: true,
+            within30: true,
+            expired: true,
+            active: true
+        }
     },
-    cardVisibility: {
-        assets: true,
-        components: true,
-        value: true,
-        warranties: true,
-        within60: true,
-        within30: true,
-        expired: true,
-        active: true
-    }
 };
 
 generatePWAManifest(SITE_TITLE);
@@ -233,6 +233,7 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
             debug: ${DEBUG},
             siteTitle: '${SITE_TITLE}',
             version: '${VERSION}',
+            defaultSettings: ${JSON.stringify(DEFAULT_SETTINGS)},
         };
     `);
     
@@ -1291,20 +1292,7 @@ app.get('/api/settings', authMiddleware, (req, res) => {
             return res.json(DEFAULT_SETTINGS);
         }
 
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        if (!config.interfaceSettings) config.interfaceSettings = {};
-        if (!config.notificationSettings) {
-            config.notificationSettings = DEFAULT_SETTINGS.notificationSettings;
-        }
-        if (!config.interfaceSettings.dashboardOrder) {
-            config.interfaceSettings.dashboardOrder = DEFAULT_SETTINGS.interfaceSettings.dashboardOrder;
-        }
-        if (!config.interfaceSettings.dashboardVisibility) {
-            config.interfaceSettings.dashboardVisibility = DEFAULT_SETTINGS.interfaceSettings.dashboardVisibility;
-        }
-        if (!config.interfaceSettings.cardVisibility) {
-            config.interfaceSettings.cardVisibility = DEFAULT_SETTINGS.cardVisibility;
-        }
+        const config = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(configPath, 'utf8'))};
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load settings' });
@@ -1315,29 +1303,14 @@ app.get('/api/settings', authMiddleware, (req, res) => {
 app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
     try {
         const configPath = path.join(__dirname, 'data', 'config.json');
-        let config = {};
+        let config = DEFAULT_SETTINGS;
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }
         // Update settings with the new values
-        Object.keys(req.body).forEach(section => {
-            if (section === 'interfaceSettings') {
-                if (!config.interfaceSettings) config.interfaceSettings = {};
-                // Merge dashboardOrder and dashboardVisibility
-                if (req.body.interfaceSettings.dashboardOrder) {
-                    config.interfaceSettings.dashboardOrder = req.body.interfaceSettings.dashboardOrder;
-                }
-                if (req.body.interfaceSettings.dashboardVisibility) {
-                    config.interfaceSettings.dashboardVisibility = req.body.interfaceSettings.dashboardVisibility;
-                }
-                if (req.body.interfaceSettings.cardVisibility) {
-                    config.interfaceSettings.cardVisibility = req.body.interfaceSettings.cardVisibility;
-                }
-            } else {
-                config[section] = req.body[section];
-            }
-        });
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        const updatedConfig = { ...config, ...req.body };
+
+        fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to save settings' });

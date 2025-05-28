@@ -1,9 +1,11 @@
 /**
  * Chart Manager class for handling chart creation and updates
  */
+
 export class ChartManager {
-    constructor() {
+    constructor(settingsManager) {
         this.charts = new Map();
+        this.settingsManager = settingsManager;
     }
 
     /**
