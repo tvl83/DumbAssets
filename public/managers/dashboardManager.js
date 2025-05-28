@@ -468,8 +468,28 @@ export class DashboardManager {
 
         // Collect warranty events from sub-assets
         subAssets.forEach(subAsset => {
-            const parentAsset = assets.find(a => a.id === subAsset.parentId);
-            const parentName = parentAsset ? parentAsset.name : 'Unknown Parent';
+            // Determine parent information based on whether this is a sub-asset or sub-sub-asset
+            let parentName = 'Unknown Parent';
+            let assetType = 'Component';
+            
+            if (subAsset.parentSubId) {
+                // This is a sub-sub-asset (component of a component)
+                const parentSubAsset = subAssets.find(sa => sa.id === subAsset.parentSubId);
+                const parentAsset = assets.find(a => a.id === subAsset.parentId);
+                if (parentSubAsset && parentAsset) {
+                    parentName = `${parentAsset.name} > ${parentSubAsset.name}`;
+                } else if (parentSubAsset) {
+                    parentName = parentSubAsset.name;
+                } else if (parentAsset) {
+                    parentName = parentAsset.name;
+                }
+                assetType = 'Sub-Component';
+            } else {
+                // This is a regular sub-asset (component of an asset)
+                const parentAsset = assets.find(a => a.id === subAsset.parentId);
+                parentName = parentAsset ? parentAsset.name : 'Unknown Parent';
+                assetType = 'Component';
+            }
 
             if (subAsset.warranty && subAsset.warranty.expirationDate && !subAsset.warranty.isLifetime) {
                 const expDate = new Date(subAsset.warranty.expirationDate);
@@ -479,7 +499,7 @@ export class DashboardManager {
                         date: expDate,
                         name: subAsset.name,
                         details: 'Warranty Expiration',
-                        assetType: 'Component',
+                        assetType: assetType,
                         parentAsset: parentName,
                         id: subAsset.id,
                         isSubAsset: true
@@ -487,7 +507,7 @@ export class DashboardManager {
                 }
             }
 
-            // Maintenance events for sub-assets
+            // Maintenance events for sub-assets (including sub-sub-assets)
             if (subAsset.maintenanceEvents && subAsset.maintenanceEvents.length > 0) {
                 subAsset.maintenanceEvents.forEach(event => {
                     let eventDate = null;
@@ -506,7 +526,7 @@ export class DashboardManager {
                             date: eventDate,
                             name: subAsset.name,
                             details: eventDetails,
-                            assetType: 'Component',
+                            assetType: assetType,
                             parentAsset: parentName,
                             notes: event.notes,
                             id: subAsset.id,
@@ -574,7 +594,7 @@ export class DashboardManager {
                     <div class="event-details">
                         <div class="event-name">${event.name}</div>
                         <div class="event-description">${event.details}</div>
-                        ${event.assetType === 'Component' && event.parentAsset ? `<div class="event-parent">Parent: ${event.parentAsset}</div>` : ''}
+                        ${(event.assetType === 'Component' || event.assetType === 'Sub-Component') && event.parentAsset ? `<div class="event-parent">Parent: ${event.parentAsset}</div>` : ''}
                         ${event.notes ? `<div class="event-notes">Notes: ${event.notes}</div>` : ''}
                     </div>
                 </div>
