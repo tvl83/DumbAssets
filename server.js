@@ -428,6 +428,89 @@ function generateId() {
     return Math.floor(1000000000 + Math.random() * 9000000000).toString();
 }
 
+
+// Helper function to delete all files associated with an asset or sub-asset
+function deleteAssetFiles(asset) {
+    if (!asset) return;
+    
+    const filesToDelete = [];
+    
+    // Handle single file paths (legacy format)
+    if (asset.photoPath) filesToDelete.push(asset.photoPath);
+    if (asset.receiptPath) filesToDelete.push(asset.receiptPath);
+    if (asset.manualPath) filesToDelete.push(asset.manualPath);
+    
+    // Handle multiple file paths (new format)
+    if (asset.photoPaths && Array.isArray(asset.photoPaths)) {
+        filesToDelete.push(...asset.photoPaths);
+    }
+    if (asset.receiptPaths && Array.isArray(asset.receiptPaths)) {
+        filesToDelete.push(...asset.receiptPaths);
+    }
+    if (asset.manualPaths && Array.isArray(asset.manualPaths)) {
+        filesToDelete.push(...asset.manualPaths);
+    }
+    
+    // Handle legacy file info arrays (if they exist)
+    if (asset.photoInfo && Array.isArray(asset.photoInfo)) {
+        asset.photoInfo.forEach(info => {
+            if (info.path) filesToDelete.push(info.path);
+        });
+    }
+    if (asset.receiptInfo && Array.isArray(asset.receiptInfo)) {
+        asset.receiptInfo.forEach(info => {
+            if (info.path) filesToDelete.push(info.path);
+        });
+    }
+    if (asset.manualInfo && Array.isArray(asset.manualInfo)) {
+        asset.manualInfo.forEach(info => {
+            if (info.path) filesToDelete.push(info.path);
+        });
+    }
+    
+    if (DEBUG && filesToDelete.length > 0) {
+        console.log(`[DEBUG] Deleting ${filesToDelete.length} files for asset: ${asset.name || asset.id}`);
+    }
+    
+    // Delete each file
+    let deletedCount = 0;
+    let errorCount = 0;
+    
+    filesToDelete.forEach(filePath => {
+        if (filePath && typeof filePath === 'string') {
+            try {
+                // Normalize the file path
+                let normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+                
+                // If the path doesn't start with 'data/', prepend it
+                if (!normalizedPath.startsWith('data/')) {
+                    normalizedPath = path.join('data', normalizedPath);
+                }
+                
+                const fullPath = path.join(__dirname, normalizedPath);
+                
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath);
+                    deletedCount++;
+                    if (DEBUG) {
+                        console.log('[DEBUG] Successfully deleted file:', normalizedPath);
+                    }
+                } else if (DEBUG) {
+                    console.log('[DEBUG] File not found (already deleted?):', normalizedPath);
+                }
+            } catch (error) {
+                errorCount++;
+                console.error('Error deleting file:', filePath, error.message);
+                // Continue with other files even if one fails
+            }
+        }
+    });
+    
+    if (DEBUG && (deletedCount > 0 || errorCount > 0)) {
+        console.log(`[DEBUG] File deletion summary for ${asset.name || asset.id}: ${deletedCount} deleted, ${errorCount} errors`);
+    }
+}
+
 // Initialize data directories
 ensureDirectoryExists(path.join(__dirname, 'data', 'Images'));
 ensureDirectoryExists(path.join(__dirname, 'data', 'Receipts'));
