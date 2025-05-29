@@ -31,7 +31,8 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const DEMO_MODE = process.env.DEMO_MODE === 'true';
 const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)` : (process.env.SITE_TITLE || 'DumbAssets');
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const PUBLIC_ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const DATA_DIR = path.join(__dirname, 'data');
 const VERSION = packageJson.version;
 const DEFAULT_SETTINGS = {
     notificationSettings: {
@@ -239,7 +240,7 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
     
     // Then append the static config.js content
     try {
-        const staticConfig = await fs.promises.readFile(path.join(__dirname, 'public', 'config.js'), 'utf8');
+        const staticConfig = await fs.promises.readFile(path.join(PUBLIC_DIR, 'config.js'), 'utf8');
         res.write('\n\n' + staticConfig);
     } catch (error) {
         console.error('Error reading static config.js:', error);
@@ -256,7 +257,7 @@ app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');
     
     try {
-        let swContent = await fs.promises.readFile(path.join(__dirname, 'public', 'service-worker.js'), 'utf8');
+        let swContent = await fs.promises.readFile(path.join(PUBLIC_DIR, 'service-worker.js'), 'utf8');
         
         // Replace the version initialization with the actual version from package.json
         swContent = swContent.replace(
@@ -275,10 +276,10 @@ app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
 // Serve static files for public assets
 app.use(BASE_PATH + '/', express.static(path.join(PUBLIC_DIR)));
 app.get(BASE_PATH + "/manifest.json", (req, res) => {
-    res.sendFile(path.join(ASSETS_DIR, "manifest.json"));
+    res.sendFile(path.join(PUBLIC_ASSETS_DIR, "manifest.json"));
 });
 app.get(BASE_PATH + "/asset-manifest.json", (req, res) => {
-    res.sendFile(path.join(ASSETS_DIR, "asset-manifest.json"));
+    res.sendFile(path.join(PUBLIC_ASSETS_DIR, "asset-manifest.json"));
 });
 
 // Unprotected routes and files (accessible without login)
@@ -303,7 +304,7 @@ app.get(BASE_PATH + '/login', (req, res) => {
         debugLog('Stored return URL in session:', req.query.returnTo);
     }
     
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    res.sendFile(path.join(PUBLIC_DIR, 'login.html'));
 });
 
 app.get(BASE_PATH + '/pin-length', (req, res) => {
@@ -415,8 +416,8 @@ app.use('/api', (req, res, next) => {
 
 // --- ASSET MANAGEMENT (existing code preserved) ---
 // File paths
-const assetsFilePath = path.join(__dirname, 'data', 'Assets.json');
-const subAssetsFilePath = path.join(__dirname, 'data', 'SubAssets.json');
+const assetsFilePath = path.join(DATA_DIR, 'Assets.json');
+const subAssetsFilePath = path.join(DATA_DIR, 'SubAssets.json');
 
 // Helper Functions
 function ensureDirectoryExists(directory) {
@@ -457,91 +458,31 @@ function generateId() {
 
 
 // Helper function to delete all files associated with an asset or sub-asset
-function deleteAssetFiles(asset) {
-    if (!asset) return;
-    
-    const filesToDelete = [];
-    
-    // Handle single file paths (legacy format)
-    if (asset.photoPath) filesToDelete.push(asset.photoPath);
-    if (asset.receiptPath) filesToDelete.push(asset.receiptPath);
-    if (asset.manualPath) filesToDelete.push(asset.manualPath);
-    
-    // Handle multiple file paths (new format)
-    if (asset.photoPaths && Array.isArray(asset.photoPaths)) {
-        filesToDelete.push(...asset.photoPaths);
-    }
-    if (asset.receiptPaths && Array.isArray(asset.receiptPaths)) {
-        filesToDelete.push(...asset.receiptPaths);
-    }
-    if (asset.manualPaths && Array.isArray(asset.manualPaths)) {
-        filesToDelete.push(...asset.manualPaths);
-    }
-    
-    // Handle legacy file info arrays (if they exist)
-    if (asset.photoInfo && Array.isArray(asset.photoInfo)) {
-        asset.photoInfo.forEach(info => {
-            if (info.path) filesToDelete.push(info.path);
-        });
-    }
-    if (asset.receiptInfo && Array.isArray(asset.receiptInfo)) {
-        asset.receiptInfo.forEach(info => {
-            if (info.path) filesToDelete.push(info.path);
-        });
-    }
-    if (asset.manualInfo && Array.isArray(asset.manualInfo)) {
-        asset.manualInfo.forEach(info => {
-            if (info.path) filesToDelete.push(info.path);
-        });
-    }
-    
-    if (DEBUG && filesToDelete.length > 0) {
-        console.log(`[DEBUG] Deleting ${filesToDelete.length} files for asset: ${asset.name || asset.id}`);
-    }
-    
-    // Delete each file
-    let deletedCount = 0;
-    let errorCount = 0;
-    
-    filesToDelete.forEach(filePath => {
-        if (filePath && typeof filePath === 'string') {
-            try {
-                // Normalize the file path
-                let normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-                
-                // If the path doesn't start with 'data/', prepend it
-                if (!normalizedPath.startsWith('data/')) {
-                    normalizedPath = path.join('data', normalizedPath);
-                }
-                
-                const fullPath = path.join(__dirname, normalizedPath);
-                
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath);
-                    deletedCount++;
-                    if (DEBUG) {
-                        console.log('[DEBUG] Successfully deleted file:', normalizedPath);
-                    }
-                } else if (DEBUG) {
-                    console.log('[DEBUG] File not found (already deleted?):', normalizedPath);
-                }
-            } catch (error) {
-                errorCount++;
-                console.error('Error deleting file:', filePath, error.message);
-                // Continue with other files even if one fails
-            }
+function deleteAssetFileAsync(filePath) {
+    if (!filePath || filePath.trim() === '') return;
+
+    let formattedPath = filePath.trim();
+    if (formattedPath.startsWith('/')) formattedPath = formattedPath.substring(1);
+    const assetFilePath = path.join(DATA_DIR, formattedPath);
+    fs.unlink(assetFilePath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+            console.error(`Error deleting file - ${filePath}:`, err.message);
         }
     });
-    
-    if (DEBUG && (deletedCount > 0 || errorCount > 0)) {
-        console.log(`[DEBUG] File deletion summary for ${asset.name || asset.id}: ${deletedCount} deleted, ${errorCount} errors`);
-    }
+}
+
+function deleteAssetFiles(assets) {
+    assets.forEach(asset => {
+        if (asset.photoPath) deleteAssetFileAsync(asset.photoPath);
+        if (asset.receiptPath) deleteAssetFileAsync(asset.receiptPath);
+        if (asset.manualPath) deleteAssetFileAsync(asset.manualPath);
+    });
 }
 
 // Initialize data directories
-ensureDirectoryExists(path.join(__dirname, 'data', 'Images'));
-ensureDirectoryExists(path.join(__dirname, 'data', 'Receipts'));
-ensureDirectoryExists(path.join(__dirname, 'data', 'Manuals'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Images'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Receipts'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Manuals'));
 
 // Initialize empty files if they don't exist
 if (!fs.existsSync(assetsFilePath)) {
@@ -595,7 +536,7 @@ app.post('/api/asset', async (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -660,7 +601,7 @@ app.put('/api/asset', (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -708,37 +649,21 @@ app.delete('/api/asset/:id', (req, res) => {
     
     // Remove the asset
     const deletedAsset = assets.splice(assetIndex, 1)[0];
-    
     // Remove all related sub-assets
     const updatedSubAssets = subAssets.filter(sa => sa.parentId !== assetId);
     
     // Delete associated files if they exist
     try {
-        if (deletedAsset.photoPath) {
-            const photoPath = path.join(__dirname, deletedAsset.photoPath.substring(1));
-            if (fs.existsSync(photoPath)) {
-                fs.unlinkSync(photoPath);
-            }
-        }
+        deleteAssetFiles([deletedAsset]);
         
-        if (deletedAsset.receiptPath) {
-            const receiptPath = path.join(__dirname, deletedAsset.receiptPath.substring(1));
-            if (fs.existsSync(receiptPath)) {
-                fs.unlinkSync(receiptPath);
-            }
-        }
-
-        if (deletedAsset.manualPath) {
-            const manualPath = path.join(__dirname, deletedAsset.manualPath.substring(1));
-            if (fs.existsSync(manualPath)) {
-                fs.unlinkSync(manualPath);
-            }
-        }
+        // delete subasset and subasset children files
+        const subAssetFiles = subAssets.filter(sa => sa.parentId === assetId);
+        deleteAssetFiles(subAssetFiles);
     } catch (error) {
         console.error('Error deleting asset files:', error);
         // Continue with asset deletion even if file deletion fails
     }
-    
+
     // Write updated assets
     if (writeJsonFile(assetsFilePath, assets) && writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
         if (DEBUG) {
@@ -746,7 +671,7 @@ app.delete('/api/asset/:id', (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -812,7 +737,7 @@ app.post('/api/subasset', async (req, res) => {
         }
         // Notification logic for sub-asset creation
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -879,7 +804,7 @@ app.put('/api/subasset', async (req, res) => {
         }
         // Notification logic for sub-asset edit
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -926,38 +851,21 @@ app.delete('/api/subasset/:id', async (req, res) => {
     }
     
     // Get the sub-asset to delete
-    const deletedSubAsset = subAssets[subAssetIndex];
+    const deletedSubAsset = subAssets.splice(subAssetIndex, 1)[0];  
+    // Remove all related sub-assets
+    const updatedSubAssets = subAssets.filter(sa => sa.id !== subAssetId && sa.parentSubId !== subAssetId);
     
-    // Ensure we don't delete a component that still has other parents
-    const subAssetIdsToDelete = new Set([subAssetId]);
-    let childrenToProcess = [deletedSubAsset];
-    
-    while (childrenToProcess.length > 0) {
-        const current = childrenToProcess.shift();
-        
-        // Find all direct children of this component
-        const directChildren = subAssets.filter(sa => 
-            // Only include components where this is the direct parent
-            sa.parentSubId === current.id && 
-            // Don't include already processed components
-            !subAssetIdsToDelete.has(sa.id) &&
-            // Ensure the component isn't a child of any component we're not deleting
-            !subAssets.some(other => 
-                other.id !== current.id && 
-                !subAssetIdsToDelete.has(other.id) && 
-                sa.parentSubId === other.id
-            )
-        );
-        
-        // Add valid children to deletion set and processing queue
-        directChildren.forEach(child => {
-            subAssetIdsToDelete.add(child.id);
-            childrenToProcess.push(child);
-        });
+    // Try to delete image and receipt files if they exist
+    try {
+        deleteAssetFiles([deletedSubAsset]);
+
+        // delete subasset child files
+        const subAssetChildren = subAssets.filter(sa => sa.parentSubId === subAssetId);
+        deleteAssetFiles(subAssetChildren);
+    } catch (error) {
+        console.error('Error deleting files:', error);
+        // Continue even if file deletion fails
     }
-    
-    // Filter out all sub-assets that need to be deleted
-    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.has(sa.id));
     
     // Write updated sub-assets
     if (writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
@@ -966,7 +874,7 @@ app.delete('/api/subasset/:id', async (req, res) => {
         }
         // Notification logic for sub-asset deletion
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -996,33 +904,6 @@ app.delete('/api/subasset/:id', async (req, res) => {
             console.error('Failed to send sub-asset deleted notification:', err.message);
         }
         
-        // Try to delete image and receipt files if they exist
-        try {
-            if (deletedSubAsset.photoPath) {
-                const photoPath = path.join(__dirname, deletedSubAsset.photoPath.substring(1));
-                if (fs.existsSync(photoPath)) {
-                    fs.unlinkSync(photoPath);
-                }
-            }
-            
-            if (deletedSubAsset.receiptPath) {
-                const receiptPath = path.join(__dirname, deletedSubAsset.receiptPath.substring(1));
-                if (fs.existsSync(receiptPath)) {
-                    fs.unlinkSync(receiptPath);
-                }
-            }
-            
-            if (deletedSubAsset.manualPath) {
-                const manualPath = path.join(__dirname, deletedSubAsset.manualPath.substring(1));
-                if (fs.existsSync(manualPath)) {
-                    fs.unlinkSync(manualPath);
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting files:', error);
-            // Continue even if file deletion fails
-        }
-        
         res.json({ message: 'Sub-asset deleted successfully' });
     } else {
         res.status(500).json({ error: 'Failed to delete sub-asset' });
@@ -1032,7 +913,7 @@ app.delete('/api/subasset/:id', async (req, res) => {
 // File upload endpoints
 const imageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Images'));
+        cb(null, path.join(DATA_DIR, 'Images'));
     },
     filename: (req, file, cb) => {
         cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
@@ -1041,7 +922,7 @@ const imageStorage = multer.diskStorage({
 
 const receiptStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Receipts'));
+        cb(null, path.join(DATA_DIR, 'Receipts'));
     },
     filename: (req, file, cb) => {
         cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
@@ -1050,7 +931,7 @@ const receiptStorage = multer.diskStorage({
 
 const manualStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Manuals'));
+        cb(null, path.join(DATA_DIR, 'Manuals'));
     },
     filename: (req, file, cb) => {
         cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
@@ -1085,7 +966,9 @@ const uploadManual = multer({
         const allowedTypes = [
             'application/pdf',
             'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/markdown',
+            'text/plain',
         ];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
@@ -1286,7 +1169,7 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
 // Get all settings
 app.get('/api/settings', authMiddleware, (req, res) => {
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
+        const configPath = path.join(DATA_DIR, 'config.json');
         // Return default settings if config does not exist
         if (!fs.existsSync(configPath)) {
             return res.json(DEFAULT_SETTINGS);
@@ -1302,7 +1185,7 @@ app.get('/api/settings', authMiddleware, (req, res) => {
 // Save all settings
 app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
+        const configPath = path.join(DATA_DIR, 'config.json');
         let config = DEFAULT_SETTINGS;
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -1323,7 +1206,7 @@ app.post('/api/notification-test', authMiddleware, async (req, res) => {
         console.log('[DEBUG] /api/notification-test called');
     }
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
+        const configPath = path.join(DATA_DIR, 'config.json');
         let config = {};
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

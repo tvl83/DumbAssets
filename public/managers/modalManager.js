@@ -252,9 +252,6 @@ export class ModalManager {
         // Set up cancel and close buttons
         this.setupSubAssetModalButtons();
         
-        // Show the modal
-        this.subAssetModal.style.display = 'block';
-        this.subAssetModal.querySelector('.modal-content').scrollTop = 0; // Reset scroll position;
         
         // Handle file section expansion
         if (containsExistingFiles) {
@@ -262,6 +259,10 @@ export class ModalManager {
         } else {
             this.collapseSection('#subAssetFileUploader');
         }
+        
+        // Show the modal
+        this.subAssetModal.style.display = 'block';
+        this.subAssetModal.querySelector('.modal-content').scrollTop = 0; // Reset scroll position;
     }
     
     closeSubAssetModal() {
