@@ -2403,6 +2403,7 @@ a:hover {
 }
 
 /* Warranty Styles */
+/* Warranty Styles */
 
 .warranty-expiration-group {
     margin-bottom: 1rem;
@@ -2578,9 +2579,6 @@ a:hover {
     min-width: fit-content;
     margin-right: 0.5rem;
 }
-
-/* KEEP ON BOTTOM */
-/* RESPONSIVE ADJUSTMENTS SECTION */
 
 /* Events Section Styles */
 .events-controls {
@@ -2900,7 +2898,6 @@ a:hover {
 
 
 
-
 /* KEEP ON BOTTOM */
 /* RESPONSIVE ADJUSTMENTS SECTION */
 @media (max-width: 1200px) {
@@ -2910,17 +2907,6 @@ a:hover {
         line-height: 2rem;
         
     }
-
-    /* .event-row {
-        grid-template-columns: auto 1fr;
-        gap: 1rem;
-    }
-    .event-type {
-        min-width: 100px;
-    }
-    .event-date {
-        min-width: 120px;
-    } */
 }
 
 @media (max-width: 1100px) {
