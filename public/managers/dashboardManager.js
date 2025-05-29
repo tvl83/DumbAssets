@@ -185,15 +185,15 @@ export class DashboardManager {
                 <legend class="dashboard-legend-title">Totals</legend>
                 <div class="dashboard-section" data-section="totals">
                     <div class="dashboard-cards totals-cards">
-                        ${cardVisibility.assets !== false ? `<div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
+                        ${cardVisibility.assets !== false ? `<div class="dashboard-card card-total${!dashboardFilter ? ' active' : ''}" data-filter="all">
                             <div class="card-label">Assets</div>
                             <div class="card-value">${totalAssets}</div>
                         </div>` : ''}
-                        ${cardVisibility.components !== false ? `<div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
+                        ${cardVisibility.components !== false ? `<div class="dashboard-card card-components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
                             <div class="card-label">Components</div>
                             <div class="card-value">${totalComponents}</div>
                         </div>` : ''}
-                        ${cardVisibility.value !== false ? `<div class="dashboard-card value" data-filter="value">
+                        ${cardVisibility.value !== false ? `<div class="dashboard-card card-asset-value" data-filter="value">
                             <div class="card-label">Value</div>
                             <div class="card-value">${this.formatCurrency(totalValue)}</div>
                         </div>` : ''}
@@ -206,23 +206,23 @@ export class DashboardManager {
                 <legend class="dashboard-legend-title">Warranties</legend>
                 <div class="dashboard-section dashboard-warranty-section" data-section="warranties">
                     <div class="dashboard-cards warranty-cards">
-                        ${cardVisibility.warranties !== false ? `<div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
+                        ${cardVisibility.warranties !== false ? `<div class="dashboard-card card-warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                             <div class="card-label">Total</div>
                             <div class="card-value">${allWarranties.length}</div>
                         </div>` : ''}
-                        ${cardVisibility.within60 !== false ? `<div class="dashboard-card within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
+                        ${cardVisibility.within60 !== false ? `<div class="dashboard-card card-within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
                             <div class="card-label">In 60 days</div>
                             <div class="card-value">${within60}</div>
                         </div>` : ''}
-                        ${cardVisibility.within30 !== false ? `<div class="dashboard-card within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
+                        ${cardVisibility.within30 !== false ? `<div class="dashboard-card card-within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
                             <div class="card-label">In 30 days</div>
                             <div class="card-value">${within30}</div>
                         </div>` : ''}
-                        ${cardVisibility.expired !== false ? `<div class="dashboard-card expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
+                        ${cardVisibility.expired !== false ? `<div class="dashboard-card card-expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
                             <div class="card-label">Expired</div>
                             <div class="card-value">${expired}</div>
                         </div>` : ''}
-                        ${cardVisibility.active !== false ? `<div class="dashboard-card active${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
+                        ${cardVisibility.active !== false ? `<div class="dashboard-card card-active${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
                             <div class="card-label">Active</div>
                             <div class="card-value">${active}</div>
                         </div>` : ''}
@@ -339,8 +339,6 @@ export class DashboardManager {
                     this.updateDashboardFilter(filter);
                 }
                 this.renderAssetList(this.searchInput.value);
-                // Only re-render dashboard UI, not charts, on filter
-                if (!selectedAssetId) this.renderDashboard(false);
             });
         });
     }
