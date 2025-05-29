@@ -25,8 +25,6 @@
     "luxon": "^3.6.1",
     "multer": "^2.0.0",
     "node-cron": "^3.0.3",
-    "pdf-thumbnail": "^1.0.6",
-    "pdfjs-dist": "^5.2.133",
     "uuid": "^9.0.0",
     "xlsx": "^0.18.5"
   },
