@@ -1869,22 +1869,22 @@ a:hover {
     letter-spacing: -1px;
     line-height: 2.5rem;
 }
-.dashboard-card.total .card-value {
+.dashboard-card.card-total .card-value {
     color: var(--primary-color);
 }
-.dashboard-card.warranties .card-value {
+.dashboard-card.card-warranties .card-value {
     color: var(--secondary-color);
 }
-.dashboard-card.expired .card-value {
+.dashboard-card.card-expired .card-value {
     color: var(--error-color);
 }
-.dashboard-card.within60 .card-value {
+.dashboard-card.card-within60 .card-value {
     color: #facc15;
 }
-.dashboard-card.within30 .card-value {
+.dashboard-card.card-within30 .card-value {
     color: #f59e0b;
 }
-.dashboard-card.active-status .card-value {
+.dashboard-card.card-active .card-value {
     color: var(--success-color);
 }
 /* Dashboard section shared styles */
