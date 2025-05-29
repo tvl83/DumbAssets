@@ -504,7 +504,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setButtonLoading(saveBtn, false);
         } catch (error) {
             console.error('Error saving asset:', error);
-            alert('Error saving asset. Please try again.');
+            // alert('Error saving asset. Please try again.');
+            toaster.show("Error saving asset. Please try again.", 'error');
             setButtonLoading(saveBtn, false);
         }
     }
@@ -609,7 +610,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setButtonLoading(saveBtn, false);
         } catch (error) {
             console.error('Error saving sub-asset:', error);
-            alert('Error saving component. Please try again.');
+            // alert('Error saving component. Please try again.');
+            toaster.show("Error saving component. Please try again.", 'error');
             setButtonLoading(saveBtn, false);
         }
     }
@@ -633,7 +635,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toaster.show("Asset deleted successfully!");
         } catch (error) {
             console.error('Error deleting asset:', error);
-            alert('Error deleting asset. Please try again.');
+            // alert('Error deleting asset. Please try again.');
+            toaster.show("Error deleting asset. Please try again.", 'error');
         }
     }
 
@@ -678,7 +681,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toaster.show("Component deleted successfully!");
         } catch (error) {
             console.error('Error deleting component:', error);
-            alert('Error deleting component. Please try again.');
+            // alert('Error deleting component. Please try again.');
+            toaster.show("Error deleting component. Please try again.", 'error');
         }
     }
 
