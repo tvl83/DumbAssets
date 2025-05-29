@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Module functions
             openAssetModal: (asset) => modalManager.openAssetModal(asset),
-            openSubAssetModal: (subasset) => modalManager.openSubAssetModal(subasset),
+            openSubAssetModal: (subAsset = null, parentId = null, parentSubId = null) => modalManager.openSubAssetModal(subAsset, parentId, parentSubId),
             deleteAsset,
             deleteSubAsset,
             createSubAssetElement,

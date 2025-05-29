@@ -41,6 +41,7 @@ export class ImportManager {
         if (downloadTemplateBtn) {
             downloadTemplateBtn.addEventListener('click', () => this._downloadTemplate());
         }
+        window.resetImportForm = this.resetImportForm.bind(this);
     }
 
     async _handleFileSelection(e) {
@@ -287,7 +288,7 @@ export class ImportManager {
         const mappingContainer = document.querySelector('.column-mapping');
         if (mappingContainer) mappingContainer.style.display = 'none';
     }
-
+    
     _downloadTemplate() {
         // Define the headers for the template CSV
         const headers = [
@@ -311,6 +312,7 @@ export class ImportManager {
         const testRow = headers.map(h => {
             const lower = h.toLowerCase();
             if (lower.includes('date') || lower.includes('expiration')) return today;
+            if (lower === 'url') return 'https://example.com';
             if (lower === 'tags') return '"tag1,tag2,tag3"'; // CSV string for tags
             if (lower === 'purchase price') return '123.45';
             if (lower === 'lifetime') return 'false'; // Boolean value for lifetime warranty
