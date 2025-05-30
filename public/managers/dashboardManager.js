@@ -288,6 +288,30 @@ export class DashboardManager {
             this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
         else
             this.chartManager.destroyAllCharts();
+
+        // Add click handlers for filtering (except value card)
+        this.assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
+            if (card.getAttribute('data-filter') === 'value') return;
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const filter = card.getAttribute('data-filter');
+
+                // Remove active class from all cards
+                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Add active class to clicked card
+                card.classList.add('active');
+
+                if (filter === 'all') {
+                    this.updateDashboardFilter(null);
+                } else {
+                    this.updateDashboardFilter(filter);
+                }
+                this.renderAssetList(this.searchInput.value);
+            });
+        });
     }
     
     generateEventsSection() {
