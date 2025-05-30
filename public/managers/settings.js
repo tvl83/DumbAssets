@@ -112,7 +112,9 @@ export class SettingsManager {
             const response = await fetch('/api/settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch settings');
             const settings = await response.json();
-            return JSON.parse(JSON.stringify(settings)); // Deep clone to avoid mutation
+            const stringified = JSON.stringify(settings); // Deep clone to avoid mutation
+            localStorage.setItem(this.localSettingsStorageKey, stringified);
+            return JSON.parse(stringified); // Deep clone to avoid mutation
         } catch (err) {
             console.error('Error fetching settings - returning default settings:', err);
             return this.getDefaultSettings(); // Return default settings on error

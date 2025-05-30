@@ -9,6 +9,7 @@ export class DashboardManager {
         assetDetails,
         subAssetContainer,
         searchInput,
+        clearFiltersBtn,
         
         // Utility functions
         formatDate,
@@ -24,8 +25,8 @@ export class DashboardManager {
         updateSelectedIds,
         renderAssetDetails,
         renderAssetList,
-        renderEmptyState,
         handleSidebarNav,
+        setButtonLoading,
         
         // Global state getters
         getAssets,
@@ -38,6 +39,7 @@ export class DashboardManager {
         this.assetDetails = assetDetails;
         this.subAssetContainer = subAssetContainer;
         this.searchInput = searchInput;
+        this.clearFiltersBtn = clearFiltersBtn;
         
         // Store utility functions
         this.formatDate = formatDate;
@@ -53,8 +55,8 @@ export class DashboardManager {
         this.updateSelectedIds = updateSelectedIds;
         this.renderAssetDetails = renderAssetDetails;
         this.renderAssetList = renderAssetList;
-        this.renderEmptyState = renderEmptyState;
         this.handleSidebarNav = handleSidebarNav;
+        this.setButtonLoading = setButtonLoading;
         
         // Store state getters
         this.getAssets = getAssets;
@@ -68,6 +70,8 @@ export class DashboardManager {
         this.currentSort = { field: 'date', direction: 'asc' };
         this.currentPage = 1;
         this.eventsPerPage = 5;
+
+        this.addEventListeners();
     }
     
     async getDashboardSectionVisibility() {
@@ -97,18 +101,18 @@ export class DashboardManager {
             // Try to get from localStorage as a quick cache
             const localSettings = this.settingsManager.getSettingsFromLocalStorage();
             if (localSettings && localSettings.interfaceSettings?.dashboardOrder) {
-                return [ ...localSettings.interfaceSettings.dashboardOrder] ;
+                return localSettings.interfaceSettings.dashboardOrder;
             }
             else {
                 const settings = await this.settingsManager.fetchSettings();
-                return [ ...settings.interfaceSettings.dashboardOrder];
+                return settings.interfaceSettings.dashboardOrder;
             }
         } catch (err) {
             console.error('Error getting dashboard order', err);
         }
 
         const defaultSettings = this.settingsManager.getDefaultSettings();
-        return [ ...defaultSettings.interfaceSettings.dashboardOrder] ;
+        return defaultSettings.interfaceSettings.dashboardOrder;
     }
     
     async getDashboardCardVisibility() {
@@ -284,63 +288,6 @@ export class DashboardManager {
             this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
         else
             this.chartManager.destroyAllCharts();
-        
-        // Add click handler for clear filters button
-        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => {
-                // Remove active class from all cards
-                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
-                    c.classList.remove('active');
-                });
-
-                // Reset all sort buttons to default state
-                document.querySelectorAll('.sort-button').forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.setAttribute('data-direction', 'asc');
-                    const sortIcon = btn.querySelector('.sort-icon');
-                    if (sortIcon) {
-                        sortIcon.style.transform = '';
-                    }
-                });
-                
-                // Reset filter and sort
-                this.updateDashboardFilter(null);
-                this.updateSort({ field: 'updatedAt', direction: 'desc' });
-
-                // Reset selected asset and hide components section
-                this.updateSelectedIds(null, null);
-                
-                // Re-render list and dashboard
-                this.searchInput.value = '';
-                this.renderAssetList(this.searchInput.value);
-                this.renderEmptyState(false);
-            });
-        }
-
-        // Add click handlers for filtering (except value card)
-        this.assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
-            if (card.getAttribute('data-filter') === 'value') return;
-            card.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const filter = card.getAttribute('data-filter');
-                
-                // Remove active class from all cards
-                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
-                    c.classList.remove('active');
-                });
-                
-                // Add active class to clicked card
-                card.classList.add('active');
-                
-                if (filter === 'all') {
-                    this.updateDashboardFilter(null);
-                } else {
-                    this.updateDashboardFilter(filter);
-                }
-                this.renderAssetList(this.searchInput.value);
-            });
-        });
     }
     
     generateEventsSection() {
@@ -817,5 +764,41 @@ export class DashboardManager {
 
         // Add pagination to the container
         eventsTableContainer.insertAdjacentHTML('beforeend', paginationHTML);
+    }
+
+    addEventListeners() {
+        // Add click handler for clear filters button
+        if (this.clearFiltersBtn) {
+            this.clearFiltersBtn.addEventListener('click', async () => {
+                this.setButtonLoading(this.clearFiltersBtn, true);
+                // Remove active class from all cards
+                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Reset all sort buttons to default state
+                document.querySelectorAll('.sort-button').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('data-direction', 'asc');
+                    const sortIcon = btn.querySelector('.sort-icon');
+                    if (sortIcon) {
+                        sortIcon.style.transform = '';
+                    }
+                });
+                
+                // Reset filter and sort
+                this.updateDashboardFilter(null);
+                this.updateSort({ field: 'updatedAt', direction: 'desc' });
+                
+                // Reset selected asset and hide components section
+                this.updateSelectedIds(null, null);
+                
+                // Re-render list and dashboard
+                this.searchInput.value = '';
+                this.renderAssetList(this.searchInput.value);
+                await this.renderDashboard(false);
+                this.setButtonLoading(this.clearFiltersBtn, false);
+            });
+        }
     }
 } 

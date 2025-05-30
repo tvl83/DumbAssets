@@ -157,6 +157,26 @@ app.use(session({
     }
 }));
 
+// Add helper function to get base URL for notifications
+function getBaseUrl(req) {
+    // Try to get from environment variable first
+    if (process.env.BASE_URL) {
+        return process.env.BASE_URL;
+    }
+    
+    // Try to construct from request headers
+    if (req) {
+        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
+        const host = req.get('Host') || req.get('X-Forwarded-Host');
+        if (host) {
+            return `${protocol}://${host}`;
+        }
+    }
+    
+    // Fallback to localhost with default port
+    return 'http://localhost:3000';
+}
+
 // --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
 app.use(BASE_PATH, (req, res, next) => {
     // List of paths that should be publicly accessible
@@ -472,6 +492,12 @@ function deleteAssetFileAsync(filePath) {
 }
 
 function deleteAssetFiles(assets) {
+    // check assets is an array
+    if (!Array.isArray(assets)) {
+        console.error('deleteAssetFiles expects an array of assets');
+        return;
+    }
+
     assets.forEach(asset => {
         if (asset.photoPath) deleteAssetFileAsync(asset.photoPath);
         if (asset.receiptPath) deleteAssetFileAsync(asset.receiptPath);
@@ -1087,8 +1113,19 @@ function parseExcelDate(value) {
     return '';
 }
 
+function getAppSettings() {
+    const configPath = path.join(DATA_DIR, 'config.json');
+    // Return default settings if config does not exist
+    if (!fs.existsSync(configPath)) {
+        return { ...DEFAULT_SETTINGS };
+    }
+
+    const config = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(configPath, 'utf8'))};
+    return config;
+}
+
 // Import assets route
-app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
+app.post('/api/import-assets', upload.single('file'), (req, res) => {
     try {
         const file = req.file;
         if (!file) {
@@ -1167,32 +1204,23 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
 });
 
 // Get all settings
-app.get('/api/settings', authMiddleware, (req, res) => {
+app.get('/api/settings', (req, res) => {
     try {
-        const configPath = path.join(DATA_DIR, 'config.json');
-        // Return default settings if config does not exist
-        if (!fs.existsSync(configPath)) {
-            return res.json(DEFAULT_SETTINGS);
-        }
-
-        const config = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(configPath, 'utf8'))};
-        res.json(config);
+        const appSettings = getAppSettings();
+        res.json(appSettings);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load settings' });
     }
 });
 
 // Save all settings
-app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
+app.post('/api/settings', (req, res) => {
     try {
-        const configPath = path.join(DATA_DIR, 'config.json');
-        let config = DEFAULT_SETTINGS;
-        if (fs.existsSync(configPath)) {
-            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        }
+        const config = getAppSettings();
         // Update settings with the new values
         const updatedConfig = { ...config, ...req.body };
 
+        const configPath = path.join(DATA_DIR, 'config.json');
         fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
         res.json({ success: true });
     } catch (err) {
@@ -1201,7 +1229,7 @@ app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
 });
 
 // Test notification endpoint
-app.post('/api/notification-test', authMiddleware, async (req, res) => {
+app.post('/api/notification-test', async (req, res) => {
     if (DEBUG) {
         console.log('[DEBUG] /api/notification-test called');
     }
@@ -1364,23 +1392,3 @@ app.listen(PORT, () => {
     console.log(`Server running on: ${BASE_URL}`);
 }); 
 // --- END ---
-
-// Add helper function to get base URL for notifications
-function getBaseUrl(req) {
-    // Try to get from environment variable first
-    if (process.env.BASE_URL) {
-        return process.env.BASE_URL;
-    }
-    
-    // Try to construct from request headers
-    if (req) {
-        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
-        const host = req.get('Host') || req.get('X-Forwarded-Host');
-        if (host) {
-            return `${protocol}://${host}`;
-        }
-    }
-    
-    // Fallback to localhost with default port
-    return 'http://localhost:3000';
-}
