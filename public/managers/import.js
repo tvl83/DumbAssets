@@ -8,7 +8,6 @@ export class ImportManager {
         importFile,
         startImportBtn,
         columnSelects,
-        showToast,
         setButtonLoading,
         loadAssets,
         renderDashboard
@@ -18,7 +17,6 @@ export class ImportManager {
         this.importFile = importFile;
         this.startImportBtn = startImportBtn;
         this.columnSelects = columnSelects;
-        this.showToast = showToast;
         this.setButtonLoading = setButtonLoading;
         this.loadAssets = loadAssets;
         this.renderDashboard = renderDashboard;
@@ -55,10 +53,9 @@ export class ImportManager {
                 body: formData,
                 credentials: 'include'
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const data = await response.json();
             const headers = data.headers || [];
             // Show the column mapping section
@@ -131,7 +128,7 @@ export class ImportManager {
             tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : ''
         };
         if (!mappings.name) {
-            this.showToast('Please map the Name column', 'error');
+            globalThis.toaster.show('Please map the Name column', 'error');
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
@@ -149,7 +146,7 @@ export class ImportManager {
                 const nameIdx = mappings.name !== '' ? parseInt(mappings.name) : -1;
                 if (nameIdx === -1 || !row[nameIdx] || !row[nameIdx].trim()) {
                     // alert(`Row ${i+2}: Name is required.`);
-                    this.showToast(`Row ${i+2}: Name is required.`, 'error');
+                    globalThis.toaster.show(`Row ${i+2}: Name is required.`, 'error');
                     this.setButtonLoading(this.startImportBtn, false);
                     return;
                 }
@@ -160,7 +157,7 @@ export class ImportManager {
                         const val = row[idx].replace(/"/g, '');
                         if (isNaN(Date.parse(val))) {
                             // alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
-                            this.showToast(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`, 'error');
+                            globalThis.toaster.show(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`, 'error');
                             this.setButtonLoading(this.startImportBtn, false);
                             return;
                         }
@@ -183,16 +180,11 @@ export class ImportManager {
                 body: formData,
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.reload();
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const result = await response.json();
-            this.showToast(`Successfully imported ${result.importedCount} assets`, 'success');
+            globalThis.toaster.show(`Successfully imported ${result.importedCount} assets`, 'success');
             this.importModal.style.display = 'none';
             this.importFile.value = '';
             this.startImportBtn.disabled = true;

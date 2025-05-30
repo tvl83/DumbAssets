@@ -56,10 +56,9 @@ async function uploadFile(file, type, id) {
             body: formData,
             credentials: 'include'
         });
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-        }
+        const responseValidation = await globalThis.validateResponse(response);
+        if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+        
         const data = await response.json();
         return data;
     } catch (error) {

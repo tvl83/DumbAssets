@@ -6,6 +6,10 @@
 // Debug mode flag - set to true to enable debug logging
 const DEBUG = window.appConfig?.debug || false;
 
+// Global handlers for error logging, response validation, toaster, and getApiBaseUrl
+import { GlobalHandlers } from './managers/globalHandlers.js';
+new GlobalHandlers();
+
 // Import file upload module
 import { initializeFileUploads, handleFileUploads } from '/src/services/fileUpload/index.js';
 import { formatFileSize } from '/src/services/fileUpload/utils.js';
@@ -39,7 +43,6 @@ import { ImportManager } from './managers/import.js';
 import { MaintenanceManager } from './managers/maintenanceManager.js';
 import { ModalManager } from './managers/modalManager.js';
 import { DashboardManager } from './managers/dashboardManager.js';
-import { ToastManager } from './managers/toaster.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize variables for app state
@@ -76,8 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
     const topSortBtn = document.getElementById('topSortBtn');
     const homeBtn = document.getElementById('homeBtn');
-    const toastContainer = document.getElementById('toast-container');
-    const toaster = new ToastManager(toastContainer);
 
     // Import functionality
     const importModal = document.getElementById('importModal');
@@ -206,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // UI functions
             setButtonLoading,
-            showToast: (message, type = 'success', isStatic = false, timeoutMs = 3000) => toaster.show(message, type, isStatic, timeoutMs),
             expandSection,
             collapseSection,
             
@@ -235,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 settingsClose,
                 testNotificationSettings,
                 setButtonLoading,
-                showToast: (message, type = 'success', isStatic = false, timeoutMs = 3000) => toaster.show(message, type, isStatic, timeoutMs),
                 renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
             });
         }
@@ -279,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 importFile,
                 startImportBtn,
                 columnSelects,
-                showToast: (message, type = 'success', isStatic = false, timeoutMs = 3000) => toaster.show(message, type, isStatic, timeoutMs),
                 setButtonLoading,
                 loadAssets,
                 renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
@@ -296,20 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try { // Global try-catch to catch any initialization errors
         initialize();
     } catch (err) {
-        logError('Failed to initialize application. Please check the console for details.', err);
-    }
-
-    function logError(message, error, keepOpen = false, toastTimeout = 3000) {
-        let messageWithError = '';
-        if (message) messageWithError += message;
-        if (error) messageWithError += ` ${error}`;
-
-        console.error(messageWithError);
-        toaster.show(messageWithError, 'error', keepOpen, toastTimeout);
+        globalThis.logError('Failed to initialize application. Please check the console for details.', err);
     }
 
     function addWindowEventListenersAndProperties() {
-        globalThis.logError = logError;
         // Keep window references for backward compatibility with existing save functions
         globalThis.deletePhoto = false;
         globalThis.deleteReceipt = false;
@@ -350,18 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Data Functions
     async function loadAssets() {
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/assets`, {
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.href = `${apiBaseUrl}/login`;
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             assets = await response.json();
             // Update asset list in the modules
             updateState(assets, subAssets);
@@ -378,19 +360,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadSubAssets() {
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/subassets`, {
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.href = `${apiBaseUrl}/login`;
-                    return;
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-                }
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             subAssets = await response.json();
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -413,10 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const responses = await Promise.all([loadAssets(), loadSubAssets()]);
             responses.forEach(async (response) => {
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-                }
+                const responseValidation = await globalThis.validateResponse(response);
+                if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             })
             return true;
         } catch (error) {
@@ -425,17 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper function to get the API base URL
-    function getApiBaseUrl() {
-        return window.location.origin + (window.appConfig?.basePath || '');
-    }
-
     async function saveAsset(asset) {
         const saveBtn = assetForm.querySelector('.save-btn');
         setButtonLoading(saveBtn, true);
 
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
 
@@ -508,10 +477,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             
             // Get the saved asset from the response
             const savedAsset = await response.json();
@@ -553,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Show success message
-            toaster.show(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
+            globalThis.toaster.show(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
             globalThis.logError('Error saving asset:', error.message);
@@ -567,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading(saveBtn, true);
 
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
             
@@ -627,10 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             
             // Get the updated sub-asset from the response
             const savedSubAsset = await response.json();
@@ -655,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Show success message
-            toaster.show(isEditMode ? "Component updated successfully!" : "Component added successfully!");
+            globalThis.toaster.show(isEditMode ? "Component updated successfully!" : "Component added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
             globalThis.logError('Error saving component:', error.message);
@@ -670,20 +635,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/asset/${assetId}`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             updateSelectedIds(null, null);
             await refreshAllData();
             dashboardManager.renderDashboard();
-            toaster.show("Asset deleted successfully!");
+            globalThis.toaster.show("Asset deleted successfully!");
         } catch (error) {
             globalThis.logError('Error deleting asset:', error.message);
         }
@@ -695,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             
             // Find the sub-asset and its parent info before deleting
             const subAsset = subAssets.find(s => s.id === subAssetId);
@@ -712,10 +676,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
 
             // Refresh all data first to ensure we have the latest state
             await refreshAllData();
@@ -730,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await refreshAssetDetails(parentAssetId, false);
             }
             
-            toaster.show("Component deleted successfully!");
+            globalThis.toaster.show("Component deleted successfully!");
         } catch (error) {
             globalThis.logError('Error deleting component:', error.message);
         }

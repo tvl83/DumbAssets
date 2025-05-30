@@ -9,7 +9,6 @@ export class SettingsManager {
         settingsClose,
         testNotificationSettings,
         setButtonLoading,
-        showToast,
         renderDashboard
     }) {
         this.localSettingsStorageKey = 'dumbAssetSettings';
@@ -22,7 +21,6 @@ export class SettingsManager {
         this.settingsClose = settingsClose;
         this.testNotificationSettings = testNotificationSettings;
         this.setButtonLoading = setButtonLoading;
-        this.showToast = showToast;
         this.renderDashboard = renderDashboard;
         this.selectedAssetId = null;
         this.DEBUG = false;
@@ -110,10 +108,9 @@ export class SettingsManager {
     async fetchSettings() {
         try {
             const response = await fetch('/api/settings', { credentials: 'include' });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const settings = await response.json();
             const stringified = JSON.stringify(settings); // Deep clone to avoid mutation
             localStorage.setItem(this.localSettingsStorageKey, stringified);
@@ -263,14 +260,13 @@ export class SettingsManager {
                 body: JSON.stringify(settings),
                 credentials: 'include'
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const settingsCopy = { ...settings };
             localStorage.setItem(this.localSettingsStorageKey, JSON.stringify(settingsCopy));
             this.closeSettingsModal();
-            this.showToast('Settings saved');
+            globalThis.toaster.show('Settings saved');
             if (!this.selectedAssetId && typeof this.renderDashboard === 'function') {
                 this.renderDashboard();
             }
@@ -303,11 +299,9 @@ export class SettingsManager {
             body: JSON.stringify({ enabledTypes })
         })
         .then(async (response) => {
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
-            }
-            this.showToast('Test notifications sent successfully!');
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+            globalThis.toaster.show('Test notifications sent successfully!');
         })
         .catch(error => {
             globalThis.logError('Test Notification Failed:', error.message);

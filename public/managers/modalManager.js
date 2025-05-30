@@ -24,7 +24,6 @@ export class ModalManager {
         
         // UI functions
         setButtonLoading,
-        showToast,
         expandSection,
         collapseSection,
         
@@ -62,7 +61,6 @@ export class ModalManager {
         
         // Store UI functions
         this.setButtonLoading = setButtonLoading;
-        this.showToast = showToast;
         this.expandSection = expandSection;
         this.collapseSection = collapseSection;
         
@@ -647,7 +645,7 @@ export class ModalManager {
             // Validate required fields
             if (!formData.name || !formData.name.trim()) {
                 // alert('Name is required');
-                this.showToast('Name is required. Please try again.', 'error');
+                globalThis.toaster.show('Name is required. Please try again.', 'error');
                 this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
@@ -655,7 +653,7 @@ export class ModalManager {
             if (!formData.parentId || !formData.parentId.trim()) {
                 console.error('Missing parent ID!');
                 // alert('Parent ID is required. Please try again.');
-                this.showToast('Parent ID is required. Please try again.', 'error');
+                globalThis.toaster.show('Parent ID is required. Please try again.', 'error');
                 this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
