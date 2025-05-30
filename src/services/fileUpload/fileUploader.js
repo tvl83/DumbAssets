@@ -56,11 +56,14 @@ async function uploadFile(file, type, id) {
             body: formData,
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Upload failed');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+        }
         const data = await response.json();
         return data;
-    } catch (err) {
-        console.error('File upload failed:', err);
+    } catch (error) {
+        globalThis.logError('File upload failed', error.message);
         return null;
     }
 }
