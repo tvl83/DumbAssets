@@ -111,6 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Acts as constructor for the app
     // will be called at the very end of the file
     function initialize() {
+        // Display demo banner if in demo mode
+        if (window.appConfig?.demoMode) {
+            document.getElementById('demo-banner').style.display = 'block';
+        }
+
+        addWindowEventListenersAndProperties();
         // initialize page title right away
         setupPageTitle();
         // Load initial data
@@ -280,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        addWindowEventListenersAndProperties();
         addElementEventListeners();
         setupDragIcons();
         addShortcutEventListeners();
@@ -291,7 +296,44 @@ document.addEventListener('DOMContentLoaded', () => {
     try { // Global try-catch to catch any initialization errors
         initialize();
     } catch (err) {
-        console.error('Error initializing application:', err);
+        logError('Failed to initialize application. Please check the console for details.', err);
+    }
+
+    function logError(message, error, keepOpen = false, toastTimeout = 3000) {
+        let messageWithError = '';
+        if (message) messageWithError += message;
+        if (error) messageWithError += ` ${error}`;
+
+        console.error(messageWithError);
+        toaster.show(messageWithError, 'error', keepOpen, toastTimeout);
+    }
+
+    function addWindowEventListenersAndProperties() {
+        globalThis.logError = logError;
+        // Keep window references for backward compatibility with existing save functions
+        globalThis.deletePhoto = false;
+        globalThis.deleteReceipt = false;
+        globalThis.deleteManual = false;
+        globalThis.deleteSubPhoto = false;
+        globalThis.deleteSubReceipt = false;
+        globalThis.deleteSubManual = false;
+        globalThis.renderCardVisibilityToggles = renderCardVisibilityToggles;
+
+        // Handle window resize events to update sidebar overlay
+        globalThis.addEventListener('resize', () => {
+            // If we're now in desktop mode but overlay is visible, hide it
+            if (globalThis.innerWidth > 853 && sidebarOverlay) {
+                sidebarOverlay.style.display = 'none';
+                sidebarOverlay.style.opacity = '0';
+                sidebarOverlay.style.pointerEvents = 'none';
+            }
+            // If we're now in mobile mode with sidebar open, show overlay
+            else if (globalThis.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
+                sidebarOverlay.style.display = 'block';
+                sidebarOverlay.style.opacity = '1';
+                sidebarOverlay.style.pointerEvents = 'auto';
+            }
+        });
     }
 
     // Button loading state handler
@@ -317,7 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = `${apiBaseUrl}/login`;
                     return;
                 }
-                throw new Error('Failed to load assets');
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
             }
             assets = await response.json();
             // Update asset list in the modules
@@ -325,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateListState(assets, subAssets, selectedAssetId);
             renderAssetList();
         } catch (error) {
-            console.error('Error loading assets:', error);
+            globalThis.logError('Error loading assets:', error.message);
             assets = [];
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -343,14 +386,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.status === 401) {
                     window.location.href = `${apiBaseUrl}/login`;
                     return;
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
                 }
-                throw new Error('Failed to load sub-assets');
             }
             subAssets = await response.json();
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
         } catch (error) {
-            console.error('Error loading sub-assets:', error);
+            globalThis.logError('Error loading sub-assets:', error.message);
             subAssets = [];
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -366,10 +411,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Also add a dedicated refresh function to reload data without resetting the UI
     async function refreshAllData() {
         try {
-            await Promise.all([loadAssets(), loadSubAssets()]);
+            const responses = await Promise.all([loadAssets(), loadSubAssets()]);
+            responses.forEach(async (response) => {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+                }
+            })
             return true;
         } catch (error) {
-            console.error('Error refreshing data:', error);
+            globalThis.logError('Error refreshing data:', error.message);
             return false;
         }
     }
@@ -457,7 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to save asset');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             
             // Get the saved asset from the response
             const savedAsset = await response.json();
@@ -502,9 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toaster.show(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
-            console.error('Error saving asset:', error);
-            // alert('Error saving asset. Please try again.');
-            toaster.show("Error saving asset. Please try again.", 'error');
+            globalThis.logError('Error saving asset:', error.message);
+        } finally {
             setButtonLoading(saveBtn, false);
         }
     }
@@ -532,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!subAsset.parentId) {
                 console.error('Missing required field: parentId');
             }
-            
             // Ensure we're sending the required fields
             if (!subAsset.id || !subAsset.name || !subAsset.parentId) {
                 throw new Error('Missing required fields for sub-asset. Check the console for details.');
@@ -576,10 +628,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (!response.ok) {
-                // Get detailed error from response if available
-                const errorText = await response.text();
-                console.error('Server response:', response.status, errorText);
-                throw new Error(`Failed to save sub-asset: ${errorText}`);
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
             }
             
             // Get the updated sub-asset from the response
@@ -608,9 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toaster.show(isEditMode ? "Component updated successfully!" : "Component added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
-            console.error('Error saving sub-asset:', error);
-            // alert('Error saving component. Please try again.');
-            toaster.show("Error saving component. Please try again.", 'error');
+            globalThis.logError('Error saving component:', error.message);
+        } finally {
             setButtonLoading(saveBtn, false);
         }
     }
@@ -627,15 +676,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to delete asset');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             updateSelectedIds(null, null);
             await refreshAllData();
             dashboardManager.renderDashboard();
             toaster.show("Asset deleted successfully!");
         } catch (error) {
-            console.error('Error deleting asset:', error);
-            // alert('Error deleting asset. Please try again.');
-            toaster.show("Error deleting asset. Please try again.", 'error');
+            globalThis.logError('Error deleting asset:', error.message);
         }
     }
 
@@ -662,7 +712,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to delete component');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
 
             // Refresh all data first to ensure we have the latest state
             await refreshAllData();
@@ -679,9 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             toaster.show("Component deleted successfully!");
         } catch (error) {
-            console.error('Error deleting component:', error);
-            // alert('Error deleting component. Please try again.');
-            toaster.show("Error deleting component. Please try again.", 'error');
+            globalThis.logError('Error deleting component:', error.message);
         }
     }
 
@@ -1368,7 +1419,6 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleCardWarrantiesExpired.checked = vis.expired !== false;
         toggleCardWarrantiesActive.checked = vis.active !== false;
     }
-    window.renderCardVisibilityToggles = renderCardVisibilityToggles;
 
     // Add URL parameter handling for direct asset links
     function handleUrlParameters() {
@@ -1450,32 +1500,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         modal.style.display = 'none';
                     }
                 });
-            }
-        });
-    }
-
-    function addWindowEventListenersAndProperties() {
-        // Keep window references for backward compatibility with existing save functions
-        window.deletePhoto = false;
-        window.deleteReceipt = false;
-        window.deleteManual = false;
-        window.deleteSubPhoto = false;
-        window.deleteSubReceipt = false;
-        window.deleteSubManual = false;
-
-        // Handle window resize events to update sidebar overlay
-        window.addEventListener('resize', () => {
-            // If we're now in desktop mode but overlay is visible, hide it
-            if (window.innerWidth > 853 && sidebarOverlay) {
-                sidebarOverlay.style.display = 'none';
-                sidebarOverlay.style.opacity = '0';
-                sidebarOverlay.style.pointerEvents = 'none';
-            }
-            // If we're now in mobile mode with sidebar open, show overlay
-            else if (window.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
-                sidebarOverlay.style.display = 'block';
-                sidebarOverlay.style.opacity = '1';
-                sidebarOverlay.style.pointerEvents = 'auto';
             }
         });
     }

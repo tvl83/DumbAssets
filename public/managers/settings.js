@@ -110,13 +110,16 @@ export class SettingsManager {
     async fetchSettings() {
         try {
             const response = await fetch('/api/settings', { credentials: 'include' });
-            if (!response.ok) throw new Error('Failed to fetch settings');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             const settings = await response.json();
             const stringified = JSON.stringify(settings); // Deep clone to avoid mutation
             localStorage.setItem(this.localSettingsStorageKey, stringified);
             return JSON.parse(stringified); // Deep clone to avoid mutation
-        } catch (err) {
-            console.error('Error fetching settings - returning default settings:', err);
+        } catch (error) {
+            globalThis.logError('Failed to fetch settings:', error.message);
             return this.getDefaultSettings(); // Return default settings on error
         }
     }
@@ -260,7 +263,10 @@ export class SettingsManager {
                 body: JSON.stringify(settings),
                 credentials: 'include'
             });
-            if (!response.ok) throw new Error('Failed to save settings');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             const settingsCopy = { ...settings };
             localStorage.setItem(this.localSettingsStorageKey, JSON.stringify(settingsCopy));
             this.closeSettingsModal();
@@ -268,10 +274,8 @@ export class SettingsManager {
             if (!this.selectedAssetId && typeof this.renderDashboard === 'function') {
                 this.renderDashboard();
             }
-        } catch (err) {
-            console.error(err);
-            this.showToast('Failed to save settings', 'error');
-            // alert('Failed to save settings.');
+        } catch (error) {
+            globalThis.logError('Failed to save settings:', error.message);
         } finally {
             this.setButtonLoading(this.saveSettings, false);
         }
@@ -298,13 +302,15 @@ export class SettingsManager {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabledTypes })
         })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to send test notifications');
+        .then(async (response) => {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             this.showToast('Test notifications sent successfully!');
         })
         .catch(error => {
-            console.error('Error sending test notifications:', error);
-            this.showToast('Failed to send test notifications', 'error');
+            globalThis.logError('Test Notification Failed:', error.message);
         })
         .finally(() => {
             this.setButtonLoading(this.testNotificationSettings, false);

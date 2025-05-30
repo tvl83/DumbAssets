@@ -21,6 +21,7 @@ const { sendNotification } = require('./src/services/notifications/appriseNotifi
 const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
 const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
 const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
+const { demoModeMiddleware } = require('./middleware/demo');
 const packageJson = require('./package.json');
 
 const app = express();
@@ -198,7 +199,9 @@ app.use(BASE_PATH, (req, res, next) => {
 
     // For all other paths, apply both origin validation and auth middleware
     originValidationMiddleware(req, res, () => {
-        authMiddleware(req, res, next);
+        authMiddleware(req, res, () => {
+            demoModeMiddleware(req, res, next);
+        });
     });
 });
 
@@ -255,6 +258,7 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
             siteTitle: '${SITE_TITLE}',
             version: '${VERSION}',
             defaultSettings: ${JSON.stringify(DEFAULT_SETTINGS)},
+            demoMode: ${DEMO_MODE},
         };
     `);
     
@@ -1388,6 +1392,7 @@ app.listen(PORT, () => {
         nodeEnv: NODE_ENV,
         debug: DEBUG,
         version: VERSION,
+        demoMode: DEMO_MODE,
     });
     console.log(`Server running on: ${BASE_URL}`);
 }); 

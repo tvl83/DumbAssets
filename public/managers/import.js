@@ -55,7 +55,10 @@ export class ImportManager {
                 body: formData,
                 credentials: 'include'
             });
-            if (!response.ok) throw new Error('Failed to get headers');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
+            }
             const data = await response.json();
             const headers = data.headers || [];
             // Show the column mapping section
@@ -102,8 +105,7 @@ export class ImportManager {
             this.autoMapColumns(headers);
             this.startImportBtn.disabled = headers.length === 0;
         } catch (error) {
-            console.error('Error reading file:', error);
-            this.showToast('Failed to read file: ' + error.message, 'error');
+            globalThis.logError('Failed to read file:', error.message);
         }
     }
 
@@ -166,9 +168,8 @@ export class ImportManager {
                 }
             }
         } catch (validationError) {
-            console.error('Validation error:', validationError);
-            // alert('Validation error: ' + validationError.message);
-            this.showToast(`Validation error: ${validationError.message}`, 'error');
+            const errorMessage = validationError.message || 'Invalid file format or content';
+            globalThis.logError('Validation error:', errorMessage);
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
@@ -188,7 +189,7 @@ export class ImportManager {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Import failed');
+                throw new Error(errorData?.error || errorData?.message || await response.text() || response.statusText);
             }
             const result = await response.json();
             this.showToast(`Successfully imported ${result.importedCount} assets`, 'success');
@@ -203,8 +204,8 @@ export class ImportManager {
             // Rerender dashboard after import
             this.renderDashboard(true);
         } catch (error) {
-            console.error('Import error:', error);
-            this.showToast(`Import failed: ${error.message}`, 'error');
+            globalThis.logError('Import failed:', error.message);
+        } finally {
             this.setButtonLoading(this.startImportBtn, false);
         }
     }
