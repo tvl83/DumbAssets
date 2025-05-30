@@ -27,7 +27,6 @@ import {
     setupFilePreview
 } from '/src/services/render/index.js';
 import { ChartManager } from '/managers/charts.js';
-let chartManager = null;
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
 import {     
     initCollapsibleSections, 
@@ -63,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const subAssetContainer = document.getElementById('subAssetContainer');
     const searchInput = document.getElementById('searchInput');
     const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     const subAssetList = document.getElementById('subAssetList');
     const addAssetBtn = document.getElementById('addAssetBtn');
     const addSubAssetBtn = document.getElementById('addSubAssetBtn');
@@ -106,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let settingsManager;
     let modalManager;
     let dashboardManager;
+    const chartManager = new ChartManager();
 
     // Acts as constructor for the app
     // will be called at the very end of the file
@@ -117,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // After data is loaded, check for URL parameters
             if (!handleUrlParameters()) {
                 // No URL parameters, show empty state as normal
-                renderEmptyState();
+                dashboardManager.renderDashboard();
             }
         });
 
@@ -229,18 +230,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 testNotificationSettings,
                 setButtonLoading,
                 showToast: (message, type = 'success', isStatic = false, timeoutMs = 3000) => toaster.show(message, type, isStatic, timeoutMs),
-                renderDashboard
+                renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
             });
         }
-
-        // Initialize ChartManager and DashboardManager after SettingsManager is ready
-        chartManager = new ChartManager(settingsManager);
         
         dashboardManager = new DashboardManager({
             // DOM elements
             assetDetails,
             subAssetContainer,
             searchInput,
+            clearFiltersBtn,
 
             // Utility functions
             formatDate,
@@ -256,8 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSelectedIds,
             renderAssetDetails,
             renderAssetList,
-            renderEmptyState,
             handleSidebarNav,
+            setButtonLoading,
             
             // Global state getters
             getAssets: () => assets,
@@ -277,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast: (message, type = 'success', isStatic = false, timeoutMs = 3000) => toaster.show(message, type, isStatic, timeoutMs),
                 setButtonLoading,
                 loadAssets,
-                renderDashboard
+                renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
             });
         }
 
@@ -361,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load both assets and sub-assets, then render the dashboard
     async function loadAllData() {
         await Promise.all([loadAssets(), loadSubAssets()]);
-        renderEmptyState(); // This will call renderDashboard()
+        dashboardManager.renderDashboard();
     }
 
     // Also add a dedicated refresh function to reload data without resetting the UI
@@ -631,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Failed to delete asset');
             updateSelectedIds(null, null);
             await refreshAllData();
-            renderEmptyState();
+            dashboardManager.renderDashboard();
             toaster.show("Asset deleted successfully!");
         } catch (error) {
             console.error('Error deleting asset:', error);
@@ -709,19 +708,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Case 3: Navigate to parent asset
         updateSelectedIds(parentAssetId, null);
         await refreshAssetDetails(parentAssetId, false);
-    }
-
-    // Dashboard section visibility - now handled by DashboardManager
-
-    // Dashboard rendering - now handled by DashboardManager
-    function renderDashboard(shouldAnimateCharts = true) {
-        dashboardManager.renderDashboard(shouldAnimateCharts);
-    }
-
-    function renderEmptyState(animateCharts = true) {
-        // Always render dashboard and charts when showing empty state
-        renderDashboard(animateCharts);
-        subAssetContainer.classList.add('hidden');
     }
 
     function closeSidebar() {
@@ -1293,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add click handlers to remove buttons
             container.querySelectorAll('.remove-tag').forEach(btn => {
                 btn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent bubbling to parent elements
                     e.preventDefault();
                     const tagToRemove = btn.dataset.tag;
                     tags.delete(tagToRemove);
@@ -1396,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.remove('active');
         });
         // Render dashboard and charts
-        renderEmptyState();
+        dashboardManager.renderDashboard();
         // Close sidebar on mobile
         handleSidebarNav();
     }
