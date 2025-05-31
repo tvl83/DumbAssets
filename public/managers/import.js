@@ -1,6 +1,8 @@
 // public/managers/import.js
 // ImportManager handles all import modal logic, file selection, mapping, and import actions
 
+import { sanitizeFileName } from '/src/services/fileUpload/utils.js';
+
 export class ImportManager {
     constructor({
         importModal,
@@ -47,7 +49,7 @@ export class ImportManager {
         if (!file) return;
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', new File([file], sanitizeFileName(file.name), { type: file.type }));
             const response = await fetch('/api/import-assets', {
                 method: 'POST',
                 body: formData,
@@ -173,7 +175,7 @@ export class ImportManager {
         // ...existing code for sending to backend...
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', new File([file], sanitizeFileName(file.name), { type: file.type }));
             formData.append('mappings', JSON.stringify(mappings));
             const response = await fetch('/api/import-assets', {
                 method: 'POST',

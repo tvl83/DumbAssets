@@ -22,6 +22,7 @@ const { startWarrantyCron } = require('./src/services/notifications/warrantyCron
 const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
 const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
 const { demoModeMiddleware } = require('./middleware/demo');
+const { sanitizeFileName } = require('./src/services/fileUpload/utils');
 const packageJson = require('./package.json');
 
 const app = express();
@@ -946,7 +947,8 @@ const imageStorage = multer.diskStorage({
         cb(null, path.join(DATA_DIR, 'Images'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
@@ -955,7 +957,8 @@ const receiptStorage = multer.diskStorage({
         cb(null, path.join(DATA_DIR, 'Receipts'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
@@ -964,7 +967,8 @@ const manualStorage = multer.diskStorage({
         cb(null, path.join(DATA_DIR, 'Manuals'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
@@ -1015,11 +1019,11 @@ app.post('/api/upload/image', uploadImage.single('photo'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Images/${req.file.filename}`,
+        path: `/Images/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
@@ -1031,11 +1035,11 @@ app.post('/api/upload/receipt', uploadReceipt.single('receipt'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Receipts/${req.file.filename}`,
+        path: `/Receipts/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
@@ -1047,11 +1051,11 @@ app.post('/api/upload/manual', uploadManual.single('manual'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Manuals/${req.file.filename}`,
+        path: `/Manuals/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
