@@ -36,4 +36,25 @@ export function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-} 
+}
+
+/**
+ * Sanitizes a filename to prevent malicious script calls.
+ * Removes any characters except alphanumerics, dash, underscore, and dot.
+ * Also strips leading/trailing dots and spaces, and collapses multiple dots.
+ * @param {string} filename
+ * @returns {string} sanitized filename
+ */
+export function sanitizeFileName(filename) {
+    if (typeof filename !== 'string') return '';
+    // Remove path separators and collapse multiple dots
+    let sanitized = filename.replace(/[/\\]+/g, '')
+        .replace(/\.+/g, '.')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .replace(/^\.+/, '')
+        .replace(/\s+/g, '_')
+        .replace(/\.+$/, '');
+    // Prevent empty filename
+    if (!sanitized) sanitized = 'file';
+    return sanitized;
+}
