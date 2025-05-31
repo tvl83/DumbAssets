@@ -3,7 +3,7 @@
  * Handles file uploads, previews, and drag-and-drop functionality
  */
 
-import { validateFileType, formatFileSize } from './utils.js';
+import { validateFileType, formatFileSize, sanitizeFileName } from './utils.js';
 import { createPhotoPreview, createDocumentPreview } from '../render/previewRenderer.js';
 
 // Get access to the global flags
@@ -48,7 +48,7 @@ async function uploadFile(file, type, id) {
         endpoint = `${apiBaseUrl}/api/upload/receipt`;
     }
     const formData = new FormData();
-    formData.append(fieldName, file);
+    formData.append(fieldName, new File([file], sanitizeFileName(file.name), { type: file.type }));
     formData.append('id', id);
     try {
         const response = await fetch(endpoint, {
@@ -56,11 +56,13 @@ async function uploadFile(file, type, id) {
             body: formData,
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Upload failed');
+        const responseValidation = await globalThis.validateResponse(response);
+        if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+        
         const data = await response.json();
         return data;
-    } catch (err) {
-        console.error('File upload failed:', err);
+    } catch (error) {
+        globalThis.logError('File upload failed', error.message);
         return null;
     }
 }
@@ -116,7 +118,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
                     input.files = new DataTransfer().files;
                     validFiles.forEach(file => {
                         const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
+                        dataTransfer.items.add(new File([file], sanitizeFileName(file.name), { type: file.type }));
                         input.files = dataTransfer.files;
                     });
                     input.dispatchEvent(new Event('change'));
@@ -159,7 +161,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
                             const dataTransfer = new DataTransfer();
                             Array.from(input.files).forEach((f, i) => {
                                 if (f !== file) {
-                                    dataTransfer.items.add(f);
+                                    dataTransfer.items.add(new File([f], sanitizeFileName(f.name), { type: f.type }));
                                 }
                             });
                             input.files = dataTransfer.files;
@@ -172,7 +174,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
                     };
                     
                     // Use createDocumentPreview for documents with filename and size
-                    const docPreview = createDocumentPreview(docType, file.name, deleteHandler, file.name, formatFileSize(file.size));
+                    const docPreview = createDocumentPreview(docType, sanitizeFileName(file.name), deleteHandler, sanitizeFileName(file.name), formatFileSize(file.size));
                     previewItem.appendChild(docPreview);
                     
                 } else {
@@ -187,7 +189,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
                                 const dataTransfer = new DataTransfer();
                                 Array.from(input.files).forEach((f, i) => {
                                     if (f !== file) {
-                                        dataTransfer.items.add(f);
+                                        dataTransfer.items.add(new File([f], sanitizeFileName(f.name), { type: f.type }));
                                     }
                                 });
                                 input.files = dataTransfer.files;
@@ -195,7 +197,7 @@ function setupFileInputPreview(inputId, previewId, isDocument = false, fileType 
                         };
                         
                         // Use createPhotoPreview for images with filename and size
-                        const photoPreview = createPhotoPreview(e.target.result, deleteHandler, file.name, formatFileSize(file.size));
+                        const photoPreview = createPhotoPreview(e.target.result, deleteHandler, sanitizeFileName(file.name), formatFileSize(file.size));
                         previewItem.appendChild(photoPreview);
                     };
                     reader.readAsDataURL(file);
@@ -259,7 +261,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.photoPaths = [];
         assetCopy.photoInfo = [];
         for (const file of photoInput.files) {
-            const result = await uploadFile(file, 'image', assetCopy.id);
+            const result = await uploadFile(new File([file], sanitizeFileName(file.name), { type: file.type }), 'image', assetCopy.id);
             if (result) {
                 assetCopy.photoPaths.push(result.path);
                 assetCopy.photoInfo.push(result.fileInfo);
@@ -282,7 +284,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.receiptPaths = [];
         assetCopy.receiptInfo = [];
         for (const file of receiptInput.files) {
-            const result = await uploadFile(file, 'receipt', assetCopy.id);
+            const result = await uploadFile(new File([file], sanitizeFileName(file.name), { type: file.type }), 'receipt', assetCopy.id);
             if (result) {
                 assetCopy.receiptPaths.push(result.path);
                 assetCopy.receiptInfo.push(result.fileInfo);
@@ -305,7 +307,7 @@ async function handleFileUploads(asset, isEditMode, isSubAsset = false) {
         assetCopy.manualPaths = [];
         assetCopy.manualInfo = [];
         for (const file of manualInput.files) {
-            const result = await uploadFile(file, 'manual', assetCopy.id);
+            const result = await uploadFile(new File([file], sanitizeFileName(file.name), { type: file.type }), 'manual', assetCopy.id);
             if (result) {
                 assetCopy.manualPaths.push(result.path);
                 assetCopy.manualInfo.push(result.fileInfo);
@@ -383,7 +385,10 @@ function setupDragAndDrop() {
                 const file = files[0];
                 // Use the validateFileType utility function
                 if (validateFileType(file, fileInput.accept)) {
-                    fileInput.files = files;
+                    fileInput.files = new DataTransfer().files;
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(new File([file], sanitizeFileName(file.name), { type: file.type }));
+                    fileInput.files = dataTransfer.files;
                     fileInput.dispatchEvent(new Event('change'));
                 } else {
                     alert('Invalid file type. Please upload a supported file.');

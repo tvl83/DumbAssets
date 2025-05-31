@@ -4,7 +4,11 @@
  */
 
 // Debug mode flag - set to true to enable debug logging
-const DEBUG = false;
+const DEBUG = window.appConfig?.debug || false;
+
+// Global handlers for error logging, response validation, toaster, and getApiBaseUrl
+import { GlobalHandlers } from './managers/globalHandlers.js';
+new GlobalHandlers();
 
 // Import file upload module
 import { initializeFileUploads, handleFileUploads } from '/src/services/fileUpload/index.js';
@@ -27,17 +31,12 @@ import {
     setupFilePreview
 } from '/src/services/render/index.js';
 import { ChartManager } from '/managers/charts.js';
-// Initialize chart manager
-const chartManager = new ChartManager();
-// Use setupFilePreview from the render index.js
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
-// Import collapsible sections functionality
 import {     
     initCollapsibleSections, 
     expandSection,
     collapseSection
 } from './js/collapsible.js';
-// Import SettingsManager
 import { SettingsManager } from './managers/settings.js';
 import { generateId, formatDate, formatCurrency } from './helpers/utils.js';
 import { ImportManager } from './managers/import.js';
@@ -46,10 +45,6 @@ import { ModalManager } from './managers/modalManager.js';
 import { DashboardManager } from './managers/dashboardManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize global variables for DOM elements
-    let assetModal, assetForm, subAssetModal, subAssetForm, assetList, assetDetails, subAssetContainer;
-    let searchInput, clearSearchBtn;
-
     // Initialize variables for app state
     let assets = [];
     let subAssets = [];
@@ -58,29 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let dashboardFilter = 'all';
     let currentSort = { field: 'updatedAt', direction: 'desc' };
 
-    // File deletion tracking is now handled by ModalManager
-    // Keep window references for backward compatibility with existing save functions
-    window.deletePhoto = false;
-    window.deleteReceipt = false;
-    window.deleteManual = false;
-    window.deleteSubPhoto = false;
-    window.deleteSubReceipt = false;
-    window.deleteSubManual = false;
-
-    // Initialize tag managers at the top with other app state variables
-    let assetTagManager = null;
-    let subAssetTagManager = null;
-
-    // Initialize MaintenanceManager
-    const maintenanceManager = new MaintenanceManager();
-
-    // Initialize ModalManager - will be set up after DOM elements are initialized
-    let modalManager;
-
-    // Initialize DashboardManager - will be set up after DOM elements are initialized
-    let dashboardManager;
-
     // DOM Elements
+    const siteTitleElem = document.getElementById('siteTitle');
+    const pageTitleElem = document.getElementById('pageTitle');
+    const assetModal = document.getElementById('assetModal');
+    const assetForm = document.getElementById('assetForm');
+    const subAssetModal = document.getElementById('subAssetModal');
+    const subAssetForm = document.getElementById('subAssetForm');
+    const assetList = document.getElementById('assetList');
+    const assetDetails = document.getElementById('assetDetails');
+    const subAssetContainer = document.getElementById('subAssetContainer');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
     const subAssetList = document.getElementById('subAssetList');
     const addAssetBtn = document.getElementById('addAssetBtn');
     const addSubAssetBtn = document.getElementById('addSubAssetBtn');
@@ -92,16 +77,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainContent = document.querySelector('.main-content');
     const sortNameBtn = document.getElementById('sortNameBtn');
     const sortWarrantyBtn = document.getElementById('sortWarrantyBtn');
+    const topSortBtn = document.getElementById('topSortBtn');
+    const homeBtn = document.getElementById('homeBtn');
 
     // Import functionality
     const importModal = document.getElementById('importModal');
     const importBtn = document.getElementById('importAssetsBtn');
     const importFile = document.getElementById('importFile');
-    // const selectedFileName = document.getElementById('selectedFileName');
     const startImportBtn = document.getElementById('startImportBtn');
     const columnSelects = document.querySelectorAll('.column-select');
 
-    // Settings UI Logic
+    // Settings UI
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
     const notificationForm = document.getElementById('notificationForm');
@@ -109,45 +95,233 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelSettings = document.getElementById('cancelSettings');
     const settingsClose = settingsModal ? settingsModal.querySelector('.close-btn') : null;
     const testNotificationSettings = document.getElementById('testNotificationSettings');
+    const toggleCardTotalAssets = document.getElementById('toggleCardTotalAssets')
+    const toggleCardTotalComponents = document.getElementById('toggleCardTotalComponents')
+    const toggleCardTotalValue = document.getElementById('toggleCardTotalValue')
+    const toggleCardWarrantiesTotal = document.getElementById('toggleCardWarrantiesTotal')
+    const toggleCardWarrantiesWithin60 = document.getElementById('toggleCardWarrantiesWithin60')
+    const toggleCardWarrantiesWithin30 = document.getElementById('toggleCardWarrantiesWithin30')
+    const toggleCardWarrantiesExpired = document.getElementById('toggleCardWarrantiesExpired')
+    const toggleCardWarrantiesActive = document.getElementById('toggleCardWarrantiesActive')
 
-    // Instantiate SettingsManager - will be initialized after DashboardManager
     let settingsManager;
+    let modalManager;
+    let dashboardManager;
+    const chartManager = new ChartManager();
 
-    // Add Ctrl+Enter keyboard shortcut to save the settings form
-    if (settingsModal && saveSettings) {
-        const settingsKeydownHandler = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                saveSettings.click();
+    // Acts as constructor for the app
+    // will be called at the very end of the file
+    function initialize() {
+        // Display demo banner if in demo mode
+        if (window.appConfig?.demoMode) {
+            document.getElementById('demo-banner').style.display = 'block';
+        }
+
+        addWindowEventListenersAndProperties();
+        // initialize page title right away
+        setupPageTitle();
+        // Load initial data
+        loadAllData().then(() => {
+            // After data is loaded, check for URL parameters
+            if (!handleUrlParameters()) {
+                // No URL parameters, show empty state as normal
+                dashboardManager.renderDashboard();
             }
-        };
-        settingsModal.addEventListener('keydown', settingsKeydownHandler);
-    }
-
-    // Instantiate ImportManager - only if elements exist
-    let importManager = null;
-    if (importModal && importBtn && importFile && startImportBtn) {
-        importManager = new ImportManager({
-            importModal,
-            importBtn,
-            importFile,
-            startImportBtn,
-            columnSelects,
-            showToast,
-            setButtonLoading,
-            loadAssets
         });
-        window.importManager = importManager;
+
+        // Set up file upload functionality
+        initializeFileUploads();
+        
+        // Initialize collapsible sections
+        initCollapsibleSections();
+        
+        // Initialize the asset renderer module
+        initRenderer({
+            // Utility functions
+            formatDate,
+            formatCurrency,
+            
+            // Module functions
+            openAssetModal: (asset) => modalManager.openAssetModal(asset),
+            openSubAssetModal: (subAsset = null, parentId = null, parentSubId = null) => modalManager.openSubAssetModal(subAsset, parentId, parentSubId),
+            deleteAsset,
+            deleteSubAsset,
+            createSubAssetElement,
+            handleSidebarNav,
+            renderSubAssets,
+            
+            // Search functionality
+            searchInput,
+            renderAssetList,
+            
+            // Global state
+            assets,
+            subAssets,
+            
+            // DOM elements
+            assetList,
+            assetDetails,
+            subAssetContainer
+        });
+        
+        // Initialize the list renderer module
+        initListRenderer({
+            // Module functions
+            updateSelectedIds,
+            renderAssetDetails,
+            handleSidebarNav,
+            
+            // Global state
+            assets,
+            subAssets,
+            selectedAssetId,
+            dashboardFilter,
+            currentSort,
+            searchInput,
+            
+            // DOM elements
+            assetList
+        });
+        
+        const maintenanceManager = new MaintenanceManager();
+        const assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
+        const subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
+
+        modalManager = new ModalManager({
+            // DOM elements
+            assetModal,
+            assetForm,
+            subAssetModal,
+            subAssetForm,
+            
+            // Utility functions
+            formatDate,
+            formatCurrency,
+            formatFileSize,
+            generateId,
+            
+            // File handling
+            handleFileUploads,
+            setupFilePreview,
+            formatFilePath,
+            
+            // UI functions
+            setButtonLoading,
+            expandSection,
+            collapseSection,
+            
+            // Data functions
+            saveAsset,
+            saveSubAsset,
+            
+            // Tag and maintenance managers
+            assetTagManager,
+            subAssetTagManager,
+            maintenanceManager,
+            
+            // Global state
+            getAssets: () => assets,
+            getSubAssets: () => subAssets
+        });
+
+        // Initialize SettingsManager after DashboardManager is ready
+        if (settingsBtn && settingsModal && notificationForm && saveSettings && cancelSettings && settingsClose && testNotificationSettings) {
+            settingsManager = new SettingsManager({
+                settingsBtn,
+                settingsModal,
+                notificationForm,
+                saveSettings,
+                cancelSettings,
+                settingsClose,
+                testNotificationSettings,
+                setButtonLoading,
+                renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
+            });
+        }
+        
+        dashboardManager = new DashboardManager({
+            // DOM elements
+            assetDetails,
+            subAssetContainer,
+            searchInput,
+            clearFiltersBtn,
+
+            // Utility functions
+            formatDate,
+            formatCurrency,
+            
+            // Managers
+            chartManager,
+            settingsManager,
+            
+            // UI functions
+            updateDashboardFilter,
+            updateSort,
+            updateSelectedIds,
+            renderAssetDetails,
+            renderAssetList,
+            handleSidebarNav,
+            setButtonLoading,
+            
+            // Global state getters
+            getAssets: () => assets,
+            getSubAssets: () => subAssets,
+            getDashboardFilter: () => dashboardFilter,
+            getCurrentSort: () => currentSort,
+            getSelectedAssetId: () => selectedAssetId
+        });
+
+        if (importModal && importBtn && importFile && startImportBtn) {
+            const importManager = new ImportManager({
+                importModal,
+                importBtn,
+                importFile,
+                startImportBtn,
+                columnSelects,
+                setButtonLoading,
+                loadAssets,
+                renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
+            });
+        }
+
+        addElementEventListeners();
+        setupDragIcons();
+        addShortcutEventListeners();
+
+        registerServiceWorker();
+    }
+    // Initialize the application
+    try { // Global try-catch to catch any initialization errors
+        initialize();
+    } catch (err) {
+        globalThis.logError('Failed to initialize application. Please check the console for details.', err);
     }
 
-    // Save settings to backend
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 2000);
+    function addWindowEventListenersAndProperties() {
+        // Keep window references for backward compatibility with existing save functions
+        globalThis.deletePhoto = false;
+        globalThis.deleteReceipt = false;
+        globalThis.deleteManual = false;
+        globalThis.deleteSubPhoto = false;
+        globalThis.deleteSubReceipt = false;
+        globalThis.deleteSubManual = false;
+        globalThis.renderCardVisibilityToggles = renderCardVisibilityToggles;
+
+        // Handle window resize events to update sidebar overlay
+        globalThis.addEventListener('resize', () => {
+            // If we're now in desktop mode but overlay is visible, hide it
+            if (globalThis.innerWidth > 853 && sidebarOverlay) {
+                sidebarOverlay.style.display = 'none';
+                sidebarOverlay.style.opacity = '0';
+                sidebarOverlay.style.pointerEvents = 'none';
+            }
+            // If we're now in mobile mode with sidebar open, show overlay
+            else if (globalThis.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
+                sidebarOverlay.style.display = 'block';
+                sidebarOverlay.style.opacity = '1';
+                sidebarOverlay.style.pointerEvents = 'auto';
+            }
+        });
     }
 
     // Button loading state handler
@@ -164,24 +338,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Data Functions
     async function loadAssets() {
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/assets`, {
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.href = `${apiBaseUrl}/login`;
-                    return;
-                }
-                throw new Error('Failed to load assets');
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             assets = await response.json();
             // Update asset list in the modules
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
             renderAssetList();
         } catch (error) {
-            console.error('Error loading assets:', error);
+            globalThis.logError('Error loading assets:', error.message);
             assets = [];
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -191,22 +360,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadSubAssets() {
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/subassets`, {
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.href = `${apiBaseUrl}/login`;
-                    return;
-                }
-                throw new Error('Failed to load sub-assets');
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             subAssets = await response.json();
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
         } catch (error) {
-            console.error('Error loading sub-assets:', error);
+            globalThis.logError('Error loading sub-assets:', error.message);
             subAssets = [];
             updateState(assets, subAssets);
             updateListState(assets, subAssets, selectedAssetId);
@@ -216,23 +381,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load both assets and sub-assets, then render the dashboard
     async function loadAllData() {
         await Promise.all([loadAssets(), loadSubAssets()]);
-        renderEmptyState(); // This will call renderDashboard()
+        dashboardManager.renderDashboard();
     }
 
     // Also add a dedicated refresh function to reload data without resetting the UI
     async function refreshAllData() {
         try {
-            await Promise.all([loadAssets(), loadSubAssets()]);
+            const responses = await Promise.all([loadAssets(), loadSubAssets()]);
+            responses.forEach(async (response) => {
+                const responseValidation = await globalThis.validateResponse(response);
+                if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+            })
             return true;
         } catch (error) {
-            console.error('Error refreshing data:', error);
+            globalThis.logError('Error refreshing data:', error.message);
             return false;
         }
-    }
-
-    // Helper function to get the API base URL
-    function getApiBaseUrl() {
-        return window.location.origin + (window.appConfig?.basePath || '');
     }
 
     async function saveAsset(asset) {
@@ -240,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading(saveBtn, true);
 
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
 
@@ -313,7 +477,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to save asset');
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             
             // Get the saved asset from the response
             const savedAsset = await response.json();
@@ -329,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await refreshAllData();
             
             // Close the modal
-            closeAssetModal();
+            modalManager.closeAssetModal();
             
             // Reset delete flags both locally and on window
             deletePhoto = window.deletePhoto = false;
@@ -355,11 +520,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Show success message
-            showToast(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
+            globalThis.toaster.show(isEditMode ? "Asset updated successfully!" : "Asset added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
-            console.error('Error saving asset:', error);
-            alert('Error saving asset. Please try again.');
+            globalThis.logError('Error saving asset:', error.message);
+        } finally {
             setButtonLoading(saveBtn, false);
         }
     }
@@ -369,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setButtonLoading(saveBtn, true);
 
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
             
@@ -387,7 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!subAsset.parentId) {
                 console.error('Missing required field: parentId');
             }
-            
             // Ensure we're sending the required fields
             if (!subAsset.id || !subAsset.name || !subAsset.parentId) {
                 throw new Error('Missing required fields for sub-asset. Check the console for details.');
@@ -430,12 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) {
-                // Get detailed error from response if available
-                const errorText = await response.text();
-                console.error('Server response:', response.status, errorText);
-                throw new Error(`Failed to save sub-asset: ${errorText}`);
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
             
             // Get the updated sub-asset from the response
             const savedSubAsset = await response.json();
@@ -445,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await refreshAllData();
             
             // Close the modal
-            closeSubAssetModal();
+            modalManager.closeSubAssetModal();
             
             // Determine which view to render after saving
             if (subAsset.parentSubId) {
@@ -460,11 +620,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Show success message
-            showToast(isEditMode ? "Component updated successfully!" : "Component added successfully!");
+            globalThis.toaster.show(isEditMode ? "Component updated successfully!" : "Component added successfully!");
             setButtonLoading(saveBtn, false);
         } catch (error) {
-            console.error('Error saving sub-asset:', error);
-            alert('Error saving component. Please try again.');
+            globalThis.logError('Error saving component:', error.message);
+        } finally {
             setButtonLoading(saveBtn, false);
         }
     }
@@ -475,20 +635,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             const response = await fetch(`${apiBaseUrl}/api/asset/${assetId}`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to delete asset');
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             updateSelectedIds(null, null);
             await refreshAllData();
-            renderEmptyState();
-            showToast("Asset deleted successfully!");
+            dashboardManager.renderDashboard();
+            globalThis.toaster.show("Asset deleted successfully!");
         } catch (error) {
-            console.error('Error deleting asset:', error);
-            alert('Error deleting asset. Please try again.');
+            globalThis.logError('Error deleting asset:', error.message);
         }
     }
 
@@ -498,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const apiBaseUrl = getApiBaseUrl();
+            const apiBaseUrl = globalThis.getApiBaseUrl();
             
             // Find the sub-asset and its parent info before deleting
             const subAsset = subAssets.find(s => s.id === subAssetId);
@@ -515,7 +676,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'include'
             });
             
-            if (!response.ok) throw new Error('Failed to delete component');
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
 
             // Refresh all data first to ensure we have the latest state
             await refreshAllData();
@@ -530,10 +692,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await refreshAssetDetails(parentAssetId, false);
             }
             
-            showToast("Component deleted successfully!");
+            globalThis.toaster.show("Component deleted successfully!");
         } catch (error) {
-            console.error('Error deleting component:', error);
-            alert('Error deleting component. Please try again.');
+            globalThis.logError('Error deleting component:', error.message);
         }
     }
 
@@ -560,37 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Case 3: Navigate to parent asset
         updateSelectedIds(parentAssetId, null);
         await refreshAssetDetails(parentAssetId, false);
-    }
-
-    // Dashboard section visibility - now handled by DashboardManager
-
-    // Dashboard rendering - now handled by DashboardManager
-    function renderDashboard(shouldAnimateCharts = true) {
-        dashboardManager.renderDashboard(shouldAnimateCharts);
-    }
-    window.renderDashboard = renderDashboard;
-
-    function renderEmptyState(animateCharts = true) {
-        // Always render dashboard and charts when showing empty state
-        renderDashboard(animateCharts);
-        subAssetContainer.classList.add('hidden');
-    }
-
-    // Modal Functions - now handled by ModalManager
-    function openAssetModal(asset = null) {
-        modalManager.openAssetModal(asset);
-    }
-
-    function closeAssetModal() {
-        modalManager.closeAssetModal();
-    }
-
-    function openSubAssetModal(subAsset = null, parentId = null, parentSubId = null) {
-        modalManager.openSubAssetModal(subAsset, parentId, parentSubId);
-    }
-
-    function closeSubAssetModal() {
-        modalManager.closeSubAssetModal();
     }
 
     function closeSidebar() {
@@ -623,59 +753,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', () => {
-            if (sidebar.classList.contains('open')) {
-                closeSidebar();
-            } else {
-                openSidebar();
-            }
-        });
-    }
-    if (sidebarCloseBtn) {
-        sidebarCloseBtn.addEventListener('click', () => {
-            closeSidebar();
-        });
-    }
-
-    // Close sidebar when clicking the overlay
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', (e) => {
-            e.preventDefault();
-            closeSidebar();
-        });
-    }
-
-    // Dashboard order function - now handled by DashboardManager
-
-    // Events section generation - now handled by DashboardManager
-
-    // Events collection - now handled by DashboardManager
-
-    // Events table generation and management - now handled by DashboardManager
-
-    // Handle window resize events to update sidebar overlay
-    window.addEventListener('resize', () => {
-        // If we're now in desktop mode but overlay is visible, hide it
-        if (window.innerWidth > 853 && sidebarOverlay) {
-            sidebarOverlay.style.display = 'none';
-            sidebarOverlay.style.opacity = '0';
-            sidebarOverlay.style.pointerEvents = 'none';
-        }
-        // If we're now in mobile mode with sidebar open, show overlay
-        else if (window.innerWidth <= 853 && sidebar && sidebar.classList.contains('open') && sidebarOverlay) {
-            sidebarOverlay.style.display = 'block';
-            sidebarOverlay.style.opacity = '1';
-            sidebarOverlay.style.pointerEvents = 'auto';
-        }
-    });
-
-    // Optionally close sidebar on navigation
     function handleSidebarNav() {
         if (window.innerWidth <= 853) closeSidebar();
     }
-    // Call handleSidebarNav after asset/sub-asset click
-    // In renderAssetList and createSubAssetElement, after renderAssetDetails(...), call handleSidebarNav();
 
     // Sorting Functions
     function updateSortButtons(activeButton) {
@@ -695,20 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add click-off-to-close for non-modal-manager modals
-    [importModal, settingsModal].forEach(modal => {
-        if (modal) {
-            modal.addEventListener('mousedown', function(e) {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        }
-    });
-
-    // Note: syncState is now directly called from loadAssets and loadSubAssets functions
-    // No need to redefine functions which could cause errors in strict mode
-
     function renderSubAssets(parentAssetId) {
         if (!subAssetContainer || !subAssetList) return;
         
@@ -724,7 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             const addSubAssetBtn = subAssetHeader.querySelector('#addSubAssetBtn');
             if (addSubAssetBtn) {
-                addSubAssetBtn.onclick = () => openSubAssetModal(null, parentAssetId);
+                addSubAssetBtn.onclick = () => modalManager.openSubAssetModal(null, parentAssetId);
             }
         }
         
@@ -797,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const editBtn = details.querySelector('.edit-sub-btn');
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            openSubAssetModal(subAsset);
+            modalManager.openSubAssetModal(subAsset);
         });
         
         const deleteBtn = details.querySelector('.delete-sub-btn');
@@ -1065,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const childEditBtn = childElement.querySelector('.edit-sub-btn');
                     childEditBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        openSubAssetModal(child);
+                        modalManager.openSubAssetModal(child);
                     });
                     
                     const childDeleteBtn = childElement.querySelector('.delete-sub-btn');
@@ -1182,125 +1248,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 50);
     }
 
-    // DOM initialization function
-    function initializeDOMElements() {
-        // Initialize DOM elements
-        assetModal = document.getElementById('assetModal');
-        assetForm = document.getElementById('assetForm');
-        subAssetModal = document.getElementById('subAssetModal');
-        subAssetForm = document.getElementById('subAssetForm');
-        assetList = document.getElementById('assetList');
-        assetDetails = document.getElementById('assetDetails');
-        subAssetContainer = document.getElementById('subAssetContainer');
-        searchInput = document.getElementById('searchInput');
-        clearSearchBtn = document.getElementById('clearSearchBtn');
-        
-        // Log the initialization status
-        console.log('DOM Elements initialized:', {
-            assetModal: !!assetModal,
-            assetForm: !!assetForm,
-            subAssetModal: !!subAssetModal,
-            subAssetForm: !!subAssetForm,
-            assetList: !!assetList,
-            assetDetails: !!assetDetails,
-            subAssetContainer: !!subAssetContainer,
-            searchInput: !!searchInput,
-            clearSearchBtn: !!clearSearchBtn
-        });
-        
-        // Initialize tag managers
-        assetTagManager = setupTagInput('assetTags', 'assetTagsContainer');
-        subAssetTagManager = setupTagInput('subAssetTags', 'subAssetTagsContainer');
-        setupDragIcons();
-
-    // Initialize ModalManager after DOM elements and tag managers are ready
-    modalManager = new ModalManager({
-        // DOM elements
-        assetModal,
-        assetForm,
-        subAssetModal,
-        subAssetForm,
-        
-        // Utility functions
-        formatDate,
-        formatCurrency,
-        formatFileSize,
-        generateId,
-        
-        // File handling
-        handleFileUploads,
-        setupFilePreview,
-        formatFilePath,
-        
-        // UI functions
-        setButtonLoading,
-        showToast,
-        expandSection,
-        collapseSection,
-        
-        // Data functions
-        saveAsset,
-        saveSubAsset,
-        
-        // Tag and maintenance managers
-        assetTagManager,
-        subAssetTagManager,
-        maintenanceManager,
-        
-        // Global state
-        getAssets: () => assets,
-        getSubAssets: () => subAssets
-    });
-
-    // Initialize DashboardManager after DOM elements are ready
-    dashboardManager = new DashboardManager({
-        // DOM elements
-        assetDetails,
-        subAssetContainer,
-        searchInput,
-        
-        // Utility functions
-        formatDate,
-        formatCurrency,
-        
-        // Chart manager
-        chartManager,
-        
-        // UI functions
-        updateDashboardFilter,
-        updateSort,
-        updateSelectedIds,
-        renderAssetDetails,
-        renderAssetList,
-        renderEmptyState,
-        handleSidebarNav,
-        
-        // Global state getters
-        getAssets: () => assets,
-        getSubAssets: () => subAssets,
-        getDashboardFilter: () => dashboardFilter,
-        getCurrentSort: () => currentSort,
-        getSelectedAssetId: () => selectedAssetId
-    });
-
-    // Initialize SettingsManager after DashboardManager is ready
-    if (settingsBtn && settingsModal && notificationForm && saveSettings && cancelSettings && settingsClose && testNotificationSettings) {
-        settingsManager = new SettingsManager({
-            settingsBtn,
-            settingsModal,
-            notificationForm,
-            saveSettings,
-            cancelSettings,
-            settingsClose,
-            testNotificationSettings,
-            setButtonLoading,
-            showToast,
-            renderDashboard,
-            getDashboardOrder: () => dashboardManager.getDashboardOrder()
-        });
-    }
-    }
-
     function setupDragIcons() {
         // --- Inject SVG into .sortable-handle elements (Settings UI) ---
         const sortableHandleSVG = `
@@ -1345,6 +1292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add click handlers to remove buttons
             container.querySelectorAll('.remove-tag').forEach(btn => {
                 btn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent bubbling to parent elements
                     e.preventDefault();
                     const tagToRemove = btn.dataset.tag;
                     tags.delete(tagToRemove);
@@ -1354,10 +1302,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (input) {
+            // Prevent form submission when Enter is pressed in tag input
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ',') {
                     e.preventDefault();
+                    e.stopPropagation();
                     const tag = input.value.trim();
+                    if (tag && !tags.has(tag)) {
+                        tags.add(tag);
+                        input.value = '';
+                        renderTags();
+                    }
+                }
+            });
+
+            // Handle mobile keyboard "Enter" button that might trigger different events
+            input.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const tag = input.value.trim();
+                    if (tag && !tags.has(tag)) {
+                        tags.add(tag);
+                        input.value = '';
+                        renderTags();
+                    }
+                }
+            });
+
+            // Handle comma input for tag separation
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                if (value.endsWith(',')) {
+                    e.preventDefault();
+                    const tag = value.slice(0, -1).trim();
                     if (tag && !tags.has(tag)) {
                         tags.add(tag);
                         input.value = '';
@@ -1394,25 +1372,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCardVisibilityToggles(settings) {
         // Set initial state from settings
         const vis = (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
-        document.getElementById('toggleCardTotalAssets').checked = vis.assets !== false;
-        document.getElementById('toggleCardTotalComponents').checked = vis.components !== false;
-        document.getElementById('toggleCardTotalValue').checked = vis.value !== false;
-        document.getElementById('toggleCardWarrantiesTotal').checked = vis.warranties !== false;
-        document.getElementById('toggleCardWarrantiesWithin60').checked = vis.within60 !== false;
-        document.getElementById('toggleCardWarrantiesWithin30').checked = vis.within30 !== false;
-        document.getElementById('toggleCardWarrantiesExpired').checked = vis.expired !== false;
-        document.getElementById('toggleCardWarrantiesActive').checked = vis.active !== false;
-    }
-    window.renderCardVisibilityToggles = renderCardVisibilityToggles;
-
-    // Helper for per-card visibility
-    function getDashboardCardVisibility() {
-        try {
-            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings'));
-            return (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
-        } catch {
-            return {};
-        }
+        toggleCardTotalAssets.checked = vis.assets !== false;
+        toggleCardTotalComponents.checked = vis.components !== false;
+        toggleCardTotalValue.checked = vis.value !== false;
+        toggleCardWarrantiesTotal.checked = vis.warranties !== false;
+        toggleCardWarrantiesWithin60.checked = vis.within60 !== false;
+        toggleCardWarrantiesWithin30.checked = vis.within30 !== false;
+        toggleCardWarrantiesExpired.checked = vis.expired !== false;
+        toggleCardWarrantiesActive.checked = vis.active !== false;
     }
 
     // Add URL parameter handling for direct asset links
@@ -1449,223 +1416,177 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return false; // No URL parameters to handle
     }
-
-    // Load initial data
-    loadAllData().then(() => {
-        // After data is loaded, check for URL parameters
-        if (!handleUrlParameters()) {
-            // No URL parameters, show empty state as normal
-            renderEmptyState();
-        }
-    });
-
-    // Keep at the end - Initialize DOM elements
-    initializeDOMElements();
     
-    // Check if DOM elements exist
-    if (!assetList || !assetDetails) {
-        console.error('Required DOM elements not found.');
-        return;
-    }
-    
-    // Set up file upload functionality
-    initializeFileUploads();
-    
-    // Initialize collapsible sections
-    initCollapsibleSections();
-    
-    // Initialize the asset renderer module
-    initRenderer({
-        // Utility functions
-        formatDate,
-        formatCurrency,
-        
-        // Module functions
-        openAssetModal,
-        openSubAssetModal,
-        deleteAsset,
-        deleteSubAsset,
-        createSubAssetElement,
-        handleSidebarNav,
-        renderSubAssets,
-        
-        // Search functionality
-        searchInput,
-        renderAssetList,
-        
-        // Global state
-        assets,
-        subAssets,
-        
-        // DOM elements
-        assetList,
-        assetDetails,
-        subAssetContainer
-    });
-    
-    // Initialize the list renderer module
-    initListRenderer({
-        // Module functions
-        updateSelectedIds,
-        renderAssetDetails,
-        handleSidebarNav,
-        
-        // Global state
-        assets,
-        subAssets,
-        selectedAssetId,
-        dashboardFilter,
-        currentSort,
-        searchInput,
-        
-        // DOM elements
-        assetList
-    });
-    
-    // Set up search
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            renderAssetList(e.target.value);
-            if (clearSearchBtn) {
-                clearSearchBtn.style.display = e.target.value ? 'flex' : 'none';
-            }
-        });
-    }
-    if (clearSearchBtn && searchInput) {
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            clearSearchBtn.style.display = 'none';
-            renderAssetList('');
-            searchInput.focus();
-        });
-    }
-    
-    // Set up home button
-    const homeBtn = document.getElementById('homeBtn');
-    if (homeBtn) {
-        homeBtn.addEventListener('click', () => goHome());
-    }
-
     function goHome() {
         // Clear selected asset
         updateSelectedIds(null, null);
-        
         // Remove active class from all asset items
         document.querySelectorAll('.asset-item').forEach(item => {
             item.classList.remove('active');
         });
-        
         // Render dashboard and charts
-        renderEmptyState();
-        
+        dashboardManager.renderDashboard();
         // Close sidebar on mobile
         handleSidebarNav();
     }
     
-    // Set up add asset button
-    if (addAssetBtn) {
-        addAssetBtn.addEventListener('click', () => {
-            openAssetModal();
+    // GLOBAL SHORTCUTS
+    function addShortcutEventListeners() {
+        // Add event listener for escape key to close all modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+                    if (modal && modal.style.display !== 'none') {
+                        modal.style.display = 'none';
+                    }
+                });
+                modalManager.closeAssetModal();
+                modalManager.closeSubAssetModal();
+            }
         });
-    }
-    
-    // Add event listener for escape key to close all modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
-                if (modal && modal.style.display !== 'none') {
-                    modal.style.display = 'none';
-                }
-            });
-        }
-    });
-
-    // Add click-off-to-close for all modals on overlay click
-    [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
-        if (modal) {
-            modal.addEventListener('mousedown', function(e) {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        }
-    });
-
-    // Add event listener for escape key to close modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeAssetModal();
-            closeSubAssetModal();
-        }
-    });
-    
-    // Set the page and site title from config if available
-    if (window.appConfig && window.appConfig.siteTitle) {
-        const siteTitleElem = document.getElementById('siteTitle');
-        if (siteTitleElem) {
-            siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
-        }
-        const pageTitleElem = document.getElementById('pageTitle');
-        if (pageTitleElem) {
-            pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
-        }
-        siteTitleElem.addEventListener('click', () => goHome());
-    }
-    
-
-    // Set up sort buttons   
-    if (sortNameBtn) {
-        sortNameBtn.addEventListener('click', () => {
-            const currentDirection = sortNameBtn.getAttribute('data-direction') || 'asc';
-            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
-            
-            // Update button state
-            sortNameBtn.setAttribute('data-direction', newDirection);
-            sortWarrantyBtn.setAttribute('data-direction', 'asc');
-            
-            // Update sort settings
-            currentSort = { field: 'name', direction: newDirection };
-            updateSort(currentSort);
-            
-            // Update UI
-            updateSortButtons(sortNameBtn);
-            
-            // Re-render with sort
-            renderAssetList(searchInput ? searchInput.value : '');
-        });
-    }
-    
-    if (sortWarrantyBtn) {
-        sortWarrantyBtn.addEventListener('click', () => {
-            const currentDirection = sortWarrantyBtn.getAttribute('data-direction') || 'asc';
-            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
-            
-            // Update button state
-            sortWarrantyBtn.setAttribute('data-direction', newDirection);
-            sortNameBtn.setAttribute('data-direction', 'asc');
-            
-            // Update sort settings
-            currentSort = { field: 'warranty', direction: newDirection };
-            updateSort(currentSort);
-            
-            // Update UI
-            updateSortButtons(sortWarrantyBtn);
-            
-            // Re-render with sort
-            renderAssetList(searchInput ? searchInput.value : '');
-        });
-    }
-    
-    // Top Sort Button (optional)
-    const topSortBtn = document.getElementById('topSortBtn');
-    if (topSortBtn) {
-        topSortBtn.addEventListener('click', () => {
-            const sortOptions = document.getElementById('sortOptions');
-            if (sortOptions) {
-                sortOptions.classList.toggle('visible');
+        // Add click-off-to-close for all modals on overlay click
+        [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+            if (modal) {
+                modal.addEventListener('mousedown', function(e) {
+                    if (e.target !== modal) return;
+                    if (modal === assetModal) {
+                        modalManager.closeAssetModal();
+                    }
+                    else if (modal === subAssetModal) {
+                        modalManager.closeSubAssetModal();
+                    }
+                    else if (modal === settingsModal) {
+                        settingsManager.closeSettingsModal();
+                    }
+                    else {
+                        modal.style.display = 'none';
+                    }
+                });
             }
         });
     }
-    
-    registerServiceWorker();
+
+    function addElementEventListeners() {
+        // Add Ctrl+Enter keyboard shortcut to save the settings form
+        if (settingsModal && saveSettings) {
+            const settingsKeydownHandler = (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    saveSettings.click();
+                }
+            };
+            settingsModal.addEventListener('keydown', settingsKeydownHandler);
+        }
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                if (sidebar.classList.contains('open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+        }
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', () => {
+                closeSidebar();
+            });
+        }
+        // Close sidebar when clicking the overlay
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeSidebar();
+            });
+        }
+        // Set up search
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                renderAssetList(e.target.value);
+                if (clearSearchBtn) {
+                    clearSearchBtn.style.display = e.target.value ? 'flex' : 'none';
+                }
+            });
+        }
+        if (clearSearchBtn && searchInput) {
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                clearSearchBtn.style.display = 'none';
+                renderAssetList('');
+                searchInput.focus();
+            });
+        }
+        // Set up home button
+        if (homeBtn) {
+            homeBtn.addEventListener('click', () => goHome());
+        }
+        // Set up add asset button
+        if (addAssetBtn) {
+            addAssetBtn.addEventListener('click', () => {
+                modalManager.openAssetModal();
+            });
+        }
+        // Set up sort buttons   
+        if (sortNameBtn) {
+            sortNameBtn.addEventListener('click', () => {
+                const currentDirection = sortNameBtn.getAttribute('data-direction') || 'asc';
+                const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+                
+                // Update button state
+                sortNameBtn.setAttribute('data-direction', newDirection);
+                sortWarrantyBtn.setAttribute('data-direction', 'asc');
+                
+                // Update sort settings
+                currentSort = { field: 'name', direction: newDirection };
+                updateSort(currentSort);
+                
+                // Update UI
+                updateSortButtons(sortNameBtn);
+                
+                // Re-render with sort
+                renderAssetList(searchInput ? searchInput.value : '');
+            });
+        }
+        if (sortWarrantyBtn) {
+            sortWarrantyBtn.addEventListener('click', () => {
+                const currentDirection = sortWarrantyBtn.getAttribute('data-direction') || 'asc';
+                const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+                
+                // Update button state
+                sortWarrantyBtn.setAttribute('data-direction', newDirection);
+                sortNameBtn.setAttribute('data-direction', 'asc');
+                
+                // Update sort settings
+                currentSort = { field: 'warranty', direction: newDirection };
+                updateSort(currentSort);
+                
+                // Update UI
+                updateSortButtons(sortWarrantyBtn);
+                
+                // Re-render with sort
+                renderAssetList(searchInput ? searchInput.value : '');
+            });
+        }
+        // Top Sort Button
+        if (topSortBtn) {
+            topSortBtn.addEventListener('click', () => {
+                const sortOptions = document.getElementById('sortOptions');
+                if (sortOptions) {
+                    sortOptions.classList.toggle('visible');
+                }
+            });
+        }
+    }
+
+    // Set the page and site title from config if available
+    function setupPageTitle() {
+        if (window.appConfig && window.appConfig.siteTitle) {
+            if (siteTitleElem) {
+                siteTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+            }
+            if (pageTitleElem) {
+                pageTitleElem.textContent = window.appConfig.siteTitle || 'DumbAssets';
+            }
+            siteTitleElem.addEventListener('click', () => goHome());
+        }
+    }
 });

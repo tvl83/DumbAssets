@@ -1,6 +1,8 @@
 // public/managers/import.js
 // ImportManager handles all import modal logic, file selection, mapping, and import actions
 
+import { sanitizeFileName } from '/src/services/fileUpload/utils.js';
+
 export class ImportManager {
     constructor({
         importModal,
@@ -8,18 +10,18 @@ export class ImportManager {
         importFile,
         startImportBtn,
         columnSelects,
-        showToast,
         setButtonLoading,
-        loadAssets
+        loadAssets,
+        renderDashboard
     }) {
         this.importModal = importModal;
         this.importBtn = importBtn;
         this.importFile = importFile;
         this.startImportBtn = startImportBtn;
         this.columnSelects = columnSelects;
-        this.showToast = showToast;
         this.setButtonLoading = setButtonLoading;
         this.loadAssets = loadAssets;
+        this.renderDashboard = renderDashboard;
         this._bindEvents();
     }
 
@@ -39,6 +41,7 @@ export class ImportManager {
         if (downloadTemplateBtn) {
             downloadTemplateBtn.addEventListener('click', () => this._downloadTemplate());
         }
+        window.resetImportForm = this.resetImportForm.bind(this);
     }
 
     async _handleFileSelection(e) {
@@ -46,13 +49,15 @@ export class ImportManager {
         if (!file) return;
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', new File([file], sanitizeFileName(file.name), { type: file.type }));
             const response = await fetch('/api/import-assets', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
             });
-            if (!response.ok) throw new Error('Failed to get headers');
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const data = await response.json();
             const headers = data.headers || [];
             // Show the column mapping section
@@ -72,8 +77,9 @@ export class ImportManager {
             const urlColumn = document.getElementById('urlColumn');
             const warrantyColumn = document.getElementById('warrantyColumn');
             const warrantyExpirationColumn = document.getElementById('warrantyExpirationColumn');
+            const lifetimeColumn = document.getElementById('lifetimeColumn');
             const tagsColumn = document.getElementById('tagsColumn');
-            [urlColumn, warrantyColumn, warrantyExpirationColumn, tagsColumn].forEach(select => {
+            [urlColumn, warrantyColumn, warrantyExpirationColumn, lifetimeColumn, tagsColumn].forEach(select => {
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Column</option>';
                 headers.forEach((header, index) => {
@@ -98,8 +104,7 @@ export class ImportManager {
             this.autoMapColumns(headers);
             this.startImportBtn.disabled = headers.length === 0;
         } catch (error) {
-            console.error('Error reading file:', error);
-            alert('Failed to read file: ' + error.message);
+            globalThis.logError('Failed to read file:', error.message);
         }
     }
 
@@ -119,12 +124,13 @@ export class ImportManager {
             url: document.getElementById('urlColumn').value,
             warranty: document.getElementById('warrantyColumn').value,
             warrantyExpiration: document.getElementById('warrantyExpirationColumn').value,
+            lifetime: document.getElementById('lifetimeColumn').value,
             secondaryWarranty: document.getElementById('secondaryWarrantyColumn') ? document.getElementById('secondaryWarrantyColumn').value : '',
             secondaryWarrantyExpiration: document.getElementById('secondaryWarrantyExpirationColumn') ? document.getElementById('secondaryWarrantyExpirationColumn').value : '',
             tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : ''
         };
         if (!mappings.name) {
-            alert('Please map the Name column');
+            globalThis.toaster.show('Please map the Name column', 'error');
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
@@ -141,7 +147,8 @@ export class ImportManager {
                 // Validate name
                 const nameIdx = mappings.name !== '' ? parseInt(mappings.name) : -1;
                 if (nameIdx === -1 || !row[nameIdx] || !row[nameIdx].trim()) {
-                    alert(`Row ${i+2}: Name is required.`);
+                    // alert(`Row ${i+2}: Name is required.`);
+                    globalThis.toaster.show(`Row ${i+2}: Name is required.`, 'error');
                     this.setButtonLoading(this.startImportBtn, false);
                     return;
                 }
@@ -151,7 +158,8 @@ export class ImportManager {
                     if (idx !== -1 && row[idx] && row[idx].trim()) {
                         const val = row[idx].replace(/"/g, '');
                         if (isNaN(Date.parse(val))) {
-                            alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
+                            // alert(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`);
+                            globalThis.toaster.show(`Row ${i+2}: Invalid date in column '${headers[idx]}' (${val})`, 'error');
                             this.setButtonLoading(this.startImportBtn, false);
                             return;
                         }
@@ -159,30 +167,26 @@ export class ImportManager {
                 }
             }
         } catch (validationError) {
-            alert('Validation error: ' + validationError.message);
+            const errorMessage = validationError.message || 'Invalid file format or content';
+            globalThis.logError('Validation error:', errorMessage);
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
         // ...existing code for sending to backend...
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', new File([file], sanitizeFileName(file.name), { type: file.type }));
             formData.append('mappings', JSON.stringify(mappings));
             const response = await fetch('/api/import-assets', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    window.location.reload();
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Import failed');
-            }
+            const responseValidation = await globalThis.validateResponse(response);
+            if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
+
             const result = await response.json();
-            alert(`Successfully imported ${result.importedCount} assets`);
+            globalThis.toaster.show(`Successfully imported ${result.importedCount} assets`, 'success');
             this.importModal.style.display = 'none';
             this.importFile.value = '';
             this.startImportBtn.disabled = true;
@@ -192,10 +196,10 @@ export class ImportManager {
             });
             await this.loadAssets();
             // Rerender dashboard after import
-            if (window.renderDashboard) window.renderDashboard();
+            this.renderDashboard(true);
         } catch (error) {
-            console.error('Import error:', error);
-            alert('Failed to import assets: ' + error.message);
+            globalThis.logError('Import failed:', error.message);
+        } finally {
             this.setButtonLoading(this.startImportBtn, false);
         }
     }
@@ -212,6 +216,7 @@ export class ImportManager {
             urlColumn: ["url", "link", "website"],
             warrantyColumn: ["warranty", "warranty scope", "coverage"],
             warrantyExpirationColumn: ["warranty expiration", "warranty expiry", "warranty end", "warranty end date", "expiration", "expiry"],
+            lifetimeColumn: ["lifetime", "lifetime warranty", "is lifetime", "islifetime", "permanent"],
             secondaryWarrantyColumn: ["secondary warranty", "secondary warranty scope", "warranty 2", "warranty2", "warranty scope 2"],
             secondaryWarrantyExpirationColumn: ["secondary warranty expiration", "secondary warranty expiry", "secondary warranty end", "secondary warranty end date", "warranty 2 expiration", "warranty2 expiration", "warranty expiration 2", "warranty expiry 2"],
             tagsColumn: ["tags", "tag", "labels", "categories"]
@@ -261,6 +266,7 @@ export class ImportManager {
             'urlColumn',
             'warrantyColumn',
             'warrantyExpirationColumn',
+            'lifetimeColumn',
             'secondaryWarrantyColumn',
             'secondaryWarrantyExpirationColumn',
             'tagsColumn'
@@ -277,7 +283,7 @@ export class ImportManager {
         const mappingContainer = document.querySelector('.column-mapping');
         if (mappingContainer) mappingContainer.style.display = 'none';
     }
-
+    
     _downloadTemplate() {
         // Define the headers for the template CSV
         const headers = [
@@ -291,6 +297,7 @@ export class ImportManager {
             'URL',
             'Warranty',
             'Warranty Expiration',
+            'Lifetime',
             'Secondary Warranty',
             'Secondary Warranty Expiration',
             'Tags'
@@ -300,8 +307,10 @@ export class ImportManager {
         const testRow = headers.map(h => {
             const lower = h.toLowerCase();
             if (lower.includes('date') || lower.includes('expiration')) return today;
+            if (lower === 'url') return 'https://example.com';
             if (lower === 'tags') return '"tag1,tag2,tag3"'; // CSV string for tags
             if (lower === 'purchase price') return '123.45';
+            if (lower === 'lifetime') return 'false'; // Boolean value for lifetime warranty
             return `Test ${h}`;
         });
         const csvContent = headers.join(',') + '\n' + testRow.join(',') + '\n';
@@ -317,16 +326,4 @@ export class ImportManager {
             URL.revokeObjectURL(url);
         }, 0);
     }
-}
-
-// Make resetImportForm globally accessible for fileUploader.js
-if (typeof window !== 'undefined') {
-    window.resetImportForm = (...args) => {
-        if (typeof ImportManager !== 'undefined' && ImportManager.prototype.resetImportForm) {
-            // Find the importManager instance if possible
-            if (window.importManager && typeof window.importManager.resetImportForm === 'function') {
-                window.importManager.resetImportForm(...args);
-            }
-        }
-    };
 }

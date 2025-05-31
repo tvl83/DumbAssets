@@ -24,7 +24,6 @@ export class ModalManager {
         
         // UI functions
         setButtonLoading,
-        showToast,
         expandSection,
         collapseSection,
         
@@ -44,8 +43,10 @@ export class ModalManager {
         // Store DOM elements
         this.assetModal = assetModal;
         this.assetForm = assetForm;
+        this.assetSaveBtn = this.assetForm.querySelector('.save-btn');
         this.subAssetModal = subAssetModal;
         this.subAssetForm = subAssetForm;
+        this.subAssetSaveBtn = this.subAssetForm.querySelector('.save-btn');
         
         // Store utility functions
         this.formatDate = formatDate;
@@ -60,7 +61,6 @@ export class ModalManager {
         
         // Store UI functions
         this.setButtonLoading = setButtonLoading;
-        this.showToast = showToast;
         this.expandSection = expandSection;
         this.collapseSection = collapseSection;
         
@@ -182,6 +182,7 @@ export class ModalManager {
         
         // Show the modal
         this.assetModal.style.display = 'block';
+        this.assetModal.querySelector('.modal-content').scrollTop = 0; // Reset scroll position;
     }
     
     closeAssetModal() {
@@ -249,8 +250,6 @@ export class ModalManager {
         // Set up cancel and close buttons
         this.setupSubAssetModalButtons();
         
-        // Show the modal
-        this.subAssetModal.style.display = 'block';
         
         // Handle file section expansion
         if (containsExistingFiles) {
@@ -258,6 +257,10 @@ export class ModalManager {
         } else {
             this.collapseSection('#subAssetFileUploader');
         }
+        
+        // Show the modal
+        this.subAssetModal.style.display = 'block';
+        this.subAssetModal.querySelector('.modal-content').scrollTop = 0; // Reset scroll position;
     }
     
     closeSubAssetModal() {
@@ -609,6 +612,8 @@ export class ModalManager {
     setupAssetFormSubmission() {
         this.assetForm.onsubmit = (e) => {
             e.preventDefault();
+            // Set loading state for save button
+            this.setButtonLoading(this.assetSaveBtn, true);
             
             const formData = this.collectAssetFormData();
             
@@ -621,6 +626,10 @@ export class ModalManager {
                     window.deleteManual = this.deleteManual;
                     
                     return this.saveAsset(updatedAsset);
+                })
+                .finally(() => {
+                    // reset button loading state
+                    this.setButtonLoading(this.assetSaveBtn, false);
                 });
         };
     }
@@ -628,18 +637,24 @@ export class ModalManager {
     setupSubAssetFormSubmission() {
         this.subAssetForm.onsubmit = (e) => {
             e.preventDefault();
+            // Set loading state for save button
+            this.setButtonLoading(this.subAssetSaveBtn, true);
             
             const formData = this.collectSubAssetFormData();
             
             // Validate required fields
             if (!formData.name || !formData.name.trim()) {
-                alert('Name is required');
+                // alert('Name is required');
+                globalThis.toaster.show('Name is required. Please try again.', 'error');
+                this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
             
             if (!formData.parentId || !formData.parentId.trim()) {
                 console.error('Missing parent ID!');
-                alert('Parent ID is required. Please try again.');
+                // alert('Parent ID is required. Please try again.');
+                globalThis.toaster.show('Parent ID is required. Please try again.', 'error');
+                this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
             
@@ -652,6 +667,9 @@ export class ModalManager {
                     window.deleteSubManual = this.deleteSubManual;
                     
                     return this.saveSubAsset(updatedSubAsset);
+                })
+                .finally(() => {
+                    this.setButtonLoading(this.subAssetSaveBtn, false);
                 });
         };
     }

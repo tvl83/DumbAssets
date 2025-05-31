@@ -153,3 +153,21 @@
   - Lockout periods
   - Constant-time PIN comparison
 - Session management must use secure cookies 
+
+# Instructions for `globalHandlers` Implementation
+This document outlines the integration of a new `globalHandlers` class to centralize common frontend functionalities.
+
+## 1. `globalHandlers` Class
+- At the very top of `script.js`, `globalHandlers` class is instantiated. This ensures its methods are available globally.
+
+There are 4 key functionalities provided by the `globalHandlers` class:
+- globalThis.validateResponse = validates async fetch responses and checks for status codes and error messages. then returns the error message if any.
+  - then outside of this we check if the response.errorMessage is not empty, if so we throw the responseValidation.errorMessage
+  - then catch and use globalThis.logError("Custom Message:", error.message) to log the error and toast the message.
+- globalThis.toaster = globally exposes a toaster utility for showing toast notifications.
+  - globalThis.toaster.show(message, type = 'success', isStatic = false, timeoutMs = 3000)
+- globalThis.logError = global exposes an error logging utility.
+  - globalThis.logError(message, error, keepOpen = false, toastTimeout = 3000)
+  - this will automaticall console.error the error and show a toast notification with the error message based on the parameters passed
+- globalThis.getApiBaseUrl = globally exposes a utility to get the API base URL.
+  - used when needing to make API calls, ensuring the correct base URL is used based on the environment.

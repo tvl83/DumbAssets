@@ -21,6 +21,8 @@ const { sendNotification } = require('./src/services/notifications/appriseNotifi
 const { startWarrantyCron } = require('./src/services/notifications/warrantyCron');
 const { generatePWAManifest } = require("./scripts/pwa-manifest-generator");
 const { originValidationMiddleware, getCorsOptions } = require('./middleware/cors');
+const { demoModeMiddleware } = require('./middleware/demo');
+const { sanitizeFileName } = require('./src/services/fileUpload/utils');
 const packageJson = require('./package.json');
 
 const app = express();
@@ -31,8 +33,35 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const DEMO_MODE = process.env.DEMO_MODE === 'true';
 const SITE_TITLE = DEMO_MODE ? `${process.env.SITE_TITLE || 'DumbAssets'} (DEMO)` : (process.env.SITE_TITLE || 'DumbAssets');
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const PUBLIC_ASSETS_DIR = path.join(PUBLIC_DIR, 'assets');
+const DATA_DIR = path.join(__dirname, 'data');
 const VERSION = packageJson.version;
+const DEFAULT_SETTINGS = {
+    notificationSettings: {
+        notifyAdd: true,
+        notifyDelete: false,
+        notifyEdit: true,
+        notify1Month: true,
+        notify2Week: false,
+        notify7Day: true,
+        notify3Day: false,
+        notifyMaintenance: false
+    },
+    interfaceSettings: {
+        dashboardOrder: ["analytics", "totals", "warranties", "events"],
+        dashboardVisibility: { analytics: true, totals: true, warranties: true, events: true },
+        cardVisibility: {
+            assets: true,
+            components: true,
+            value: true,
+            warranties: true,
+            within60: true,
+            within30: true,
+            expired: true,
+            active: true
+        }
+    },
+};
 
 generatePWAManifest(SITE_TITLE);
 // Set timezone from environment variable or default to America/Chicago
@@ -130,6 +159,26 @@ app.use(session({
     }
 }));
 
+// Add helper function to get base URL for notifications
+function getBaseUrl(req) {
+    // Try to get from environment variable first
+    if (process.env.BASE_URL) {
+        return process.env.BASE_URL;
+    }
+    
+    // Try to construct from request headers
+    if (req) {
+        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
+        const host = req.get('Host') || req.get('X-Forwarded-Host');
+        if (host) {
+            return `${protocol}://${host}`;
+        }
+    }
+    
+    // Fallback to localhost with default port
+    return 'http://localhost:3000';
+}
+
 // --- AUTHENTICATION MIDDLEWARE FOR ALL PROTECTED ROUTES ---
 app.use(BASE_PATH, (req, res, next) => {
     // List of paths that should be publicly accessible
@@ -151,7 +200,9 @@ app.use(BASE_PATH, (req, res, next) => {
 
     // For all other paths, apply both origin validation and auth middleware
     originValidationMiddleware(req, res, () => {
-        authMiddleware(req, res, next);
+        authMiddleware(req, res, () => {
+            demoModeMiddleware(req, res, next);
+        });
     });
 });
 
@@ -207,12 +258,14 @@ app.get(BASE_PATH + '/config.js', async (req, res) => {
             debug: ${DEBUG},
             siteTitle: '${SITE_TITLE}',
             version: '${VERSION}',
+            defaultSettings: ${JSON.stringify(DEFAULT_SETTINGS)},
+            demoMode: ${DEMO_MODE},
         };
     `);
     
     // Then append the static config.js content
     try {
-        const staticConfig = await fs.promises.readFile(path.join(__dirname, 'public', 'config.js'), 'utf8');
+        const staticConfig = await fs.promises.readFile(path.join(PUBLIC_DIR, 'config.js'), 'utf8');
         res.write('\n\n' + staticConfig);
     } catch (error) {
         console.error('Error reading static config.js:', error);
@@ -229,7 +282,7 @@ app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');
     
     try {
-        let swContent = await fs.promises.readFile(path.join(__dirname, 'public', 'service-worker.js'), 'utf8');
+        let swContent = await fs.promises.readFile(path.join(PUBLIC_DIR, 'service-worker.js'), 'utf8');
         
         // Replace the version initialization with the actual version from package.json
         swContent = swContent.replace(
@@ -248,10 +301,10 @@ app.get(BASE_PATH + '/service-worker.js', async (req, res) => {
 // Serve static files for public assets
 app.use(BASE_PATH + '/', express.static(path.join(PUBLIC_DIR)));
 app.get(BASE_PATH + "/manifest.json", (req, res) => {
-    res.sendFile(path.join(ASSETS_DIR, "manifest.json"));
+    res.sendFile(path.join(PUBLIC_ASSETS_DIR, "manifest.json"));
 });
 app.get(BASE_PATH + "/asset-manifest.json", (req, res) => {
-    res.sendFile(path.join(ASSETS_DIR, "asset-manifest.json"));
+    res.sendFile(path.join(PUBLIC_ASSETS_DIR, "asset-manifest.json"));
 });
 
 // Unprotected routes and files (accessible without login)
@@ -276,7 +329,7 @@ app.get(BASE_PATH + '/login', (req, res) => {
         debugLog('Stored return URL in session:', req.query.returnTo);
     }
     
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    res.sendFile(path.join(PUBLIC_DIR, 'login.html'));
 });
 
 app.get(BASE_PATH + '/pin-length', (req, res) => {
@@ -388,8 +441,8 @@ app.use('/api', (req, res, next) => {
 
 // --- ASSET MANAGEMENT (existing code preserved) ---
 // File paths
-const assetsFilePath = path.join(__dirname, 'data', 'Assets.json');
-const subAssetsFilePath = path.join(__dirname, 'data', 'SubAssets.json');
+const assetsFilePath = path.join(DATA_DIR, 'Assets.json');
+const subAssetsFilePath = path.join(DATA_DIR, 'SubAssets.json');
 
 // Helper Functions
 function ensureDirectoryExists(directory) {
@@ -428,10 +481,39 @@ function generateId() {
     return Math.floor(1000000000 + Math.random() * 9000000000).toString();
 }
 
+
+// Helper function to delete all files associated with an asset or sub-asset
+function deleteAssetFileAsync(filePath) {
+    if (!filePath || filePath.trim() === '') return;
+
+    let formattedPath = filePath.trim();
+    if (formattedPath.startsWith('/')) formattedPath = formattedPath.substring(1);
+    const assetFilePath = path.join(DATA_DIR, formattedPath);
+    fs.unlink(assetFilePath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+            console.error(`Error deleting file - ${filePath}:`, err.message);
+        }
+    });
+}
+
+function deleteAssetFiles(assets) {
+    // check assets is an array
+    if (!Array.isArray(assets)) {
+        console.error('deleteAssetFiles expects an array of assets');
+        return;
+    }
+
+    assets.forEach(asset => {
+        if (asset.photoPath) deleteAssetFileAsync(asset.photoPath);
+        if (asset.receiptPath) deleteAssetFileAsync(asset.receiptPath);
+        if (asset.manualPath) deleteAssetFileAsync(asset.manualPath);
+    });
+}
+
 // Initialize data directories
-ensureDirectoryExists(path.join(__dirname, 'data', 'Images'));
-ensureDirectoryExists(path.join(__dirname, 'data', 'Receipts'));
-ensureDirectoryExists(path.join(__dirname, 'data', 'Manuals'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Images'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Receipts'));
+ensureDirectoryExists(path.join(DATA_DIR, 'Manuals'));
 
 // Initialize empty files if they don't exist
 if (!fs.existsSync(assetsFilePath)) {
@@ -485,7 +567,7 @@ app.post('/api/asset', async (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -550,7 +632,7 @@ app.put('/api/asset', (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -598,37 +680,21 @@ app.delete('/api/asset/:id', (req, res) => {
     
     // Remove the asset
     const deletedAsset = assets.splice(assetIndex, 1)[0];
-    
     // Remove all related sub-assets
     const updatedSubAssets = subAssets.filter(sa => sa.parentId !== assetId);
     
     // Delete associated files if they exist
     try {
-        if (deletedAsset.photoPath) {
-            const photoPath = path.join(__dirname, deletedAsset.photoPath.substring(1));
-            if (fs.existsSync(photoPath)) {
-                fs.unlinkSync(photoPath);
-            }
-        }
+        deleteAssetFiles([deletedAsset]);
         
-        if (deletedAsset.receiptPath) {
-            const receiptPath = path.join(__dirname, deletedAsset.receiptPath.substring(1));
-            if (fs.existsSync(receiptPath)) {
-                fs.unlinkSync(receiptPath);
-            }
-        }
-
-        if (deletedAsset.manualPath) {
-            const manualPath = path.join(__dirname, deletedAsset.manualPath.substring(1));
-            if (fs.existsSync(manualPath)) {
-                fs.unlinkSync(manualPath);
-            }
-        }
+        // delete subasset and subasset children files
+        const subAssetFiles = subAssets.filter(sa => sa.parentId === assetId);
+        deleteAssetFiles(subAssetFiles);
     } catch (error) {
         console.error('Error deleting asset files:', error);
         // Continue with asset deletion even if file deletion fails
     }
-    
+
     // Write updated assets
     if (writeJsonFile(assetsFilePath, assets) && writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
         if (DEBUG) {
@@ -636,7 +702,7 @@ app.delete('/api/asset/:id', (req, res) => {
         }
         // Notification logic
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -702,7 +768,7 @@ app.post('/api/subasset', async (req, res) => {
         }
         // Notification logic for sub-asset creation
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -769,7 +835,7 @@ app.put('/api/subasset', async (req, res) => {
         }
         // Notification logic for sub-asset edit
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -816,38 +882,21 @@ app.delete('/api/subasset/:id', async (req, res) => {
     }
     
     // Get the sub-asset to delete
-    const deletedSubAsset = subAssets[subAssetIndex];
+    const deletedSubAsset = subAssets.splice(subAssetIndex, 1)[0];  
+    // Remove all related sub-assets
+    const updatedSubAssets = subAssets.filter(sa => sa.id !== subAssetId && sa.parentSubId !== subAssetId);
     
-    // Ensure we don't delete a component that still has other parents
-    const subAssetIdsToDelete = new Set([subAssetId]);
-    let childrenToProcess = [deletedSubAsset];
-    
-    while (childrenToProcess.length > 0) {
-        const current = childrenToProcess.shift();
-        
-        // Find all direct children of this component
-        const directChildren = subAssets.filter(sa => 
-            // Only include components where this is the direct parent
-            sa.parentSubId === current.id && 
-            // Don't include already processed components
-            !subAssetIdsToDelete.has(sa.id) &&
-            // Ensure the component isn't a child of any component we're not deleting
-            !subAssets.some(other => 
-                other.id !== current.id && 
-                !subAssetIdsToDelete.has(other.id) && 
-                sa.parentSubId === other.id
-            )
-        );
-        
-        // Add valid children to deletion set and processing queue
-        directChildren.forEach(child => {
-            subAssetIdsToDelete.add(child.id);
-            childrenToProcess.push(child);
-        });
+    // Try to delete image and receipt files if they exist
+    try {
+        deleteAssetFiles([deletedSubAsset]);
+
+        // delete subasset child files
+        const subAssetChildren = subAssets.filter(sa => sa.parentSubId === subAssetId);
+        deleteAssetFiles(subAssetChildren);
+    } catch (error) {
+        console.error('Error deleting files:', error);
+        // Continue even if file deletion fails
     }
-    
-    // Filter out all sub-assets that need to be deleted
-    const updatedSubAssets = subAssets.filter(sa => !subAssetIdsToDelete.has(sa.id));
     
     // Write updated sub-assets
     if (writeJsonFile(subAssetsFilePath, updatedSubAssets)) {
@@ -856,7 +905,7 @@ app.delete('/api/subasset/:id', async (req, res) => {
         }
         // Notification logic for sub-asset deletion
         try {
-            const configPath = path.join(__dirname, 'data', 'config.json');
+            const configPath = path.join(DATA_DIR, 'config.json');
             let config = {};
             if (fs.existsSync(configPath)) {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -886,33 +935,6 @@ app.delete('/api/subasset/:id', async (req, res) => {
             console.error('Failed to send sub-asset deleted notification:', err.message);
         }
         
-        // Try to delete image and receipt files if they exist
-        try {
-            if (deletedSubAsset.photoPath) {
-                const photoPath = path.join(__dirname, deletedSubAsset.photoPath.substring(1));
-                if (fs.existsSync(photoPath)) {
-                    fs.unlinkSync(photoPath);
-                }
-            }
-            
-            if (deletedSubAsset.receiptPath) {
-                const receiptPath = path.join(__dirname, deletedSubAsset.receiptPath.substring(1));
-                if (fs.existsSync(receiptPath)) {
-                    fs.unlinkSync(receiptPath);
-                }
-            }
-            
-            if (deletedSubAsset.manualPath) {
-                const manualPath = path.join(__dirname, deletedSubAsset.manualPath.substring(1));
-                if (fs.existsSync(manualPath)) {
-                    fs.unlinkSync(manualPath);
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting files:', error);
-            // Continue even if file deletion fails
-        }
-        
         res.json({ message: 'Sub-asset deleted successfully' });
     } else {
         res.status(500).json({ error: 'Failed to delete sub-asset' });
@@ -922,28 +944,31 @@ app.delete('/api/subasset/:id', async (req, res) => {
 // File upload endpoints
 const imageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Images'));
+        cb(null, path.join(DATA_DIR, 'Images'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
 const receiptStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Receipts'));
+        cb(null, path.join(DATA_DIR, 'Receipts'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
 const manualStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'data', 'Manuals'));
+        cb(null, path.join(DATA_DIR, 'Manuals'));
     },
     filename: (req, file, cb) => {
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
+        const safeName = sanitizeFileName(file.originalname);
+        cb(null, `${uuidv4()}${path.extname(safeName)}`);
     }
 });
 
@@ -975,7 +1000,9 @@ const uploadManual = multer({
         const allowedTypes = [
             'application/pdf',
             'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'text/markdown',
+            'text/plain',
         ];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
@@ -992,11 +1019,11 @@ app.post('/api/upload/image', uploadImage.single('photo'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Images/${req.file.filename}`,
+        path: `/Images/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
@@ -1008,11 +1035,11 @@ app.post('/api/upload/receipt', uploadReceipt.single('receipt'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Receipts/${req.file.filename}`,
+        path: `/Receipts/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
@@ -1024,11 +1051,11 @@ app.post('/api/upload/manual', uploadManual.single('manual'), (req, res) => {
     const stats = fs.statSync(req.file.path);
     
     res.json({
-        path: `/Manuals/${req.file.filename}`,
+        path: `/Manuals/${sanitizeFileName(req.file.filename)}`,
         fileInfo: {
-            originalName: req.file.originalname,
+            originalName: sanitizeFileName(req.file.originalname),
             size: stats.size,
-            fileName: req.file.filename
+            fileName: sanitizeFileName(req.file.filename)
         }
     });
 });
@@ -1094,8 +1121,19 @@ function parseExcelDate(value) {
     return '';
 }
 
+function getAppSettings() {
+    const configPath = path.join(DATA_DIR, 'config.json');
+    // Return default settings if config does not exist
+    if (!fs.existsSync(configPath)) {
+        return { ...DEFAULT_SETTINGS };
+    }
+
+    const config = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(configPath, 'utf8'))};
+    return config;
+}
+
 // Import assets route
-app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res) => {
+app.post('/api/import-assets', upload.single('file'), (req, res) => {
     try {
         const file = req.file;
         if (!file) {
@@ -1123,6 +1161,13 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
             const get = idx => (mappings[idx] !== undefined && mappings[idx] !== "" && row[mappings[idx]] !== undefined) ? row[mappings[idx]] : "";
             const name = get('name');
             if (!name) continue;
+            // Parse lifetime warranty value
+            const lifetimeValue = get('lifetime');
+            const isLifetime = lifetimeValue ? 
+                (lifetimeValue.toString().toLowerCase() === 'true' || 
+                 lifetimeValue.toString().toLowerCase() === '1' || 
+                 lifetimeValue.toString().toLowerCase() === 'yes') : false;
+
             const asset = {
                 id: generateId(),
                 name: name,
@@ -1135,7 +1180,8 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
                 link: get('url'),
                 warranty: {
                     scope: get('warranty'),
-                    expirationDate: parseExcelDate(get('warrantyExpiration'))
+                    expirationDate: isLifetime ? null : parseExcelDate(get('warrantyExpiration')),
+                    isLifetime: isLifetime
                 },
                 secondaryWarranty: {
                     scope: get('secondaryWarranty'),
@@ -1166,80 +1212,24 @@ app.post('/api/import-assets', authMiddleware, upload.single('file'), (req, res)
 });
 
 // Get all settings
-app.get('/api/settings', authMiddleware, (req, res) => {
+app.get('/api/settings', (req, res) => {
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
-        if (!fs.existsSync(configPath)) {
-            // Default settings if config does not exist
-            return res.json({
-                notificationSettings: {
-                    notifyAdd: true,
-                    notifyDelete: false,
-                    notifyEdit: true,
-                    notify1Month: true,
-                    notify2Week: false,
-                    notify7Day: true,
-                    notify3Day: false,
-                    notifyMaintenance: false
-                },
-                interfaceSettings: {
-                    dashboardOrder: ["totals", "warranties", "analytics"],
-                    dashboardVisibility: { totals: true, warranties: true, analytics: true }
-                }
-            });
-        }
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        // Ensure dashboardVisibility always present
-        if (!config.interfaceSettings) config.interfaceSettings = {};
-        if (!config.interfaceSettings.dashboardVisibility) {
-            config.interfaceSettings.dashboardVisibility = { totals: true, warranties: true, analytics: true };
-        }
-        // Ensure cardVisibility is present in interfaceSettings
-        if (!config.interfaceSettings.cardVisibility) {
-            config.interfaceSettings.cardVisibility = {
-                assets: true,
-                components: true,
-                value: true,
-                warranties: true,
-                within60: true,
-                within30: true,
-                expired: true,
-                active: true
-            };
-        }
-        res.json(config);
+        const appSettings = getAppSettings();
+        res.json(appSettings);
     } catch (err) {
         res.status(500).json({ error: 'Failed to load settings' });
     }
 });
 
 // Save all settings
-app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
+app.post('/api/settings', (req, res) => {
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
-        let config = {};
-        if (fs.existsSync(configPath)) {
-            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        }
+        const config = getAppSettings();
         // Update settings with the new values
-        Object.keys(req.body).forEach(section => {
-            if (section === 'interfaceSettings') {
-                if (!config.interfaceSettings) config.interfaceSettings = {};
-                // Merge dashboardOrder and dashboardVisibility
-                if (req.body.interfaceSettings.dashboardOrder) {
-                    config.interfaceSettings.dashboardOrder = req.body.interfaceSettings.dashboardOrder;
-                }
-                if (req.body.interfaceSettings.dashboardVisibility) {
-                    config.interfaceSettings.dashboardVisibility = req.body.interfaceSettings.dashboardVisibility;
-                }
-                if (req.body.interfaceSettings.cardVisibility) {
-                    config.interfaceSettings.cardVisibility = req.body.interfaceSettings.cardVisibility;
-                }
-            } else {
-                config[section] = req.body[section];
-            }
-        });
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        const updatedConfig = { ...config, ...req.body };
+
+        const configPath = path.join(DATA_DIR, 'config.json');
+        fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to save settings' });
@@ -1247,12 +1237,12 @@ app.post('/api/settings', authMiddleware, express.json(), (req, res) => {
 });
 
 // Test notification endpoint
-app.post('/api/notification-test', authMiddleware, async (req, res) => {
+app.post('/api/notification-test', async (req, res) => {
     if (DEBUG) {
         console.log('[DEBUG] /api/notification-test called');
     }
     try {
-        const configPath = path.join(__dirname, 'data', 'config.json');
+        const configPath = path.join(DATA_DIR, 'config.json');
         let config = {};
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -1406,27 +1396,8 @@ app.listen(PORT, () => {
         nodeEnv: NODE_ENV,
         debug: DEBUG,
         version: VERSION,
+        demoMode: DEMO_MODE,
     });
     console.log(`Server running on: ${BASE_URL}`);
 }); 
 // --- END ---
-
-// Add helper function to get base URL for notifications
-function getBaseUrl(req) {
-    // Try to get from environment variable first
-    if (process.env.BASE_URL) {
-        return process.env.BASE_URL;
-    }
-    
-    // Try to construct from request headers
-    if (req) {
-        const protocol = req.secure || req.get('X-Forwarded-Proto') === 'https' ? 'https' : 'http';
-        const host = req.get('Host') || req.get('X-Forwarded-Host');
-        if (host) {
-            return `${protocol}://${host}`;
-        }
-    }
-    
-    // Fallback to localhost with default port
-    return 'http://localhost:3000';
-}

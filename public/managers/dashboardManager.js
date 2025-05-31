@@ -9,13 +9,15 @@ export class DashboardManager {
         assetDetails,
         subAssetContainer,
         searchInput,
+        clearFiltersBtn,
         
         // Utility functions
         formatDate,
         formatCurrency,
         
-        // Chart manager
+        // Managers
         chartManager,
+        settingsManager,
         
         // UI functions
         updateDashboardFilter,
@@ -23,8 +25,8 @@ export class DashboardManager {
         updateSelectedIds,
         renderAssetDetails,
         renderAssetList,
-        renderEmptyState,
         handleSidebarNav,
+        setButtonLoading,
         
         // Global state getters
         getAssets,
@@ -37,6 +39,7 @@ export class DashboardManager {
         this.assetDetails = assetDetails;
         this.subAssetContainer = subAssetContainer;
         this.searchInput = searchInput;
+        this.clearFiltersBtn = clearFiltersBtn;
         
         // Store utility functions
         this.formatDate = formatDate;
@@ -44,6 +47,7 @@ export class DashboardManager {
         
         // Store chart manager
         this.chartManager = chartManager;
+        this.settingsManager = settingsManager;
         
         // Store UI functions
         this.updateDashboardFilter = updateDashboardFilter;
@@ -51,8 +55,8 @@ export class DashboardManager {
         this.updateSelectedIds = updateSelectedIds;
         this.renderAssetDetails = renderAssetDetails;
         this.renderAssetList = renderAssetList;
-        this.renderEmptyState = renderEmptyState;
         this.handleSidebarNav = handleSidebarNav;
+        this.setButtonLoading = setButtonLoading;
         
         // Store state getters
         this.getAssets = getAssets;
@@ -66,59 +70,70 @@ export class DashboardManager {
         this.currentSort = { field: 'date', direction: 'asc' };
         this.currentPage = 1;
         this.eventsPerPage = 5;
+
+        this.addEventListeners();
     }
     
-    getDashboardSectionVisibility() {
-        // Default: all visible
-        const defaultState = { totals: true, warranties: true, analytics: true, events: true };
+    async getDashboardSectionVisibility() {
         try {
-            const cachedSettings = localStorage.getItem('dumbAssetSettings');
-            if (cachedSettings) {
-                const settings = JSON.parse(cachedSettings);
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings) {
+                if (localSettings.interfaceSettings && localSettings.interfaceSettings.dashboardVisibility) {
+                    return { ...localSettings.interfaceSettings.dashboardVisibility };
+                }
+            } else {
+                const settings = await this.settingsManager.fetchSettings();
                 if (settings.interfaceSettings && settings.interfaceSettings.dashboardVisibility) {
-                    return { ...defaultState, ...settings.interfaceSettings.dashboardVisibility };
+                    return { ...settings.interfaceSettings.dashboardVisibility };
                 }
             }
-        } catch (e) {}
-        return defaultState;
+        } catch (e) {
+            console.error(e);
+        }
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return { ...defaultSettings.interfaceSettings.dashboardVisibility };
     }
     
-    getDashboardOrder() {
-        // Default order
-        let order = ['analytics', 'totals', 'warranties', 'events'];
-        
+    async getDashboardOrder() {
+        // DASHBOARD ORDER IS AN ARRAY
         try {
             // Try to get from localStorage as a quick cache
-            const cachedSettings = localStorage.getItem('dumbAssetSettings');
-            if (cachedSettings) {
-                const settings = JSON.parse(cachedSettings);
-                if (settings.interfaceSettings?.dashboardOrder && 
-                    Array.isArray(settings.interfaceSettings.dashboardOrder) && 
-                    settings.interfaceSettings.dashboardOrder.length >= 3) {
-                    order = settings.interfaceSettings.dashboardOrder;
-                    // Add events to existing orders that don't have it
-                    if (!order.includes('events')) {
-                        order.push('events');
-                    }
-                }
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings && localSettings.interfaceSettings?.dashboardOrder) {
+                return localSettings.interfaceSettings.dashboardOrder;
+            }
+            else {
+                const settings = await this.settingsManager.fetchSettings();
+                return settings.interfaceSettings.dashboardOrder;
             }
         } catch (err) {
             console.error('Error getting dashboard order', err);
         }
-        
-        return order;
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return defaultSettings.interfaceSettings.dashboardOrder;
     }
     
-    getDashboardCardVisibility() {
+    async getDashboardCardVisibility() {
         try {
-            const settings = JSON.parse(localStorage.getItem('dumbAssetSettings'));
-            return (settings && settings.interfaceSettings && settings.interfaceSettings.cardVisibility) || {};
-        } catch {
-            return {};
+            const localSettings = this.settingsManager.getSettingsFromLocalStorage();
+            if (localSettings && localSettings.interfaceSettings?.cardVisibility) {
+                return { ...localSettings.interfaceSettings.cardVisibility};
+            } 
+            else {
+                const settings = await this.settingsManager.fetchSettings();
+                return { ...settings.interfaceSettings.cardVisibility};
+            }
+        } catch (e) {
+            console.error('Error getting dashboard card visibility', e);
         }
+
+        const defaultSettings = this.settingsManager.getDefaultSettings();
+        return { ...defaultSettings.interfaceSettings.cardVisibility};
     }
     
-    renderDashboard(shouldAnimateCharts = true) {
+    async renderDashboard(shouldAnimateCharts = true) {
         const assets = this.getAssets();
         const subAssets = this.getSubAssets();
         const dashboardFilter = this.getDashboardFilter();
@@ -135,8 +150,6 @@ export class DashboardManager {
         const totalSubAssetsValue = subAssets.reduce((sum, sa) => sum + (parseFloat(sa.purchasePrice) || 0), 0);
         const totalValue = totalAssetsValue + totalSubAssetsValue;
         
-        // Get dashboard section order
-        const sectionOrder = this.getDashboardOrder();
         
         const assetWarranties = assets.filter(a => a.warranty && (a.warranty.expirationDate || a.warranty.isLifetime));
         const subAssetWarranties = subAssets.filter(sa => sa.warranty && (sa.warranty.expirationDate || sa.warranty.isLifetime));
@@ -165,11 +178,10 @@ export class DashboardManager {
                 active++;
             }
         });
-        
-        const sectionVisibility = this.getDashboardSectionVisibility();
 
-        // Prepare per-card visibility
-        const cardVisibility = this.getDashboardCardVisibility();
+        const sectionOrder = await this.getDashboardOrder();
+        const sectionVisibility = await this.getDashboardSectionVisibility();
+        const cardVisibility = await this.getDashboardCardVisibility();
         
         // Prepare HTML sections for each dashboard component
         const totalsSection = sectionVisibility.totals ? `
@@ -177,15 +189,15 @@ export class DashboardManager {
                 <legend class="dashboard-legend-title">Totals</legend>
                 <div class="dashboard-section" data-section="totals">
                     <div class="dashboard-cards totals-cards">
-                        ${cardVisibility.assets !== false ? `<div class="dashboard-card total${!dashboardFilter ? ' active' : ''}" data-filter="all">
+                        ${cardVisibility.assets !== false ? `<div class="dashboard-card card-total${!dashboardFilter ? ' active' : ''}" data-filter="all">
                             <div class="card-label">Assets</div>
                             <div class="card-value">${totalAssets}</div>
                         </div>` : ''}
-                        ${cardVisibility.components !== false ? `<div class="dashboard-card components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
+                        ${cardVisibility.components !== false ? `<div class="dashboard-card card-components${dashboardFilter === 'components' ? ' active' : ''}" data-filter="components">
                             <div class="card-label">Components</div>
                             <div class="card-value">${totalComponents}</div>
                         </div>` : ''}
-                        ${cardVisibility.value !== false ? `<div class="dashboard-card value" data-filter="value">
+                        ${cardVisibility.value !== false ? `<div class="dashboard-card card-asset-value" data-filter="value">
                             <div class="card-label">Value</div>
                             <div class="card-value">${this.formatCurrency(totalValue)}</div>
                         </div>` : ''}
@@ -198,23 +210,23 @@ export class DashboardManager {
                 <legend class="dashboard-legend-title">Warranties</legend>
                 <div class="dashboard-section dashboard-warranty-section" data-section="warranties">
                     <div class="dashboard-cards warranty-cards">
-                        ${cardVisibility.warranties !== false ? `<div class="dashboard-card warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
+                        ${cardVisibility.warranties !== false ? `<div class="dashboard-card card-warranties${dashboardFilter === 'warranties' ? ' active' : ''}" data-filter="warranties">
                             <div class="card-label">Total</div>
                             <div class="card-value">${allWarranties.length}</div>
                         </div>` : ''}
-                        ${cardVisibility.within60 !== false ? `<div class="dashboard-card within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
+                        ${cardVisibility.within60 !== false ? `<div class="dashboard-card card-within60${dashboardFilter === 'within60' ? ' active' : ''}" data-filter="within60">
                             <div class="card-label">In 60 days</div>
                             <div class="card-value">${within60}</div>
                         </div>` : ''}
-                        ${cardVisibility.within30 !== false ? `<div class="dashboard-card within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
+                        ${cardVisibility.within30 !== false ? `<div class="dashboard-card card-within30${dashboardFilter === 'within30' ? ' active' : ''}" data-filter="within30">
                             <div class="card-label">In 30 days</div>
                             <div class="card-value">${within30}</div>
                         </div>` : ''}
-                        ${cardVisibility.expired !== false ? `<div class="dashboard-card expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
+                        ${cardVisibility.expired !== false ? `<div class="dashboard-card card-expired${dashboardFilter === 'expired' ? ' active' : ''}" data-filter="expired">
                             <div class="card-label">Expired</div>
                             <div class="card-value">${expired}</div>
                         </div>` : ''}
-                        ${cardVisibility.active !== false ? `<div class="dashboard-card active${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
+                        ${cardVisibility.active !== false ? `<div class="dashboard-card card-active${dashboardFilter === 'active' ? ' active' : ''}" data-filter="active">
                             <div class="card-label">Active</div>
                             <div class="card-value">${active}</div>
                         </div>` : ''}
@@ -243,12 +255,11 @@ export class DashboardManager {
             </fieldset>` : '';
         
         // Map of section names to their HTML
-        const sectionMap = {
-            'totals': totalsSection,
-            'warranties': warrantiesSection,
-            'events': eventsSection,
-            'analytics': analyticsSection
-        };
+        const sectionMap = {};
+        if (sectionVisibility.analytics) sectionMap['analytics'] = analyticsSection;
+        if (sectionVisibility.totals) sectionMap['totals'] = totalsSection;
+        if (sectionVisibility.warranties) sectionMap['warranties'] = warrantiesSection;
+        if (sectionVisibility.events) sectionMap['events'] = eventsSection;
         
         // Build the sections in the custom order
         let orderedSections = '';
@@ -273,40 +284,10 @@ export class DashboardManager {
         }
         
         // Only create charts if shouldAnimateCharts is true
-        this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
-        
-        // Add click handler for clear filters button
-        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-        if (clearFiltersBtn) {
-            clearFiltersBtn.addEventListener('click', () => {
-                // Remove active class from all cards
-                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
-                    c.classList.remove('active');
-                });
-
-                // Reset all sort buttons to default state
-                document.querySelectorAll('.sort-button').forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.setAttribute('data-direction', 'asc');
-                    const sortIcon = btn.querySelector('.sort-icon');
-                    if (sortIcon) {
-                        sortIcon.style.transform = '';
-                    }
-                });
-                
-                // Reset filter and sort
-                this.updateDashboardFilter(null);
-                this.updateSort({ field: 'updatedAt', direction: 'desc' });
-
-                // Reset selected asset and hide components section
-                this.updateSelectedIds(null, null);
-                
-                // Re-render list and dashboard
-                this.searchInput.value = '';
-                this.renderAssetList(this.searchInput.value);
-                this.renderEmptyState(false);
-            });
-        }
+        if (sectionVisibility.analytics)
+            this.chartManager.createWarrantyDashboard({ allWarranties, expired, within30, within60, active }, shouldAnimateCharts);
+        else
+            this.chartManager.destroyAllCharts();
 
         // Add click handlers for filtering (except value card)
         this.assetDetails.querySelectorAll('.dashboard-card').forEach(card => {
@@ -314,23 +295,21 @@ export class DashboardManager {
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const filter = card.getAttribute('data-filter');
-                
+
                 // Remove active class from all cards
                 this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
                     c.classList.remove('active');
                 });
-                
+
                 // Add active class to clicked card
                 card.classList.add('active');
-                
+
                 if (filter === 'all') {
                     this.updateDashboardFilter(null);
                 } else {
                     this.updateDashboardFilter(filter);
                 }
                 this.renderAssetList(this.searchInput.value);
-                // Only re-render dashboard UI, not charts, on filter
-                if (!selectedAssetId) this.renderDashboard(false);
             });
         });
     }
@@ -468,8 +447,28 @@ export class DashboardManager {
 
         // Collect warranty events from sub-assets
         subAssets.forEach(subAsset => {
-            const parentAsset = assets.find(a => a.id === subAsset.parentId);
-            const parentName = parentAsset ? parentAsset.name : 'Unknown Parent';
+            // Determine parent information based on whether this is a sub-asset or sub-sub-asset
+            let parentName = 'Unknown Parent';
+            let assetType = 'Component';
+            
+            if (subAsset.parentSubId) {
+                // This is a sub-sub-asset (component of a component)
+                const parentSubAsset = subAssets.find(sa => sa.id === subAsset.parentSubId);
+                const parentAsset = assets.find(a => a.id === subAsset.parentId);
+                if (parentSubAsset && parentAsset) {
+                    parentName = `${parentAsset.name} > ${parentSubAsset.name}`;
+                } else if (parentSubAsset) {
+                    parentName = parentSubAsset.name;
+                } else if (parentAsset) {
+                    parentName = parentAsset.name;
+                }
+                assetType = 'Sub-Component';
+            } else {
+                // This is a regular sub-asset (component of an asset)
+                const parentAsset = assets.find(a => a.id === subAsset.parentId);
+                parentName = parentAsset ? parentAsset.name : 'Unknown Parent';
+                assetType = 'Component';
+            }
 
             if (subAsset.warranty && subAsset.warranty.expirationDate && !subAsset.warranty.isLifetime) {
                 const expDate = new Date(subAsset.warranty.expirationDate);
@@ -479,7 +478,7 @@ export class DashboardManager {
                         date: expDate,
                         name: subAsset.name,
                         details: 'Warranty Expiration',
-                        assetType: 'Component',
+                        assetType: assetType,
                         parentAsset: parentName,
                         id: subAsset.id,
                         isSubAsset: true
@@ -487,7 +486,7 @@ export class DashboardManager {
                 }
             }
 
-            // Maintenance events for sub-assets
+            // Maintenance events for sub-assets (including sub-sub-assets)
             if (subAsset.maintenanceEvents && subAsset.maintenanceEvents.length > 0) {
                 subAsset.maintenanceEvents.forEach(event => {
                     let eventDate = null;
@@ -506,7 +505,7 @@ export class DashboardManager {
                             date: eventDate,
                             name: subAsset.name,
                             details: eventDetails,
-                            assetType: 'Component',
+                            assetType: assetType,
                             parentAsset: parentName,
                             notes: event.notes,
                             id: subAsset.id,
@@ -541,8 +540,8 @@ export class DashboardManager {
         return events.map(event => {
             const daysUntil = Math.ceil((event.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             const isOverdue = daysUntil < 0;
-            const isUrgent = daysUntil <= 7 && daysUntil >= 0;
-            const isWarning = daysUntil <= 30 && daysUntil > 7;
+            const isUrgent = daysUntil <= 30 && daysUntil >= 0;
+            const isWarning = daysUntil <= 60 && daysUntil > 30;
 
             let urgencyClass = '';
             if (isOverdue) urgencyClass = 'overdue';
@@ -574,7 +573,7 @@ export class DashboardManager {
                     <div class="event-details">
                         <div class="event-name">${event.name}</div>
                         <div class="event-description">${event.details}</div>
-                        ${event.assetType === 'Component' && event.parentAsset ? `<div class="event-parent">Parent: ${event.parentAsset}</div>` : ''}
+                        ${(event.assetType === 'Component' || event.assetType === 'Sub-Component') && event.parentAsset ? `<div class="event-parent">Parent: ${event.parentAsset}</div>` : ''}
                         ${event.notes ? `<div class="event-notes">Notes: ${event.notes}</div>` : ''}
                     </div>
                 </div>
@@ -789,5 +788,41 @@ export class DashboardManager {
 
         // Add pagination to the container
         eventsTableContainer.insertAdjacentHTML('beforeend', paginationHTML);
+    }
+
+    addEventListeners() {
+        // Add click handler for clear filters button
+        if (this.clearFiltersBtn) {
+            this.clearFiltersBtn.addEventListener('click', async () => {
+                this.setButtonLoading(this.clearFiltersBtn, true);
+                // Remove active class from all cards
+                this.assetDetails.querySelectorAll('.dashboard-card').forEach(c => {
+                    c.classList.remove('active');
+                });
+
+                // Reset all sort buttons to default state
+                document.querySelectorAll('.sort-button').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('data-direction', 'asc');
+                    const sortIcon = btn.querySelector('.sort-icon');
+                    if (sortIcon) {
+                        sortIcon.style.transform = '';
+                    }
+                });
+                
+                // Reset filter and sort
+                this.updateDashboardFilter(null);
+                this.updateSort({ field: 'updatedAt', direction: 'desc' });
+                
+                // Reset selected asset and hide components section
+                this.updateSelectedIds(null, null);
+                
+                // Re-render list and dashboard
+                this.searchInput.value = '';
+                this.renderAssetList(this.searchInput.value);
+                await this.renderDashboard(false);
+                this.setButtonLoading(this.clearFiltersBtn, false);
+            });
+        }
     }
 } 
