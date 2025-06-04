@@ -97,7 +97,7 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 - 📅 Warranty expiration notifications (configurable)
 - 🔧 Maintenance event notifications
 - 🏷️ Flexible tagging system for better organization
-- 🔔 Apprise notification integration
+- 🔔 Built in Apprise notification integration
 - 🌗 Light/Dark mode with theme persistence
 - 🛡️ PIN authentication with brute force protection
 - 📦 Docker support for easy deployment
@@ -117,6 +117,10 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 | SITE_TITLE       | Site title shown in browser tab and header  | DumbAssets         | No       |
 | ALLOWED_ORIGINS  | Origins allowed to visit your instance      | '*'                | No       |
 | DEMO_MODE        | Enables read-only mode                      | false              | No       |
+
+### Apprise Note
+
+Apprise integration is built-in to DumbAssets, allowing you to simply add your Discord/ntfy/Telegram/etc link WITHOUT having to run Apprise as a separate service!
 
 ### Data Storage
 
