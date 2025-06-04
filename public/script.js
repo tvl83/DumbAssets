@@ -393,11 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Also add a dedicated refresh function to reload data without resetting the UI
     async function refreshAllData() {
         try {
-            const responses = await Promise.all([loadAssets(), loadSubAssets()]);
-            responses.forEach(async (response) => {
-                const responseValidation = await globalThis.validateResponse(response);
-                if (responseValidation.errorMessage) throw new Error(responseValidation.errorMessage);
-            })
+            const loadPromises = [loadAssets(), loadSubAssets()];
+            await Promise.all(loadPromises);
             return true;
         } catch (error) {
             globalThis.logError('Error refreshing data:', error.message);
@@ -407,9 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveAsset(asset) {
         const saveBtn = assetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, true);
-
+        
         try {
+            setButtonLoading(saveBtn, true);
             const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
@@ -426,46 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             console.log('Edit mode determined as:', isEditMode);
             
-            // Log the current state of delete flags
-            console.log('Current delete flags:', {
-                deletePhoto: window.deletePhoto,
-                deleteReceipt: window.deleteReceipt,
-                deleteManual: window.deleteManual
-            });
-            
-            // Handle file deletions
-            if (deletePhoto && assetToSave.photoPath) {
-                console.log(`Deleting photo: ${assetToSave.photoPath}`);
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: assetToSave.photoPath }),
-                    credentials: 'include'
-                });
-                assetToSave.photoPath = null;
-            }
-            
-            if (deleteReceipt && assetToSave.receiptPath) {
-                console.log(`Deleting receipt: ${assetToSave.receiptPath}`);
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: assetToSave.receiptPath }),
-                    credentials: 'include'
-                });
-                assetToSave.receiptPath = null;
-            }
-            
-            if (deleteManual && assetToSave.manualPath) {
-                console.log(`Deleting manual: ${assetToSave.manualPath}`);
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: assetToSave.manualPath }),
-                    credentials: 'include'
-                });
-                assetToSave.manualPath = null;
-            }
             
             console.log('After handling deletions, asset state:', {
                 photoPath: assetToSave.photoPath,
@@ -537,9 +494,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveSubAsset(subAsset) {
         const saveBtn = subAssetForm.querySelector('.save-btn');
-        setButtonLoading(saveBtn, true);
-
+        
         try {
+            setButtonLoading(saveBtn, true);
             const apiBaseUrl = globalThis.getApiBaseUrl();
             // Get the actual edit mode from the modal manager instead of just checking for ID
             const isEditMode = modalManager ? modalManager.isEditMode : false;
@@ -561,34 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ensure we're sending the required fields
             if (!subAsset.id || !subAsset.name || !subAsset.parentId) {
                 throw new Error('Missing required fields for sub-asset. Check the console for details.');
-            }
-            
-            if (deleteSubPhoto && subAsset.photoPath) {
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: subAsset.photoPath }),
-                    credentials: 'include'
-                });
-                subAsset.photoPath = null;
-            }
-            if (deleteSubReceipt && subAsset.receiptPath) {
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: subAsset.receiptPath }),
-                    credentials: 'include'
-                });
-                subAsset.receiptPath = null;
-            }
-            if (deleteSubManual && subAsset.manualPath) {
-                await fetch(`${apiBaseUrl}/api/delete-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: subAsset.manualPath }),
-                    credentials: 'include'
-                });
-                subAsset.manualPath = null;
             }
             
             const response = await fetch(`${apiBaseUrl}/api/subasset`, {
@@ -622,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshAssetDetails(subAsset.id, true);
             } else {
                 // Navigate based on the saved component's context
-                await handleComponentNavigation(savedSubAsset);
+                await handleComponentNavigation({ id: savedSubAsset.id, parentId: savedSubAsset.parentId, parentSubId: savedSubAsset.parentSubId }, true);
             }
             
             // Show success message

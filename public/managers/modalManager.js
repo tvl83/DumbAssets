@@ -526,16 +526,6 @@ export class ModalManager {
                 manualInfo.originalName || asset.manualPath.split('/').pop(),
                 manualInfo.size ? this.formatFileSize(manualInfo.size) : 'Unknown size'
             );
-            const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
-            if (deleteBtn) {
-                deleteBtn.onclick = () => {
-                    if (confirm('Are you sure you want to delete this manual?')) {
-                        manualPreview.innerHTML = '';
-                        if (manualInput) manualInput.value = '';
-                        this.deleteManual = true;
-                    }
-                };
-            }
             containsExistingFiles = true;
         }
         
@@ -593,16 +583,6 @@ export class ModalManager {
                 manualInfo.originalName || subAsset.manualPath.split('/').pop(),
                 manualInfo.size ? this.formatFileSize(manualInfo.size) : 'Unknown size'
             );
-            const deleteBtn = manualPreview.querySelector('.delete-preview-btn');
-            if (deleteBtn) {
-                deleteBtn.onclick = () => {
-                    if (confirm('Are you sure you want to delete this manual?')) {
-                        manualPreview.innerHTML = '';
-                        if (manualInput) manualInput.value = '';
-                        this.deleteSubManual = true;
-                    }
-                };
-            }
             containsExistingFiles = true;
         }
         
