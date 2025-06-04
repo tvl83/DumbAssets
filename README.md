@@ -118,9 +118,8 @@ Open your browser to [http://localhost:3000](http://localhost:3000)
 | ALLOWED_ORIGINS  | Origins allowed to visit your instance      | '*'                | No       |
 | DEMO_MODE        | Enables read-only mode                      | false              | No       |
 
-### Apprise Note
-
-Apprise integration is built-in to DumbAssets, allowing you to simply add your Discord/ntfy/Telegram/etc link WITHOUT having to run Apprise as a separate service!
+> [!TIP]
+> Apprise integration is built-in to DumbAssets, allowing you to simply add your Discord/ntfy/Telegram/etc link WITHOUT having to run Apprise as a separate service!
 
 ### Data Storage
 
