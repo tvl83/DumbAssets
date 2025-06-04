@@ -618,14 +618,43 @@ app.put('/api/asset', (req, res) => {
     if (index === -1) {
         return res.status(404).json({ error: 'Asset not found' });
     }
-    
+
+    const oldAsset = assets[index];
+
     // Preserve creation date
     updatedAsset.createdAt = assets[index].createdAt;
     // Update the modification date
     updatedAsset.updatedAt = new Date().toISOString();
     
-    assets[index] = updatedAsset;
+    // Delete old files if new paths are provided
+    if (oldAsset.photoPath && updatedAsset.photoPath !== oldAsset.photoPath) {
+        deleteAssetFileAsync(oldAsset.photoPath);
+    } else if (updatedAsset.photoPath === oldAsset.photoPath) {
+        // If no new photoPath is provided, keep the old one
+        updatedAsset.photoPath = oldAsset.photoPath;
+        updatedAsset.photoInfo = oldAsset.photoInfo;
+        updatedAsset.photoPaths = oldAsset.photoPaths || [];
+    }
+    if (oldAsset.receiptPath && updatedAsset.receiptPath !== oldAsset.receiptPath) {
+        deleteAssetFileAsync(oldAsset.receiptPath);
+    } else if (updatedAsset.receiptPath === oldAsset.receiptPath) {
+        // If no new receiptPath is provided, keep the old one
+        updatedAsset.receiptPath = oldAsset.receiptPath;
+        updatedAsset.receiptInfo = oldAsset.receiptInfo;
+        updatedAsset.receiptPaths = oldAsset.receiptPaths || [];
+    }
+    if (oldAsset.manualPath && updatedAsset.manualPath !== oldAsset.manualPath) {
+        deleteAssetFileAsync(oldAsset.manualPath);
+    } else if (updatedAsset.manualPath === oldAsset.manualPath) {
+        // If no new manualPath is provided, keep the old one
+        updatedAsset.manualPath = oldAsset.manualPath;
+        updatedAsset.manualInfo = oldAsset.manualInfo;
+        updatedAsset.manualPaths = oldAsset.manualPaths || [];
+    }
     
+    const assetToSave = {...oldAsset, ...updatedAsset};
+    assets[index] = assetToSave;
+
     if (writeJsonFile(assetsFilePath, assets)) {
         if (DEBUG) {
             console.log('[DEBUG] Asset edited:', { id: updatedAsset.id, name: updatedAsset.name, modelNumber: updatedAsset.modelNumber });
@@ -821,13 +850,42 @@ app.put('/api/subasset', async (req, res) => {
     if (index === -1) {
         return res.status(404).json({ error: 'Sub-asset not found' });
     }
-    
+
+    const oldSubAsset = subAssets[index];
+
     // Preserve creation date
     updatedSubAsset.createdAt = subAssets[index].createdAt;
     // Update the modification date
     updatedSubAsset.updatedAt = new Date().toISOString();
     
-    subAssets[index] = updatedSubAsset;
+    // Delete old files if new paths are provided
+    if (oldSubAsset.photoPath && updatedSubAsset.photoPath !== oldSubAsset.photoPath) {
+        deleteAssetFileAsync(oldSubAsset.photoPath);
+    } else if (updatedSubAsset.photoPath === oldSubAsset.photoPath){
+        // If no new photoPath is provided, keep the old one
+        updatedSubAsset.photoPath = oldSubAsset.photoPath;
+        updatedSubAsset.photoInfo = oldSubAsset.photoInfo;
+        updatedSubAsset.photoPaths = oldSubAsset.photoPaths || [];
+    }
+    if (oldSubAsset.receiptPath && updatedSubAsset.receiptPath !== oldSubAsset.receiptPath) {
+        deleteAssetFileAsync(oldSubAsset.receiptPath);
+    } else if (updatedSubAsset.receiptPath === oldSubAsset.receiptPath){
+        // If no new receiptPath is provided, keep the old one
+        updatedSubAsset.receiptPath = oldSubAsset.receiptPath;
+        updatedSubAsset.receiptInfo = oldSubAsset.receiptInfo;
+        updatedSubAsset.receiptPaths = oldSubAsset.receiptPaths || [];
+    }
+    if (oldSubAsset.manualPath && updatedSubAsset.manualPath !== oldSubAsset.manualPath) {
+        deleteAssetFileAsync(oldSubAsset.manualPath);
+    } else if (updatedSubAsset.manualPath === oldSubAsset.manualPath){
+        // If no new manualPath is provided, keep the old one
+        updatedSubAsset.manualPath = oldSubAsset.manualPath;
+        updatedSubAsset.manualInfo = oldSubAsset.manualInfo;
+        updatedSubAsset.manualPaths = oldSubAsset.manualPaths || [];
+    }
+    
+    const subAssetToSave = {...oldSubAsset, ...updatedSubAsset};
+    subAssets[index] = subAssetToSave;    
     
     if (writeJsonFile(subAssetsFilePath, subAssets)) {
         if (DEBUG) {
