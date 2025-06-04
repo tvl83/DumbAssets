@@ -186,4 +186,10 @@ See the Development Guide for local setup and guidelines.
 
 ---
 
+## Support the Project
+
+<a href="https://www.buymeacoffee.com/dumbware" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60">
+</a>
+
 Made with ❤️ by [DumbWare.io](https://dumbware.io)
