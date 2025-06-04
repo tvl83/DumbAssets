@@ -49,13 +49,12 @@ services:
   dumbassets:
     container_name: dumbassets
     image: dumbwareio/dumbassets:latest
-    ports: 
-      - 3000:3000
-    volumes:
-      - ./data:/app/data
     restart: unless-stopped
+    ports: 
+      - ${DUMBASSETS_PORT:-3000}:3000
+    volumes:
+      - ${DUMBASSETS_DATA_PATH:-./data}:/app/data
     environment:
-      PORT: ${DUMBASSETS_PORT:-3000}
       NODE_ENV: ${DUMBASSETS_NODE_ENV:-production}
       DEBUG: ${DUMBASSETS_DEBUG:-true}
       SITE_TITLE: ${DUMBASSETS_SITE_TITLE:-DumbAssets}

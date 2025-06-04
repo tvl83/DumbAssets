@@ -3,18 +3,17 @@ services:
     container_name: dumbassets
     # image: dumbwareio/dumbassets:latest
     build: .
-    ports: 
-      - 3000:3000
-    volumes:
-      - ./data:/app/data
     restart: unless-stopped
+    ports: 
+      - ${DUMBASSETS_PORT:-3000}:3000
+    volumes:
+      - ${DUMBASSETS_DATA_PATH:-./data}:/app/data
     environment:
-      PORT: ${DUMBASSETS_PORT:-3000}
       NODE_ENV: ${DUMBASSETS_NODE_ENV:-production}
       DEBUG: ${DUMBASSETS_DEBUG:-true}
       SITE_TITLE: ${DUMBASSETS_SITE_TITLE:-DumbAssets}
       BASE_URL: ${DUMBASSETS_BASE_URL:-http://localhost:3000}
       DUMBASSETS_PIN: ${DUMBASSETS_PIN:-1234}
       ALLOWED_ORIGINS: ${DUMBASSETS_ALLOWED_ORIGINS:-*}
-      APPRISE_URL: ${DUMBASSETS_APPRISE_URL:-ntfy://dumbassetstest}
       DEMO_MODE: ${DUMBASSETS_DEMO_MODE:-false}
+      APPRISE_URL: ${DUMBASSETS_APPRISE_URL:-}
