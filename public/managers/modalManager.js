@@ -3,6 +3,8 @@
  * Handles all modal operations for assets and sub-assets
  */
 
+import { formatDate } from '../helpers/utils.js';
+
 export class ModalManager {
     constructor({
         // DOM elements
@@ -365,7 +367,7 @@ export class ModalManager {
             'assetPrice': asset.price || '',
             'assetWarrantyScope': asset.warranty?.scope || '',
             'assetWarrantyLifetime': asset.warranty?.isLifetime || false,
-            'assetWarrantyExpiration': asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '',
+            'assetWarrantyExpiration': asset.warranty?.expirationDate ? new Date(formatDate(asset.warranty.expirationDate)).toISOString().split('T')[0] : '',
             'assetNotes': asset.description || '',
             'assetLink': asset.link || ''
         };
@@ -400,7 +402,7 @@ export class ModalManager {
             'subAssetLink': subAsset.link || '',
             'subAssetNotes': subAsset.notes || '',
             'subAssetWarrantyScope': subAsset.warranty?.scope || '',
-            'subAssetWarrantyExpiration': subAsset.warranty?.expirationDate ? new Date(subAsset.warranty.expirationDate).toISOString().split('T')[0] : ''
+            'subAssetWarrantyExpiration': subAsset.warranty?.expirationDate ? new Date(formatDate(subAsset.warranty.expirationDate)).toISOString().split('T')[0] : ''
         };
         
         Object.entries(fields).forEach(([id, value]) => {
@@ -428,7 +430,7 @@ export class ModalManager {
             if (secondaryWarrantyFields) {
                 secondaryWarrantyFields.style.display = 'block';
                 document.getElementById('assetSecondaryWarrantyScope').value = asset.secondaryWarranty.scope || '';
-                document.getElementById('assetSecondaryWarrantyExpiration').value = asset.secondaryWarranty.expirationDate ? new Date(asset.secondaryWarranty.expirationDate).toISOString().split('T')[0] : '';
+                document.getElementById('assetSecondaryWarrantyExpiration').value = asset.secondaryWarranty.expirationDate ? new Date(formatDate(asset.secondaryWarranty.expirationDate)).toISOString().split('T')[0] : '';
                 document.getElementById('assetSecondaryWarrantyLifetime').checked = asset.secondaryWarranty.isLifetime || false;
                 
                 if (addSecondaryWarrantyBtn) {

@@ -2,6 +2,7 @@
  * Dashboard Manager
  * Handles dashboard rendering, events collection, and events display functionality
  */
+import { formatDate } from '../helpers/utils.js';
 
 export class DashboardManager {
     constructor({
@@ -164,7 +165,7 @@ export class DashboardManager {
                 active++;
                 return;
             }
-            const exp = new Date(item.warranty.expirationDate);
+            const exp = new Date(formatDate(item.warranty.expirationDate));
             if (isNaN(exp)) return;
             const diff = (exp - now) / (1000 * 60 * 60 * 24);
             if (diff < 0) {
@@ -391,7 +392,7 @@ export class DashboardManager {
         assets.forEach(asset => {
             // Primary warranty
             if (asset.warranty && asset.warranty.expirationDate && !asset.warranty.isLifetime) {
-                const expDate = new Date(asset.warranty.expirationDate);
+                const expDate = new Date(formatDate(asset.warranty.expirationDate));
                 if (expDate >= now && expDate <= futureLimit) {
                     events.push({
                         type: 'warranty',
@@ -408,7 +409,7 @@ export class DashboardManager {
 
             // Secondary warranty
             if (asset.secondaryWarranty && asset.secondaryWarranty.expirationDate && !asset.secondaryWarranty.isLifetime) {
-                const expDate = new Date(asset.secondaryWarranty.expirationDate);
+                const expDate = new Date(formatDate(asset.secondaryWarranty.expirationDate));
                 if (expDate >= now && expDate <= futureLimit) {
                     events.push({
                         type: 'warranty',
@@ -430,10 +431,10 @@ export class DashboardManager {
                     let eventDetails = event.name;
 
                     if (event.type === 'frequency' && event.nextDueDate) {
-                        eventDate = new Date(event.nextDueDate);
+                        eventDate = new Date(formatDate(event.nextDueDate));
                         eventDetails += ` (Every ${event.frequency} ${event.frequencyUnit})`;
                     } else if (event.type === 'specific' && event.specificDate) {
-                        eventDate = new Date(event.specificDate);
+                        eventDate = new Date(formatDate(event.specificDate));
                     }
 
                     if (eventDate && eventDate >= now && eventDate <= futureLimit) {
@@ -478,7 +479,7 @@ export class DashboardManager {
             }
 
             if (subAsset.warranty && subAsset.warranty.expirationDate && !subAsset.warranty.isLifetime) {
-                const expDate = new Date(subAsset.warranty.expirationDate);
+                const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
                 if (expDate >= now && expDate <= futureLimit) {
                     events.push({
                         type: 'warranty',
@@ -500,10 +501,10 @@ export class DashboardManager {
                     let eventDetails = event.name;
 
                     if (event.type === 'frequency' && event.nextDueDate) {
-                        eventDate = new Date(event.nextDueDate);
+                        eventDate = new Date(formatDate(event.nextDueDate));
                         eventDetails += ` (Every ${event.frequency} ${event.frequencyUnit})`;
                     } else if (event.type === 'specific' && event.specificDate) {
-                        eventDate = new Date(event.specificDate);
+                        eventDate = new Date(formatDate(event.specificDate));
                     }
 
                     if (eventDate && eventDate >= now && eventDate <= futureLimit) {
@@ -739,7 +740,7 @@ export class DashboardManager {
                             if (subAsset && subAsset.warranty) {
                                 if (subAsset.warranty.isLifetime) return true;
                                 if (subAsset.warranty.expirationDate) {
-                                    const expDate = new Date(subAsset.warranty.expirationDate);
+                                    const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
                                     const diff = (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                     return diff > 60;
                                 }
@@ -749,7 +750,7 @@ export class DashboardManager {
                             if (asset && asset.warranty) {
                                 if (asset.warranty.isLifetime) return true;
                                 if (asset.warranty.expirationDate) {
-                                    const expDate = new Date(asset.warranty.expirationDate);
+                                    const expDate = new Date(formatDate(asset.warranty.expirationDate));
                                     const diff = (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                     return diff > 60;
                                 }

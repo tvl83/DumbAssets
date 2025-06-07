@@ -209,6 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSelectedIds,
             renderAssetDetails,
             handleSidebarNav,
+            formatDate,
+            formatCurrency,
             
             // Global state
             assets,
@@ -758,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check warranty expiration
         let warrantyDot = '';
         if (subAsset.warranty && subAsset.warranty.expirationDate) {
-            const expDate = new Date(subAsset.warranty.expirationDate);
+            const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
             const now = new Date();
             const diff = (expDate - now) / (1000 * 60 * 60 * 24); // difference in days
             
@@ -927,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Check warranty expiration for child
                     let childWarrantyDot = '';
                     if (child.warranty && child.warranty.expirationDate) {
-                        const expDate = new Date(child.warranty.expirationDate);
+                        const expDate = new Date(formatDate(child.warranty.expirationDate));
                         const now = new Date();
                         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
                         
