@@ -101,24 +101,7 @@ export class ModalManager {
     }
     
     initializeEventListeners() {
-        // Add escape key listener for all modals
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeAssetModal();
-                this.closeSubAssetModal();
-            }
-        });
-        
-        // Add click-off-to-close for modals
-        [this.assetModal, this.subAssetModal].forEach(modal => {
-            if (modal) {
-                modal.addEventListener('mousedown', (e) => {
-                    if (e.target === modal) {
-                        modal.style.display = 'none';
-                    }
-                });
-            }
-        });
+        // Add any event listeners that are needed for the modals
     }
     
     openAssetModal(asset = null) {
