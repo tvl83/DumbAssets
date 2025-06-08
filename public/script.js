@@ -1409,17 +1409,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         // Add click-off-to-close for all modals on overlay click
-        [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+        [importModal, settingsModal].forEach(modal => {
             if (modal) {
                 modal.addEventListener('mousedown', function(e) {
                     if (e.target !== modal) return;
-                    if (modal === assetModal) {
-                        modalManager.closeAssetModal();
-                    }
-                    else if (modal === subAssetModal) {
-                        modalManager.closeSubAssetModal();
-                    }
-                    else if (modal === settingsModal) {
+                    if (modal === settingsModal) {
                         settingsManager.closeSettingsModal();
                     }
                     else {
