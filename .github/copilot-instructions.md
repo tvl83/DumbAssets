@@ -1,20 +1,8 @@
-/**
- * Cursor rules for maintaining code quality and consistency in DumbAssets
- */
-
-{
-  "rules": {
-    "file-header-docs": {
-      "description": "All JavaScript files must have a header comment explaining their purpose",
-      "pattern": "{src,public}/**/*.js",
-      "check": {
-        "type": "regex",
-        "value": "^/\\*\\*\\n \\* [^\\n]+\\n \\* [^\\n]+\\n \\*/\\n",
-        "message": "File must start with a header comment block explaining its purpose"
-      }
-    }
-  }
-}
+# Copilot Instructions for DumbAssets Project
+-  This document provides guidelines for using Copilot effectively in the DumbAssets project.
+-  It covers project conventions, architecture, and best practices to follow when writing code.
+-  The goal is to maintain a consistent codebase that is easy to read, understand, and maintain.
+-  Copilot should assist in generating code that adheres to these conventions and patterns.
 
 # DumbAssets Architecture & Conventions
 

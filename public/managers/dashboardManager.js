@@ -2,6 +2,7 @@
  * Dashboard Manager
  * Handles dashboard rendering, events collection, and events display functionality
  */
+import { formatDate } from '../helpers/utils.js';
 
 export class DashboardManager {
     constructor({
@@ -146,8 +147,16 @@ export class DashboardManager {
         const totalComponents = totalSubAssets;
         
         // Calculate total value including sub-assets
-        const totalAssetsValue = assets.reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
-        const totalSubAssetsValue = subAssets.reduce((sum, sa) => sum + (parseFloat(sa.purchasePrice) || 0), 0);
+        const totalAssetsValue = assets.reduce((sum, a) => {
+            const price = parseFloat(a.price) || 0;
+            const quantity = a.quantity || 1;
+            return sum + (price * quantity);
+        }, 0);
+        const totalSubAssetsValue = subAssets.reduce((sum, sa) => {
+            const price = parseFloat(sa.purchasePrice) || 0;
+            const quantity = sa.quantity || 1;
+            return sum + (price * quantity);
+        }, 0);
         const totalValue = totalAssetsValue + totalSubAssetsValue;
         
         
@@ -164,7 +173,7 @@ export class DashboardManager {
                 active++;
                 return;
             }
-            const exp = new Date(item.warranty.expirationDate);
+            const exp = new Date(formatDate(item.warranty.expirationDate));
             if (isNaN(exp)) return;
             const diff = (exp - now) / (1000 * 60 * 60 * 24);
             if (diff < 0) {
@@ -241,7 +250,7 @@ export class DashboardManager {
             <fieldset class="dashboard-legend">
                 <legend class="dashboard-legend-title">Analytics</legend>
                 <div class="dashboard-section" data-section="analytics">
-                    <div class="dashboard-charts-section">
+                    <div class="dashboard-charts-section three-col">
                         <div class="chart-container">
                             <h3>Warranty Status</h3>
                             <canvas id="warrantyPieChart" class="chart-canvas"></canvas>
@@ -249,6 +258,10 @@ export class DashboardManager {
                         <div class="chart-container">
                             <h3>Warranties Expiring Over Time</h3>
                             <canvas id="warrantyLineChart" class="chart-canvas"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Upcoming Maintenance Events</h3>
+                            <canvas id="maintenanceLineChart" class="chart-canvas"></canvas>
                         </div>
                     </div>
                 </div>
@@ -322,7 +335,30 @@ export class DashboardManager {
     }
     
     generateEventsSection() {
-        const events = this.collectUpcomingEvents();
+        // Get saved date range from localStorage, default to '12' (1 Year)
+        const savedDateRange = localStorage.getItem('eventsDateRange') || '12';
+        
+        // Convert range value to the appropriate parameter for collectEventsInRange
+        let monthsAhead;
+        let specificDate = null;
+        let specificDateDisplay = '';
+        
+        if (savedDateRange === 'all') {
+            monthsAhead = 'all';
+        } else if (savedDateRange === 'past') {
+            monthsAhead = 'past';
+        } else if (savedDateRange.startsWith && savedDateRange.startsWith('specific:')) {
+            monthsAhead = 'specific';
+            specificDate = savedDateRange.substring(9); // Remove 'specific:' prefix
+            // Format the date for display using formatDate utility
+            if (specificDate) {
+                specificDateDisplay = this.formatDate(specificDate);
+            }
+        } else {
+            monthsAhead = parseInt(savedDateRange);
+        }
+        
+        const events = this.collectEventsInRange(monthsAhead, specificDate);
         
         return `
             <fieldset class="dashboard-legend">
@@ -356,6 +392,26 @@ export class DashboardManager {
                             </button>
                         </div>
                         <div class="events-sort">
+                            <div class="events-date-filter">
+                                <div class="events-calendar-icon${savedDateRange.startsWith && savedDateRange.startsWith('specific:') ? ' show' : ''}" id="eventsCalendarIcon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    <input type="date" id="eventsSpecificDate" class="events-date-input" value="${specificDate || ''}">
+                                </div>
+                                <select id="eventsDateRange" class="events-date-select">
+                                    <option value="past"${savedDateRange === 'past' ? ' selected' : ''}>Past Events</option>
+                                    <option value="1"${savedDateRange === '1' ? ' selected' : ''}>1 Month</option>
+                                    <option value="3"${savedDateRange === '3' ? ' selected' : ''}>3 Months</option>
+                                    <option value="6"${savedDateRange === '6' ? ' selected' : ''}>6 Months</option>
+                                    <option value="12"${savedDateRange === '12' ? ' selected' : ''}>1 Year</option>
+                                    <option value="all"${savedDateRange === 'all' ? ' selected' : ''}>All Future</option>
+                                    <option value="specific"${savedDateRange.startsWith && savedDateRange.startsWith('specific:') ? ' selected' : ''}>${specificDateDisplay ? specificDateDisplay : 'Specific Date'}</option>
+                                </select>
+                            </div>
                             <button class="events-sort-btn" data-sort="date" data-direction="asc">
                                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M3 6h18"></path>
@@ -379,20 +435,267 @@ export class DashboardManager {
         `;
     }
     
-    collectUpcomingEvents() {
+    /**
+     * Get filtered assets and sub-assets based on current search and dashboard filter
+     * @param {Array} assets - All assets
+     * @param {Array} subAssets - All sub-assets
+     * @returns {Object} Object containing filteredAssets and filteredSubAssets arrays
+     */
+    getFilteredAssetsAndSubAssets(assets, subAssets) {
+        const searchQuery = this.searchInput ? this.searchInput.value : '';
+        const dashboardFilter = this.getDashboardFilter();
+        
+        // First apply search filter (same logic as renderAssetList)
+        let filteredAssets = searchQuery
+            ? assets.filter(asset => {
+                // Check if the asset itself matches the search query
+                const assetMatches = asset.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.tags?.some(tag => tag.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    asset.manufacturer?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.modelNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.serialNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.location?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.notes?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.description?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.link?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.warranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    asset.secondaryWarranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    this.formatCurrency(asset.price, true).toLowerCase().includes(this.formatCurrency(searchQuery, true)) ||
+                    this.formatDate(asset.warranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    this.formatDate(asset.secondaryWarranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    this.formatDate(asset.purchaseDate, true).includes(searchQuery.toLowerCase());
+                
+                // If asset matches, return true
+                if (assetMatches) return true;
+                
+                // Check if any of its sub-assets match the search query
+                const hasMatchingSubAsset = subAssets.some(subAsset => {
+                    if (subAsset.parentId !== asset.id) return false;
+                    
+                    return subAsset.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.tags?.some(tag => tag.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        subAsset.manufacturer?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.modelNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.serialNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.location?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.notes?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.description?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.link?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.warranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        subAsset.secondaryWarranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        this.formatCurrency(subAsset.purchasePrice, true).toLowerCase().includes(this.formatCurrency(searchQuery, true)) ||
+                        this.formatDate(subAsset.warranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                        this.formatDate(subAsset.secondaryWarranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                        this.formatDate(subAsset.purchaseDate, true).includes(searchQuery.toLowerCase());
+                });
+                
+                return hasMatchingSubAsset;
+            })
+            : assets;
+
+        // Apply dashboard filter
+        if (dashboardFilter) {
+            const now = new Date();
+            
+            if (dashboardFilter === 'components') {
+                // Only show assets that have sub-assets associated with them
+                filteredAssets = filteredAssets.filter(a => 
+                    subAssets.some(sa => sa.parentId === a.id)
+                );
+            }
+            else if (dashboardFilter === 'warranties') {
+                // Assets with warranties
+                filteredAssets = filteredAssets.filter(a => a.warranty && a.warranty.expirationDate);
+            } else if (dashboardFilter === 'expired') {
+                // Assets with expired warranties
+                filteredAssets = filteredAssets.filter(a => {
+                    const exp = a.warranty?.expirationDate;
+                    if (!exp) return false;
+                    return new Date(this.formatDate(exp)) < now;
+                });
+                
+                // Also include assets with sub-assets that have expired warranties
+                const assetsWithExpiredComponents = assets.filter(a => 
+                    !filteredAssets.includes(a) && // Don't duplicate
+                    subAssets.some(sa => {
+                        if (sa.parentId !== a.id) return false;
+                        const exp = sa.warranty?.expirationDate;
+                        if (!exp) return false;
+                        return new Date(this.formatDate(exp)) < now;
+                    })
+                );
+                
+                filteredAssets = [...filteredAssets, ...assetsWithExpiredComponents];
+            } else if (dashboardFilter === 'within30') {
+                // Assets with warranties expiring within 30 days
+                filteredAssets = filteredAssets.filter(a => {
+                    const exp = a.warranty?.expirationDate;
+                    if (!exp) return false;
+                    const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                    return diff >= 0 && diff <= 30;
+                });
+                
+                // Also include assets with sub-assets expiring within 30 days
+                const assetsWithExpiringComponents = assets.filter(a => 
+                    !filteredAssets.includes(a) && // Don't duplicate
+                    subAssets.some(sa => {
+                        if (sa.parentId !== a.id) return false;
+                        const exp = sa.warranty?.expirationDate;
+                        if (!exp) return false;
+                        const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                        return diff >= 0 && diff <= 30;
+                    })
+                );
+                
+                filteredAssets = [...filteredAssets, ...assetsWithExpiringComponents];
+            } else if (dashboardFilter === 'within60') {
+                // Assets with warranties expiring between 31-60 days
+                filteredAssets = filteredAssets.filter(a => {
+                    const exp = a.warranty?.expirationDate;
+                    if (!exp) return false;
+                    const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                    return diff > 30 && diff <= 60;
+                });
+                
+                // Also include assets with sub-assets expiring within 31-60 days
+                const assetsWithWarningComponents = assets.filter(a => 
+                    !filteredAssets.includes(a) && // Don't duplicate
+                    subAssets.some(sa => {
+                        if (sa.parentId !== a.id) return false;
+                        const exp = sa.warranty?.expirationDate;
+                        if (!exp) return false;
+                        const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                        return diff > 30 && diff <= 60;
+                    })
+                );
+                
+                filteredAssets = [...filteredAssets, ...assetsWithWarningComponents];
+            } else if (dashboardFilter === 'active') {
+                // Assets with active warranties (more than 60 days)
+                filteredAssets = filteredAssets.filter(a => {
+                    const exp = a.warranty?.expirationDate;
+                    const isLifetime = a.warranty?.isLifetime;
+                    if (!exp && !isLifetime) return false;
+                    if (isLifetime) return true;
+                    const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                    return diff > 60;
+                });
+                
+                // Also include assets with sub-assets having active warranties
+                const assetsWithActiveComponents = assets.filter(a => 
+                    !filteredAssets.includes(a) && // Don't duplicate
+                    subAssets.some(sa => {
+                        if (sa.parentId !== a.id) return false;
+                        const exp = sa.warranty?.expirationDate;
+                        const isLifetime = sa.warranty?.isLifetime;
+                        if (!exp && !isLifetime) return false;
+                        if (isLifetime) return true;
+                        const diff = (new Date(this.formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
+                        return diff > 60;
+                    })
+                );
+                
+                filteredAssets = [...filteredAssets, ...assetsWithActiveComponents];
+            }
+        }
+
+        // Get asset IDs that are visible in the filtered list
+        const filteredAssetIds = new Set(filteredAssets.map(a => a.id));
+        
+        // Filter sub-assets to only include those whose parents are in the filtered asset list
+        // or those that match the search query themselves
+        let filteredSubAssets = subAssets.filter(subAsset => {
+            // Always include sub-assets whose parent assets are visible
+            if (filteredAssetIds.has(subAsset.parentId)) {
+                return true;
+            }
+            
+            // If there's a search query, also include sub-assets that match the search directly
+            if (searchQuery) {
+                return subAsset.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.tags?.some(tag => tag.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    subAsset.manufacturer?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.modelNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.serialNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.location?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.notes?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.description?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.link?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.warranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.secondaryWarranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    this.formatCurrency(subAsset.purchasePrice, true).toLowerCase().includes(this.formatCurrency(searchQuery, true)) ||
+                    this.formatDate(subAsset.warranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    this.formatDate(subAsset.secondaryWarranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    this.formatDate(subAsset.purchaseDate, true).includes(searchQuery.toLowerCase());
+            }
+            
+            return false;
+        });
+
+        return { filteredAssets, filteredSubAssets };
+    }
+    
+    collectEventsInRange(monthsAhead = 12, specificDate = null) {
         const assets = this.getAssets();
         const subAssets = this.getSubAssets();
         const events = [];
         const now = new Date();
-        const futureLimit = new Date();
-        futureLimit.setFullYear(now.getFullYear() + 1); // Show events up to 1 year in the future
+        let futureLimit = null;
+        
+        // Get filtered assets and sub-assets based on current search and dashboard filter
+        const { filteredAssets, filteredSubAssets } = this.getFilteredAssetsAndSubAssets(assets, subAssets);
+        
+        // Set date range limits based on monthsAhead parameter
+        if (monthsAhead === 'all') {
+            // Show all future events (no time limit)
+            futureLimit = null;
+        } else if (monthsAhead === 'past') {
+            // Show only past events
+            futureLimit = now;
+        } else if (monthsAhead === 'specific' && specificDate) {
+            // Show events for a specific date
+            // Use formatDate to properly parse the date without timezone issues
+            const targetDate = new Date(this.formatDate(specificDate));
+            // Set to start and end of the day for the target date
+            const startOfDay = new Date(targetDate);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(targetDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            futureLimit = { start: startOfDay, end: endOfDay, isSpecific: true };
+        } else {
+            // Show only future events within the specified range
+            // Use safer date calculation to avoid rollover issues
+            futureLimit = new Date(now);
+            const originalDay = now.getDate();
+            futureLimit.setMonth(now.getMonth() + monthsAhead);
+            
+            // If the day rolled over due to target month having fewer days,
+            // set to the last day of the target month
+            if (futureLimit.getDate() !== originalDay) {
+                futureLimit.setDate(0); // This sets to last day of previous month
+            }
+        }
 
-        // Collect warranty events from assets
-        assets.forEach(asset => {
+        // Helper function to check if an event should be included based on date filtering
+        const shouldIncludeEvent = (eventDate) => {
+            if (monthsAhead === 'all') {
+                return eventDate >= now; // Only future events for "All Events"
+            } else if (monthsAhead === 'past') {
+                return eventDate < now; // Only past events
+            } else if (monthsAhead === 'specific' && futureLimit && futureLimit.isSpecific) {
+                return eventDate >= futureLimit.start && eventDate <= futureLimit.end; // Events on specific date
+            } else {
+                return eventDate >= now && eventDate <= futureLimit; // Only future events in range
+            }
+        };
+
+        // Collect warranty events from filtered assets
+        filteredAssets.forEach(asset => {
             // Primary warranty
             if (asset.warranty && asset.warranty.expirationDate && !asset.warranty.isLifetime) {
-                const expDate = new Date(asset.warranty.expirationDate);
-                if (expDate >= now && expDate <= futureLimit) {
+                const expDate = new Date(formatDate(asset.warranty.expirationDate));
+                
+                if (shouldIncludeEvent(expDate)) {
                     events.push({
                         type: 'warranty',
                         date: expDate,
@@ -408,8 +711,9 @@ export class DashboardManager {
 
             // Secondary warranty
             if (asset.secondaryWarranty && asset.secondaryWarranty.expirationDate && !asset.secondaryWarranty.isLifetime) {
-                const expDate = new Date(asset.secondaryWarranty.expirationDate);
-                if (expDate >= now && expDate <= futureLimit) {
+                const expDate = new Date(formatDate(asset.secondaryWarranty.expirationDate));
+                
+                if (shouldIncludeEvent(expDate)) {
                     events.push({
                         type: 'warranty',
                         date: expDate,
@@ -426,34 +730,51 @@ export class DashboardManager {
             // Maintenance events
             if (asset.maintenanceEvents && asset.maintenanceEvents.length > 0) {
                 asset.maintenanceEvents.forEach(event => {
-                    let eventDate = null;
-                    let eventDetails = event.name;
-
                     if (event.type === 'frequency' && event.nextDueDate) {
-                        eventDate = new Date(event.nextDueDate);
-                        eventDetails += ` (Every ${event.frequency} ${event.frequencyUnit})`;
-                    } else if (event.type === 'specific' && event.specificDate) {
-                        eventDate = new Date(event.specificDate);
-                    }
-
-                    if (eventDate && eventDate >= now && eventDate <= futureLimit) {
-                        events.push({
-                            type: 'maintenance',
-                            date: eventDate,
-                            name: asset.name,
-                            details: eventDetails,
-                            assetType: 'Asset',
-                            notes: event.notes,
-                            id: asset.id,
-                            isSubAsset: false
+                        // Generate multiple recurring events within the date range
+                        const recurringEvents = this.generateRecurringEvents(
+                            event.nextDueDate, 
+                            event.frequency, 
+                            event.frequencyUnit, 
+                            now, 
+                            futureLimit, 
+                            monthsAhead
+                        );
+                        
+                        recurringEvents.forEach(eventDate => {
+                            events.push({
+                                type: 'maintenance',
+                                date: eventDate,
+                                name: asset.name,
+                                details: `${event.name} (Every ${event.frequency} ${event.frequencyUnit})`,
+                                assetType: 'Asset',
+                                notes: event.notes,
+                                id: asset.id,
+                                isSubAsset: false
+                            });
                         });
+                    } else if (event.type === 'specific' && event.specificDate) {
+                        const eventDate = new Date(formatDate(event.specificDate));
+                        
+                        if (shouldIncludeEvent(eventDate)) {
+                            events.push({
+                                type: 'maintenance',
+                                date: eventDate,
+                                name: asset.name,
+                                details: event.name,
+                                assetType: 'Asset',
+                                notes: event.notes,
+                                id: asset.id,
+                                isSubAsset: false
+                            });
+                        }
                     }
                 });
             }
         });
 
-        // Collect warranty events from sub-assets
-        subAssets.forEach(subAsset => {
+        // Collect warranty events from filtered sub-assets
+        filteredSubAssets.forEach(subAsset => {
             // Determine parent information based on whether this is a sub-asset or sub-sub-asset
             let parentName = 'Unknown Parent';
             let assetType = 'Component';
@@ -478,8 +799,19 @@ export class DashboardManager {
             }
 
             if (subAsset.warranty && subAsset.warranty.expirationDate && !subAsset.warranty.isLifetime) {
-                const expDate = new Date(subAsset.warranty.expirationDate);
-                if (expDate >= now && expDate <= futureLimit) {
+                const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
+                
+                // Apply date filtering logic
+                let includeEvent = false;
+                if (monthsAhead === 'all') {
+                    includeEvent = expDate >= now; // Only future events for "All Events"
+                } else if (monthsAhead === 'past') {
+                    includeEvent = expDate < now; // Only past events
+                } else {
+                    includeEvent = expDate >= now && expDate <= futureLimit; // Only future events in range
+                }
+                
+                if (includeEvent) {
                     events.push({
                         type: 'warranty',
                         date: expDate,
@@ -496,28 +828,56 @@ export class DashboardManager {
             // Maintenance events for sub-assets (including sub-sub-assets)
             if (subAsset.maintenanceEvents && subAsset.maintenanceEvents.length > 0) {
                 subAsset.maintenanceEvents.forEach(event => {
-                    let eventDate = null;
-                    let eventDetails = event.name;
-
                     if (event.type === 'frequency' && event.nextDueDate) {
-                        eventDate = new Date(event.nextDueDate);
-                        eventDetails += ` (Every ${event.frequency} ${event.frequencyUnit})`;
-                    } else if (event.type === 'specific' && event.specificDate) {
-                        eventDate = new Date(event.specificDate);
-                    }
-
-                    if (eventDate && eventDate >= now && eventDate <= futureLimit) {
-                        events.push({
-                            type: 'maintenance',
-                            date: eventDate,
-                            name: subAsset.name,
-                            details: eventDetails,
-                            assetType: assetType,
-                            parentAsset: parentName,
-                            notes: event.notes,
-                            id: subAsset.id,
-                            isSubAsset: true
+                        // Generate multiple recurring events within the date range
+                        const recurringEvents = this.generateRecurringEvents(
+                            event.nextDueDate, 
+                            event.frequency, 
+                            event.frequencyUnit, 
+                            now, 
+                            futureLimit, 
+                            monthsAhead
+                        );
+                        
+                        recurringEvents.forEach(eventDate => {
+                            events.push({
+                                type: 'maintenance',
+                                date: eventDate,
+                                name: subAsset.name,
+                                details: `${event.name} (Every ${event.frequency} ${event.frequencyUnit})`,
+                                assetType: assetType,
+                                parentAsset: parentName,
+                                notes: event.notes,
+                                id: subAsset.id,
+                                isSubAsset: true
+                            });
                         });
+                    } else if (event.type === 'specific' && event.specificDate) {
+                        const eventDate = new Date(formatDate(event.specificDate));
+                        
+                        // Apply date filtering logic
+                        let includeEvent = false;
+                        if (monthsAhead === 'all') {
+                            includeEvent = eventDate >= now; // Only future events for "All Events"
+                        } else if (monthsAhead === 'past') {
+                            includeEvent = eventDate < now; // Only past events
+                        } else {
+                            includeEvent = eventDate >= now && eventDate <= futureLimit; // Only future events in range
+                        }
+                        
+                        if (includeEvent) {
+                            events.push({
+                                type: 'maintenance',
+                                date: eventDate,
+                                name: subAsset.name,
+                                details: event.name,
+                                assetType: assetType,
+                                parentAsset: parentName,
+                                notes: event.notes,
+                                id: subAsset.id,
+                                isSubAsset: true
+                            });
+                        }
                     }
                 });
             }
@@ -529,6 +889,168 @@ export class DashboardManager {
         return events;
     }
     
+    /**
+     * Generate recurring events within a date range
+     * @param {string} nextDueDate - The next due date for the recurring event
+     * @param {number} frequency - How often the event recurs (e.g., 1, 2, 3)
+     * @param {string} frequencyUnit - The unit of recurrence (days, weeks, months, years)
+     * @param {Date} now - Current date
+     * @param {Date} futureLimit - The end date limit for generating events
+     * @param {string|number} monthsAhead - The range specification ('all', 'past', or number of months)
+     * @returns {Array} Array of Date objects for recurring events
+     */
+    generateRecurringEvents(nextDueDate, frequency, frequencyUnit, now, futureLimit, monthsAhead) {
+        const events = [];
+        
+        // Validate inputs
+        if (!nextDueDate || !frequency || !frequencyUnit) {
+            return events;
+        }
+        
+        const numericFrequency = parseInt(frequency);
+        if (isNaN(numericFrequency) || numericFrequency <= 0) {
+            return events;
+        }
+        
+        // Parse the next due date
+        let currentDate = new Date(formatDate(nextDueDate));
+        if (isNaN(currentDate)) {
+            return events;
+        }
+        
+        // Determine the end limit for event generation
+        let endLimit = null;
+        let maxEvents = 100 * 31 * (isNaN(monthsAhead) ? 12 : monthsAhead); // Safety limit to prevent infinite loops
+        let eventCount = 0;
+        
+        if (monthsAhead === 'all') {
+            // For "all", generate events for the next 5 years to avoid infinite generation
+            endLimit = new Date(now);
+            endLimit.setFullYear(now.getFullYear() + 5);
+            maxEvents = 100 * 365 * 5; // Up to 5 years worth of monthly events - 100 events per day
+        } else if (monthsAhead === 'past') {
+            // For past events, we need to generate ALL occurrences from the nextDueDate up to today
+            // This includes both past and current/overdue events
+            endLimit = new Date(now);
+            endLimit.setHours(23, 59, 59, 999); // Include events due today
+            
+            // Generate all occurrences from nextDueDate forward until today
+            while (currentDate <= endLimit && eventCount < maxEvents) {
+                events.push(new Date(currentDate));
+                currentDate = this.addTimePeriod(currentDate, numericFrequency, frequencyUnit);
+                if (!currentDate) break; // Safety check
+                eventCount++;
+            }
+            return events;
+        } else if (monthsAhead === 'specific' && futureLimit && futureLimit.isSpecific) {
+            // For specific date, check if any recurring events fall on that date
+            const targetStart = futureLimit.start;
+            const targetEnd = futureLimit.end;
+            
+            // Generate events from the next due date forward until we're past the target date
+            // or we've checked enough occurrences
+            const maxCheckLimit = new Date(targetEnd);
+            maxCheckLimit.setFullYear(maxCheckLimit.getFullYear() + 10); // Check up to 10 years ahead
+            
+            while (currentDate <= maxCheckLimit && eventCount < maxEvents) {
+                // Check if this occurrence falls on the target date
+                if (currentDate >= targetStart && currentDate <= targetEnd) {
+                    events.push(new Date(currentDate));
+                }
+                
+                // Move to next occurrence
+                currentDate = this.addTimePeriod(currentDate, numericFrequency, frequencyUnit);
+                if (!currentDate) break; // Safety check
+                eventCount++;
+                
+                // If we're past the target date and haven't found any matches recently, stop
+                if (currentDate > targetEnd && events.length === 0) {
+                    break;
+                }
+            }
+            return events;
+        } else {
+            endLimit = futureLimit;
+        }
+        
+        if (!endLimit) {
+            return events;
+        }
+                 
+         // Generate future events within the range
+        
+        while (currentDate <= endLimit && eventCount < maxEvents) {
+            // Only include events that match the filtering criteria
+            let includeEvent = false;
+            if (monthsAhead === 'all') {
+                includeEvent = currentDate >= now; // Only future events for "All Events"
+            } else {
+                includeEvent = currentDate >= now && currentDate <= endLimit; // Only future events in range
+            }
+            
+            if (includeEvent) {
+                events.push(new Date(currentDate));
+                eventCount++; // Only increment when we actually add an event
+            }
+            
+            // Move to next occurrence
+            currentDate = this.addTimePeriod(currentDate, numericFrequency, frequencyUnit);
+            if (!currentDate) break; // Safety check
+        }
+        
+        return events;
+    }
+    
+    /**
+     * Add time periods to a date (JavaScript implementation, similar to Luxon's addTimePeriod)
+     * @param {Date} baseDate - The base date to add to
+     * @param {number} amount - The amount to add (can be negative)
+     * @param {string} unit - The unit (days, weeks, months, years)
+     * @returns {Date|null} - The calculated date or null if invalid
+     */
+    addTimePeriod(baseDate, amount, unit) {
+        if (!baseDate || isNaN(baseDate)) return null;
+        
+        try {
+            const result = new Date(baseDate);
+            const numericAmount = parseInt(amount);
+            if (isNaN(numericAmount)) return null;
+            
+            switch (unit.toLowerCase()) {
+                case 'days':
+                case 'day':
+                    result.setDate(result.getDate() + numericAmount);
+                    break;
+                case 'weeks':
+                case 'week':
+                    result.setDate(result.getDate() + (numericAmount * 7));
+                    break;
+                case 'months':
+                case 'month':
+                    // Use safer month calculation to avoid rollover issues
+                    const originalDay = result.getDate();
+                    result.setMonth(result.getMonth() + numericAmount);
+                    
+                    // If the day rolled over due to target month having fewer days,
+                    // set to the last day of the target month
+                    if (result.getDate() !== originalDay) {
+                        result.setDate(0); // This sets to last day of previous month
+                    }
+                    break;
+                case 'years':
+                case 'year':
+                    result.setFullYear(result.getFullYear() + numericAmount);
+                    break;
+                default:
+                    return null;
+            }
+            
+            return result;
+        } catch (error) {
+            return null;
+        }
+    }
+    
     generateEventsTableHTML(events) {
         if (events.length === 0) {
             return `
@@ -537,7 +1059,7 @@ export class DashboardManager {
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M12 6v6l4 2"></path>
                     </svg>
-                    <p>No upcoming events</p>
+                    <p>No events found</p>
                 </div>
             `;
         }
@@ -546,12 +1068,12 @@ export class DashboardManager {
         
         return events.map(event => {
             const daysUntil = Math.ceil((event.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            const isOverdue = daysUntil < 0;
+            const isPast = daysUntil < 0;
             const isUrgent = daysUntil <= 30 && daysUntil >= 0;
             const isWarning = daysUntil <= 60 && daysUntil > 30;
 
             let urgencyClass = '';
-            if (isOverdue) urgencyClass = 'overdue';
+            if (isPast) urgencyClass = 'overdue';
             else if (isUrgent) urgencyClass = 'urgent';
             else if (isWarning) urgencyClass = 'warning';
 
@@ -575,7 +1097,7 @@ export class DashboardManager {
                     </div>
                     <div class="event-date">
                         <span class="event-date-text">${this.formatDate(event.date)}</span>
-                        <span class="event-days-until">${isOverdue ? `${Math.abs(daysUntil)} days overdue` : `${daysUntil} days`}</span>
+                        <span class="event-days-until">${isPast ? `${Math.abs(daysUntil)} days past` : `${daysUntil} days`}</span>
                     </div>
                     <div class="event-details">
                         <div class="event-name">${event.name}</div>
@@ -593,6 +1115,43 @@ export class DashboardManager {
         this.currentFilter = 'all';
         this.currentSort = { field: 'date', direction: 'asc' };
         this.currentPage = 1;
+        
+        // Load saved date range from localStorage, default to '12' (1 Year)
+        const savedDateRange = localStorage.getItem('eventsDateRange') || '12';
+        const eventsDateRangeSelect = document.getElementById('eventsDateRange');
+        
+        if (eventsDateRangeSelect) {
+            // Handle specific date dropdown selection on page load
+            if (savedDateRange.startsWith && savedDateRange.startsWith('specific:')) {
+                eventsDateRangeSelect.value = 'specific';
+                const specificDate = savedDateRange.substring(9);
+                const specificDateInput = document.getElementById('eventsSpecificDate');
+                const calendarIcon = document.getElementById('eventsCalendarIcon');
+                
+                if (specificDateInput) {
+                    specificDateInput.value = specificDate;
+                }
+                
+                // Show calendar icon for specific date selection
+                if (calendarIcon) {
+                    calendarIcon.classList.add('show');
+                }
+                
+                // Update the dropdown option text to show the selected date
+                const specificOption = eventsDateRangeSelect.querySelector('option[value="specific"]');
+                if (specificOption && specificDate) {
+                    // Use formatDate utility to properly handle the date without timezone issues
+                    specificOption.textContent = formatDate(specificDate);
+                }
+            } else {
+                eventsDateRangeSelect.value = savedDateRange;
+                // Ensure calendar icon stays hidden
+                const calendarIcon = document.getElementById('eventsCalendarIcon');
+                if (calendarIcon) {
+                    calendarIcon.classList.remove('show');
+                }
+            }
+        }
 
         // Filter buttons
         document.querySelectorAll('.events-filter-btn').forEach(btn => {
@@ -622,6 +1181,134 @@ export class DashboardManager {
                 
                 this.currentPage = 1; // Reset to first page when sorting
                 this.updateEventsDisplay();
+            });
+        }
+        
+        // Date range dropdown with localStorage persistence
+        if (eventsDateRangeSelect) {
+            eventsDateRangeSelect.addEventListener('change', () => {
+                const selectedValue = eventsDateRangeSelect.value;
+                const specificDateInput = document.getElementById('eventsSpecificDate');
+                const calendarIcon = document.getElementById('eventsCalendarIcon');
+                
+                if (selectedValue === 'specific') {
+                    // Show the calendar icon
+                    if (calendarIcon) {
+                        calendarIcon.classList.add('show');
+                    }
+                    
+                    // Automatically click the calendar icon to open the date picker
+                    setTimeout(() => {
+                        if (calendarIcon && calendarIcon.classList.contains('show')) {
+                            calendarIcon.click();
+                        }
+                    }, 50); // Small delay to ensure the icon is visible
+                } else {
+                    // Hide the calendar icon
+                    if (calendarIcon) {
+                        calendarIcon.classList.remove('show');
+                    }
+                    
+                    // Close the date picker if it's open and blur the input
+                    if (specificDateInput) {
+                        specificDateInput.blur();
+                        specificDateInput.classList.remove('show');
+                        // Clear the specific date input value
+                        specificDateInput.value = '';
+                    }
+                    
+                    // Reset the "Specific Date" option text back to default
+                    const specificOption = eventsDateRangeSelect.querySelector('option[value="specific"]');
+                    if (specificOption) {
+                        specificOption.textContent = 'Specific Date';
+                    }
+                    
+                    // Save the selection and update display
+                    localStorage.setItem('eventsDateRange', selectedValue);
+                    
+                    // Reset to first page when date range changes
+                    this.currentPage = 1;
+                    this.updateEventsDisplay();
+                }
+            });
+        }
+        
+        // Calendar icon click handler
+        const calendarIcon = document.getElementById('eventsCalendarIcon');
+        if (calendarIcon) {
+            calendarIcon.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent triggering the click-outside handler
+                const specificDateInput = document.getElementById('eventsSpecificDate');
+                if (specificDateInput) {
+                    // Show the date picker (it will overlay the calendar icon)
+                    specificDateInput.classList.add('show');
+                    
+                    // Focus the input after a small delay to ensure it's properly positioned and visible
+                    setTimeout(() => {
+                        specificDateInput.focus();
+                        // Try to use showPicker if available (modern browsers)
+                        if (specificDateInput.showPicker) {
+                            specificDateInput.showPicker();
+                        }
+                    }, 10);
+                }
+            });
+        }
+        
+        // Click outside to close date picker
+        document.addEventListener('click', (e) => {
+            const specificDateInput = document.getElementById('eventsSpecificDate');
+            const calendarIcon = document.getElementById('eventsCalendarIcon');
+            const eventsDateFilter = document.querySelector('.events-date-filter');
+            
+            if (specificDateInput && !eventsDateFilter.contains(e.target)) {
+                specificDateInput.classList.remove('show');
+                specificDateInput.blur();
+            }
+        });
+        
+        // Specific date input handling
+        const specificDateInput = document.getElementById('eventsSpecificDate');
+        if (specificDateInput) {
+            // Hide date picker when a date is selected
+            specificDateInput.addEventListener('change', () => {
+                specificDateInput.classList.remove('show');
+                
+                if (specificDateInput.value) {
+                    // Save the specific date selection with prefix
+                    const specificDateValue = `specific:${specificDateInput.value}`;
+                    localStorage.setItem('eventsDateRange', specificDateValue);
+                    
+                    // Update the dropdown option text to show the selected date
+                    const specificOption = eventsDateRangeSelect.querySelector('option[value="specific"]');
+                    if (specificOption) {
+                        // Use formatDate utility to properly handle the date without timezone issues
+                        specificOption.textContent = formatDate(specificDateInput.value);
+                    }
+                    
+                    // Reset to first page when date changes
+                    this.currentPage = 1;
+                    this.updateEventsDisplay();
+                } else {
+                    // If date is cleared, revert to default selection and hide calendar icon
+                    eventsDateRangeSelect.value = '12';
+                    localStorage.setItem('eventsDateRange', '12');
+
+                    // Reset dropdown option text
+                    const specificOption = eventsDateRangeSelect.querySelector('option[value="specific"]');
+                    if (specificOption) {
+                        specificOption.textContent = 'Specific Date';
+                    }
+
+                    // Hide the calendar icon
+                    const calendarIcon = document.getElementById('eventsCalendarIcon');
+                    if (calendarIcon) {
+                        calendarIcon.classList.remove('show');
+                    }
+
+                    this.currentPage = 1;
+                    this.updateEventsDisplay();
+                }
             });
         }
         
@@ -664,7 +1351,30 @@ export class DashboardManager {
             e.preventDefault();
             e.stopPropagation();
             console.log('Next button clicked, current page:', this.currentPage);
-            const allEvents = this.collectUpcomingEvents();
+            
+            // Get current date range selection for pagination calculation
+            const dateRangeSelect = document.getElementById('eventsDateRange');
+            const selectedRange = dateRangeSelect ? dateRangeSelect.value : '12';
+            
+            // Get the saved date range from localStorage to handle specific dates
+            const savedDateRange = localStorage.getItem('eventsDateRange') || '12';
+            
+            // Convert range value to the appropriate parameters for collectEventsInRange
+            let monthsAhead;
+            let specificDate = null;
+            
+            if (savedDateRange === 'all') {
+                monthsAhead = 'all';
+            } else if (savedDateRange === 'past') {
+                monthsAhead = 'past';
+            } else if (savedDateRange.startsWith && savedDateRange.startsWith('specific:')) {
+                monthsAhead = 'specific';
+                specificDate = savedDateRange.substring(9); // Remove 'specific:' prefix
+            } else {
+                monthsAhead = parseInt(savedDateRange);
+            }
+            
+            const allEvents = this.collectEventsInRange(monthsAhead, specificDate);
             const filteredEvents = this.currentFilter !== 'all' ? allEvents.filter(event => event.type === this.currentFilter) : allEvents;
             const totalPages = Math.ceil(filteredEvents.length / this.eventsPerPage);
             console.log('Total pages:', totalPages);
@@ -676,7 +1386,29 @@ export class DashboardManager {
     }
     
     updateEventsDisplay() {
-        let events = this.collectUpcomingEvents();
+        // Get the selected date range from the dropdown
+        const dateRangeSelect = document.getElementById('eventsDateRange');
+        const selectedRange = dateRangeSelect ? dateRangeSelect.value : '12';
+        
+        // Get the saved date range from localStorage to handle specific dates
+        const savedDateRange = localStorage.getItem('eventsDateRange') || '12';
+        
+        // Convert range value to the appropriate parameters for collectEventsInRange
+        let monthsAhead;
+        let specificDate = null;
+        
+        if (savedDateRange === 'all') {
+            monthsAhead = 'all';
+        } else if (savedDateRange === 'past') {
+            monthsAhead = 'past';
+        } else if (savedDateRange.startsWith && savedDateRange.startsWith('specific:')) {
+            monthsAhead = 'specific';
+            specificDate = savedDateRange.substring(9); // Remove 'specific:' prefix
+        } else {
+            monthsAhead = parseInt(savedDateRange);
+        }
+        
+        let events = this.collectEventsInRange(monthsAhead, specificDate);
 
         // Apply local events filter (all, warranty, maintenance)
         if (this.currentFilter !== 'all') {
@@ -739,7 +1471,7 @@ export class DashboardManager {
                             if (subAsset && subAsset.warranty) {
                                 if (subAsset.warranty.isLifetime) return true;
                                 if (subAsset.warranty.expirationDate) {
-                                    const expDate = new Date(subAsset.warranty.expirationDate);
+                                    const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
                                     const diff = (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                     return diff > 60;
                                 }
@@ -749,7 +1481,7 @@ export class DashboardManager {
                             if (asset && asset.warranty) {
                                 if (asset.warranty.isLifetime) return true;
                                 if (asset.warranty.expirationDate) {
-                                    const expDate = new Date(asset.warranty.expirationDate);
+                                    const expDate = new Date(formatDate(asset.warranty.expirationDate));
                                     const diff = (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                     return diff > 60;
                                 }
@@ -910,6 +1642,17 @@ export class DashboardManager {
                 this.setButtonLoading(this.clearFiltersBtn, false);
             });
         }
+
+        // Add input event listener for search input to refresh events
+        if (this.searchInput) {
+            this.searchInput.addEventListener('input', () => {
+                // Refresh events display if events section exists
+                const eventsTable = document.getElementById('eventsTable');
+                if (eventsTable) {
+                    this.updateEventsDisplay();
+                }
+            });
+        }
     }
     
     /**
@@ -922,4 +1665,4 @@ export class DashboardManager {
             this.updateEventsDisplay();
         }
     }
-} 
+}

@@ -184,6 +184,16 @@ function generateAssetInfoHTML(asset) {
             <div class="info-label">Price</div>
             <div>${formatCurrency(asset.price || asset.purchasePrice)}</div>
         </div>
+        <div class="info-item">
+            <div class="info-label">Quantity</div>
+            <div>${asset.quantity || 1}</div>
+        </div>
+        ${(asset.quantity > 1 && (asset.price || asset.purchasePrice)) ? `
+        <div class="info-item">
+            <div class="info-label">Total Value</div>
+            <div>${formatCurrency((asset.price || asset.purchasePrice) * asset.quantity)}</div>
+        </div>
+        ` : ''}
         ${asset.warranty?.expirationDate || asset.warranty?.isLifetime ? `
         <div class="info-item">
             <div class="info-label">Warranty</div>
@@ -204,6 +214,152 @@ function generateAssetInfoHTML(asset) {
             <div><a href="${asset.link}" target="_blank" rel="noopener noreferrer">${asset.link}</a></div>
         </div>` : ''}
     `;
+}
+
+/**
+ * Generate HTML for file grid display (supports multiple files)
+ * 
+ * @param {Object} asset - The asset object containing file paths
+ * @returns {string} HTML string for the file grid
+ */
+/**
+ * Format filename for display with truncation if needed
+ * @param {string} fileName - The original filename
+ * @param {number} maxLength - Maximum length (default 15)
+ * @returns {string} Formatted filename
+ */
+function formatDisplayFileName(fileName, maxLength = 15) {
+    if (!fileName || fileName.length <= maxLength) {
+        return fileName || 'Unknown File';
+    }
+    
+    // Find the last dot for the extension
+    const lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+        // No extension found, just truncate
+        return fileName.substring(0, maxLength - 3) + '...';
+    }
+    
+    const extension = fileName.substring(lastDotIndex);
+    const nameWithoutExt = fileName.substring(0, lastDotIndex);
+    
+    // Calculate how much space we have for the name part
+    const availableSpace = maxLength - extension.length - 3; // 3 for "..."
+    
+    if (availableSpace <= 0) {
+        // Extension is too long, just show truncated name
+        return fileName.substring(0, maxLength - 3) + '...';
+    }
+    
+    return nameWithoutExt.substring(0, availableSpace) + '...' + extension;
+}
+
+function generateFileGridHTML(asset) {
+    let html = '';
+    
+    // Handle multiple photos
+    if (asset.photoPaths && Array.isArray(asset.photoPaths) && asset.photoPaths.length > 0) {
+        asset.photoPaths.forEach((photoPath, index) => {
+            const photoInfo = asset.photoInfo?.[index] || {};
+            const fileName = photoInfo.originalName || photoPath.split('/').pop();
+            html += `
+                <div class="file-item photo">
+                    <a href="${formatFilePath(photoPath)}" target="_blank" class="file-preview">
+                        <img src="${formatFilePath(photoPath)}" alt="${asset.name}" class="asset-image">
+                        <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                    </a>
+                </div>
+            `;
+        });
+    } else if (asset.photoPath) {
+        // Backward compatibility for single photo
+        const photoInfo = asset.photoInfo?.[0] || {};
+        const fileName = photoInfo.originalName || asset.photoPath.split('/').pop();
+        html += `
+            <div class="file-item photo">
+                <a href="${formatFilePath(asset.photoPath)}" target="_blank" class="file-preview">
+                    <img src="${formatFilePath(asset.photoPath)}" alt="${asset.name}" class="asset-image">
+                    <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                </a>
+            </div>
+        `;
+    }
+    
+    // Handle multiple receipts
+    if (asset.receiptPaths && Array.isArray(asset.receiptPaths) && asset.receiptPaths.length > 0) {
+        asset.receiptPaths.forEach((receiptPath, index) => {
+            const receiptInfo = asset.receiptInfo?.[index] || {};
+            const fileName = receiptInfo.originalName || receiptPath.split('/').pop();
+            html += `
+                <div class="file-item receipt">
+                    <a href="${formatFilePath(receiptPath)}" target="_blank" class="file-preview">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
+                        </svg>
+                        <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                    </a>
+                </div>
+            `;
+        });
+    } else if (asset.receiptPath) {
+        // Backward compatibility for single receipt
+        const receiptInfo = asset.receiptInfo?.[0] || {};
+        const fileName = receiptInfo.originalName || asset.receiptPath.split('/').pop();
+        html += `
+            <div class="file-item receipt">
+                <a href="${formatFilePath(asset.receiptPath)}" target="_blank" class="file-preview">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
+                    </svg>
+                    <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                </a>
+            </div>
+        `;
+    }
+    
+    // Handle multiple manuals
+    if (asset.manualPaths && Array.isArray(asset.manualPaths) && asset.manualPaths.length > 0) {
+        asset.manualPaths.forEach((manualPath, index) => {
+            const manualInfo = asset.manualInfo?.[index] || {};
+            const fileName = manualInfo.originalName || manualPath.split('/').pop();
+            html += `
+                <div class="file-item manual">
+                    <a href="${formatFilePath(manualPath)}" target="_blank" class="file-preview">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                    </a>
+                </div>
+            `;
+        });
+    } else if (asset.manualPath) {
+        // Backward compatibility for single manual
+        const manualInfo = asset.manualInfo?.[0] || {};
+        const fileName = manualInfo.originalName || asset.manualPath.split('/').pop();
+        html += `
+            <div class="file-item manual">
+                <a href="${formatFilePath(asset.manualPath)}" target="_blank" class="file-preview">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <div class="file-label">${formatDisplayFileName(fileName)}</div>
+                </a>
+            </div>
+        `;
+    }
+    
+    return html || '<!-- No files available -->';
 }
 
 /**
@@ -307,6 +463,9 @@ function renderAssetDetails(assetId, isSubAsset = false) {
                 </div>
                 <div class="asset-actions">
                     ${isSub ? `<button class="back-to-parent-btn" title="Back to Parent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>` : ''}
+                    <button class="copy-link-btn" data-id="${asset.id}" data-parent-id="${asset.parentId || ''}" title="Copy Link">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    </button>
                     <button class="edit-asset-btn" data-id="${asset.id}" title="Edit">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
                     </button>
@@ -335,39 +494,7 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             </div>` : ''}
             <div class="asset-files">
                 <div class="files-grid">
-                    ${photoPath ? `
-                    <div class="file-item photo">
-                        <a href="${photoPath}" target="_blank" class="file-preview">
-                            <img src="${photoPath}" alt="${asset.name}" class="asset-image">
-                            <div class="file-label">Photo</div>
-                        </a>
-                    </div>
-                    ` : '<!-- No photo available -->'}
-                    ${receiptPath ? `
-                    <div class="file-item receipt">
-                        <a href="${receiptPath}" target="_blank" class="file-preview">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2" />
-                            </svg>
-                            <div class="file-label">Receipt</div>
-                        </a>
-                    </div>
-                    ` : '<!-- No receipt available -->'}
-                    ${manualPath ? `
-                    <div class="file-item manual">
-                        <a href="${manualPath}" target="_blank" class="file-preview">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                <polyline points="10 9 9 9 8 9"></polyline>
-                            </svg>
-                            <div class="file-label">Manual</div>
-                        </a>
-                    </div>
-                    ` : '<!-- No manual available -->'}
+                    ${generateFileGridHTML(asset)}
                 </div>
             </div>
         </fieldset>
@@ -386,6 +513,45 @@ function renderAssetDetails(assetId, isSubAsset = false) {
             });
         }
     }
+    
+    const copyLinkBtn = assetDetails.querySelector('.copy-link-btn');
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', () => {
+            // Generate the same URL format used in notifications
+            const baseUrl = window.location.origin + window.location.pathname;
+            let assetUrl;
+            
+            if (isSub) {
+                // For sub-assets: baseUrl?ass=parentId&sub=subAssetId
+                const parentId = asset.parentId || copyLinkBtn.dataset.parentId;
+                assetUrl = `${baseUrl}?ass=${parentId}&sub=${asset.id}`;
+            } else {
+                // For main assets: baseUrl?ass=assetId
+                assetUrl = `${baseUrl}?ass=${asset.id}`;
+            }
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(assetUrl).then(() => {
+                // Show success toast using global toaster
+                if (globalThis.toaster) {
+                    globalThis.toaster.show('Asset link copied to clipboard!', 'success', false, 2000);
+                } else {
+                    // Fallback alert if toaster is not available
+                    alert('Asset link copied to clipboard!');
+                }
+            }).catch(err => {
+                console.error('Failed to copy link to clipboard:', err);
+                // Show error toast using global error handler
+                if (globalThis.logError) {
+                    globalThis.logError('Failed to copy link to clipboard', err, false, 3000);
+                } else {
+                    // Fallback alert if error handler is not available
+                    alert('Failed to copy link to clipboard. Please try again.');
+                }
+            });
+        });
+    }
+    
     const editBtn = assetDetails.querySelector('.edit-asset-btn');
     if (editBtn) {
         editBtn.addEventListener('click', () => {

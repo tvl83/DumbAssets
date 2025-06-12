@@ -36,12 +36,79 @@ export class ImportManager {
         });
         this.importFile.addEventListener('change', (e) => this._handleFileSelection(e));
         this.startImportBtn.addEventListener('click', () => this._handleImport());
+        
+        // Set up drag and drop for import file
+        this._setupDragAndDrop();
+        
         // Download Template button event
         const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
         if (downloadTemplateBtn) {
             downloadTemplateBtn.addEventListener('click', () => this._downloadTemplate());
         }
         window.resetImportForm = this.resetImportForm.bind(this);
+    }
+
+    _setupDragAndDrop() {
+        const fileUploadBox = document.querySelector('.file-upload-box[data-target="importFile"]');
+        if (!fileUploadBox) return;
+
+        const self = this;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, self._preventDefaults, false);
+        });
+
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, () => fileUploadBox.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUploadBox.addEventListener(eventName, () => fileUploadBox.classList.remove('drag-over'), false);
+        });
+
+        // Handle dropped files
+        fileUploadBox.addEventListener('drop', (e) => self._handleFileDrop(e), false);
+    }
+
+    _preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    async _handleFileDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            // Only take the first file for import (single file upload)
+            const file = files[0];
+            
+            // Validate file type
+            const acceptedTypes = ['.csv', '.xls', '.xlsx'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!acceptedTypes.includes(fileExtension)) {
+                globalThis.toaster.show(`Invalid file type. Please select a ${acceptedTypes.join(', ')} file.`, 'error');
+                return;
+            }
+            
+            // Set the file on the actual input element so it's properly tracked
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            this.importFile.files = dataTransfer.files;
+            
+            // Create a synthetic file input event to reuse existing logic
+            const syntheticEvent = {
+                target: {
+                    files: [file]
+                }
+            };
+            
+            // Call the existing file selection handler
+            await this._handleFileSelection(syntheticEvent);
+        }
     }
 
     async _handleFileSelection(e) {
@@ -79,7 +146,8 @@ export class ImportManager {
             const warrantyExpirationColumn = document.getElementById('warrantyExpirationColumn');
             const lifetimeColumn = document.getElementById('lifetimeColumn');
             const tagsColumn = document.getElementById('tagsColumn');
-            [urlColumn, warrantyColumn, warrantyExpirationColumn, lifetimeColumn, tagsColumn].forEach(select => {
+            const quantityColumn = document.getElementById('quantityColumn');
+            [urlColumn, warrantyColumn, warrantyExpirationColumn, lifetimeColumn, tagsColumn, quantityColumn].forEach(select => {
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Column</option>';
                 headers.forEach((header, index) => {
@@ -127,7 +195,8 @@ export class ImportManager {
             lifetime: document.getElementById('lifetimeColumn').value,
             secondaryWarranty: document.getElementById('secondaryWarrantyColumn') ? document.getElementById('secondaryWarrantyColumn').value : '',
             secondaryWarrantyExpiration: document.getElementById('secondaryWarrantyExpirationColumn') ? document.getElementById('secondaryWarrantyExpirationColumn').value : '',
-            tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : ''
+            tags: document.getElementById('tagsColumn') ? document.getElementById('tagsColumn').value : '',
+            quantity: document.getElementById('quantityColumn') ? document.getElementById('quantityColumn').value : ''
         };
         if (!mappings.name) {
             globalThis.toaster.show('Please map the Name column', 'error');
@@ -172,7 +241,7 @@ export class ImportManager {
             this.setButtonLoading(this.startImportBtn, false);
             return;
         }
-        // ...existing code for sending to backend...
+
         try {
             const formData = new FormData();
             formData.append('file', new File([file], sanitizeFileName(file.name), { type: file.type }));
@@ -219,7 +288,8 @@ export class ImportManager {
             lifetimeColumn: ["lifetime", "lifetime warranty", "is lifetime", "islifetime", "permanent"],
             secondaryWarrantyColumn: ["secondary warranty", "secondary warranty scope", "warranty 2", "warranty2", "warranty scope 2"],
             secondaryWarrantyExpirationColumn: ["secondary warranty expiration", "secondary warranty expiry", "secondary warranty end", "secondary warranty end date", "warranty 2 expiration", "warranty2 expiration", "warranty expiration 2", "warranty expiry 2"],
-            tagsColumn: ["tags", "tag", "labels", "categories"]
+            tagsColumn: ["tags", "tag", "labels", "categories"],
+            quantityColumn: ["quantity", "qty"]
         };
         function normalize(str) {
             return str.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -243,12 +313,18 @@ export class ImportManager {
         // Remove file preview and clear file input
         const importFilePreview = document.getElementById('importFilePreview');
         if (importFilePreview) importFilePreview.innerHTML = '';
+        
         if (this.importFile) {
-            this.importFile.value = '';
-            // Forcibly remove files from input (for browsers that keep the file after value='')
-            if (this.importFile.files && this.importFile.files.length > 0) {
-                const dt = new DataTransfer();
-                this.importFile.files = dt.files;
+            // Reset file upload helpers if available
+            if (this.importFile._fileUploadHelpers) {
+                this.importFile._fileUploadHelpers.reset();
+            } else {
+                this.importFile.value = '';
+                // Forcibly remove files from input (for browsers that keep the file after value='')
+                if (this.importFile.files && this.importFile.files.length > 0) {
+                    const dt = new DataTransfer();
+                    this.importFile.files = dt.files;
+                }
             }
         }
         this.columnSelects.forEach(select => {
@@ -269,7 +345,8 @@ export class ImportManager {
             'lifetimeColumn',
             'secondaryWarrantyColumn',
             'secondaryWarrantyExpirationColumn',
-            'tagsColumn'
+            'tagsColumn',
+            'quantityColumn'
         ];
         columnIds.forEach(id => {
             const select = document.getElementById(id);
@@ -300,7 +377,8 @@ export class ImportManager {
             'Lifetime',
             'Secondary Warranty',
             'Secondary Warranty Expiration',
-            'Tags'
+            'Tags',
+            'Quantity'
         ];
         // Generate test data row
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -310,6 +388,7 @@ export class ImportManager {
             if (lower === 'url') return 'https://example.com';
             if (lower === 'tags') return '"tag1,tag2,tag3"'; // CSV string for tags
             if (lower === 'purchase price') return '123.45';
+            if (lower === 'quantity') return '1'; // Default quantity
             if (lower === 'lifetime') return 'false'; // Boolean value for lifetime warranty
             return `Test ${h}`;
         });

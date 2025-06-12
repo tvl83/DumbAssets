@@ -3,6 +3,8 @@
  * Handles all modal operations for assets and sub-assets
  */
 
+import { formatDate } from '../helpers/utils.js';
+
 export class ModalManager {
     constructor({
         // DOM elements
@@ -20,6 +22,7 @@ export class ModalManager {
         // File handling
         handleFileUploads,
         setupFilePreview,
+        setupExistingFilePreview,
         formatFilePath,
         
         // UI functions
@@ -57,6 +60,7 @@ export class ModalManager {
         // Store file handling functions
         this.handleFileUploads = handleFileUploads;
         this.setupFilePreview = setupFilePreview;
+        this.setupExistingFilePreview = setupExistingFilePreview;
         this.formatFilePath = formatFilePath;
         
         // Store UI functions
@@ -81,6 +85,7 @@ export class ModalManager {
         this.isEditMode = false;
         this.currentAsset = null;
         this.currentSubAsset = null;
+        this.filesToDelete = [];
         
         // File deletion flags
         this.deletePhoto = false;
@@ -99,24 +104,7 @@ export class ModalManager {
     }
     
     initializeEventListeners() {
-        // Add escape key listener for all modals
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeAssetModal();
-                this.closeSubAssetModal();
-            }
-        });
-        
-        // Add click-off-to-close for modals
-        [this.assetModal, this.subAssetModal].forEach(modal => {
-            if (modal) {
-                modal.addEventListener('mousedown', (e) => {
-                    if (e.target === modal) {
-                        modal.style.display = 'none';
-                    }
-                });
-            }
-        });
+        // Add any event listeners that are needed for the modals
     }
     
     openAssetModal(asset = null) {
@@ -124,6 +112,7 @@ export class ModalManager {
         
         this.isEditMode = !!asset;
         this.currentAsset = asset;
+        this.filesToDelete = [];
         
         document.getElementById('addAssetTitle').textContent = this.isEditMode ? 'Edit Asset' : 'Add Asset';
         this.assetForm.reset();
@@ -211,6 +200,7 @@ export class ModalManager {
         
         this.isEditMode = !!subAsset;
         this.currentSubAsset = subAsset;
+        this.filesToDelete = [];
         
         document.getElementById('addComponentTitle').textContent = this.isEditMode ? 'Edit Component' : 'Add Component';
         this.subAssetForm.reset();
@@ -327,6 +317,12 @@ export class ModalManager {
         const receiptPreview = document.getElementById('receiptPreview');
         const manualPreview = document.getElementById('manualPreview');
         
+        // Always reset file upload helpers to clear all state
+        this.resetFileUploaderHelper(photoInput);
+        this.resetFileUploaderHelper(receiptInput);
+        this.resetFileUploaderHelper(manualInput);
+        
+        // Fallback: manually clear if helpers aren't available
         if (!this.isEditMode) {
             if (photoInput) photoInput.value = '';
             if (receiptInput) receiptInput.value = '';
@@ -334,6 +330,15 @@ export class ModalManager {
             if (photoPreview) photoPreview.innerHTML = '';
             if (receiptPreview) receiptPreview.innerHTML = '';
             if (manualPreview) manualPreview.innerHTML = '';
+        }
+    }
+
+    resetFileUploaderHelper(input) {
+        if (input && input._fileUploadHelpers) {
+            input._fileUploadHelpers.reset();
+        } else {
+            // Fallback for browsers that don't support custom file upload helpers
+            input.value = '';
         }
     }
     
@@ -345,6 +350,12 @@ export class ModalManager {
         const receiptPreview = document.getElementById('subReceiptPreview');
         const manualPreview = document.getElementById('subManualPreview');
         
+        // Always reset file upload helpers to clear all state
+        this.resetFileUploaderHelper(photoInput);
+        this.resetFileUploaderHelper(receiptInput);
+        this.resetFileUploaderHelper(manualInput);
+        
+        // Fallback: manually clear if helpers aren't available
         if (!this.isEditMode) {
             if (photoInput) photoInput.value = '';
             if (receiptInput) receiptInput.value = '';
@@ -363,6 +374,7 @@ export class ModalManager {
             'assetSerial': asset.serialNumber || '',
             'assetPurchaseDate': asset.purchaseDate || '',
             'assetPrice': asset.price || '',
+            'assetQuantity': asset.quantity || 1,
             'assetWarrantyScope': asset.warranty?.scope || '',
             'assetWarrantyLifetime': asset.warranty?.isLifetime || false,
             'assetWarrantyExpiration': asset.warranty?.expirationDate ? new Date(asset.warranty.expirationDate).toISOString().split('T')[0] : '',
@@ -397,6 +409,7 @@ export class ModalManager {
             'subAssetSerial': subAsset.serialNumber || '',
             'subAssetPurchaseDate': subAsset.purchaseDate || '',
             'subAssetPurchasePrice': subAsset.purchasePrice || '',
+            'subAssetQuantity': subAsset.quantity || 1,
             'subAssetLink': subAsset.link || '',
             'subAssetNotes': subAsset.notes || '',
             'subAssetWarrantyScope': subAsset.warranty?.scope || '',
@@ -485,47 +498,103 @@ export class ModalManager {
         const receiptInput = document.getElementById('assetReceipt');
         const manualInput = document.getElementById('assetManual');
         
-        if (asset.photoPath) {
+        // Clear existing previews
+        if (photoPreview) photoPreview.innerHTML = '';
+        if (receiptPreview) receiptPreview.innerHTML = '';
+        if (manualPreview) manualPreview.innerHTML = '';
+        
+        // Handle multiple photos
+        if (asset.photoPaths && Array.isArray(asset.photoPaths) && asset.photoPaths.length > 0) {
+            asset.photoPaths.forEach((photoPath, index) => {
+                const photoInfo = asset.photoInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    photoPreview, 
+                    'photo', 
+                    this.formatFilePath(photoPath),
+                    photoPath,
+                    photoInput, 
+                    this,
+                    photoInfo.originalName || photoPath.split('/').pop(),
+                    photoInfo.size ? this.formatFileSize(photoInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (asset.photoPath) {
+            // Backward compatibility for single photo
             const photoInfo = asset.photoInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 photoPreview, 
                 'photo', 
-                this.formatFilePath(asset.photoPath), 
+                this.formatFilePath(asset.photoPath),
+                asset.photoPath,
                 photoInput, 
-                { deletePhoto: this.deletePhoto }, 
-                'deletePhoto',
+                this,
                 photoInfo.originalName || asset.photoPath.split('/').pop(),
-                photoInfo.size ? this.formatFileSize(photoInfo.size) : 'Unknown size'
+                photoInfo.size ? this.formatFileSize(photoInfo.size) : null
             );
             containsExistingFiles = true;
         }
         
-        if (asset.receiptPath) {
+        // Handle multiple receipts
+        if (asset.receiptPaths && Array.isArray(asset.receiptPaths) && asset.receiptPaths.length > 0) {
+            asset.receiptPaths.forEach((receiptPath, index) => {
+                const receiptInfo = asset.receiptInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    receiptPreview, 
+                    'receipt', 
+                    this.formatFilePath(receiptPath),
+                    receiptPath,
+                    receiptInput, 
+                    this,
+                    receiptInfo.originalName || receiptPath.split('/').pop(),
+                    receiptInfo.size ? this.formatFileSize(receiptInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (asset.receiptPath) {
+            // Backward compatibility for single receipt
             const receiptInfo = asset.receiptInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 receiptPreview, 
                 'receipt', 
-                this.formatFilePath(asset.receiptPath), 
+                this.formatFilePath(asset.receiptPath),
+                asset.receiptPath,
                 receiptInput, 
-                { deleteReceipt: this.deleteReceipt }, 
-                'deleteReceipt',
+                this,
                 receiptInfo.originalName || asset.receiptPath.split('/').pop(),
-                receiptInfo.size ? this.formatFileSize(receiptInfo.size) : 'Unknown size'
+                receiptInfo.size ? this.formatFileSize(receiptInfo.size) : null
             );
             containsExistingFiles = true;
         }
         
-        if (asset.manualPath) {
+        // Handle multiple manuals
+        if (asset.manualPaths && Array.isArray(asset.manualPaths) && asset.manualPaths.length > 0) {
+            asset.manualPaths.forEach((manualPath, index) => {
+                const manualInfo = asset.manualInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    manualPreview, 
+                    'manual', 
+                    this.formatFilePath(manualPath),
+                    manualPath,
+                    manualInput, 
+                    this,
+                    manualInfo.originalName || manualPath.split('/').pop(),
+                    manualInfo.size ? this.formatFileSize(manualInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (asset.manualPath) {
+            // Backward compatibility for single manual
             const manualInfo = asset.manualInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 manualPreview, 
                 'manual', 
-                this.formatFilePath(asset.manualPath), 
+                this.formatFilePath(asset.manualPath),
+                asset.manualPath,
                 manualInput, 
-                { deleteManual: this.deleteManual }, 
-                'deleteManual',
+                this,
                 manualInfo.originalName || asset.manualPath.split('/').pop(),
-                manualInfo.size ? this.formatFileSize(manualInfo.size) : 'Unknown size'
+                manualInfo.size ? this.formatFileSize(manualInfo.size) : null
             );
             containsExistingFiles = true;
         }
@@ -542,47 +611,103 @@ export class ModalManager {
         const receiptInput = document.getElementById('subAssetReceipt');
         const manualInput = document.getElementById('subAssetManual');
         
-        if (subAsset.photoPath) {
+        // Clear existing previews
+        if (photoPreview) photoPreview.innerHTML = '';
+        if (receiptPreview) receiptPreview.innerHTML = '';
+        if (manualPreview) manualPreview.innerHTML = '';
+        
+        // Handle multiple photos
+        if (subAsset.photoPaths && Array.isArray(subAsset.photoPaths) && subAsset.photoPaths.length > 0) {
+            subAsset.photoPaths.forEach((photoPath, index) => {
+                const photoInfo = subAsset.photoInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    photoPreview, 
+                    'photo', 
+                    this.formatFilePath(photoPath),
+                    photoPath,
+                    photoInput, 
+                    this,
+                    photoInfo.originalName || photoPath.split('/').pop(),
+                    photoInfo.size ? this.formatFileSize(photoInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (subAsset.photoPath) {
+            // Backward compatibility for single photo
             const photoInfo = subAsset.photoInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 photoPreview, 
                 'photo', 
-                this.formatFilePath(subAsset.photoPath), 
+                this.formatFilePath(subAsset.photoPath),
+                subAsset.photoPath,
                 photoInput, 
-                { deleteSubPhoto: this.deleteSubPhoto }, 
-                'deleteSubPhoto',
+                this,
                 photoInfo.originalName || subAsset.photoPath.split('/').pop(),
-                photoInfo.size ? this.formatFileSize(photoInfo.size) : 'Unknown size'
+                photoInfo.size ? this.formatFileSize(photoInfo.size) : null
             );
             containsExistingFiles = true;
         }
         
-        if (subAsset.receiptPath) {
+        // Handle multiple receipts
+        if (subAsset.receiptPaths && Array.isArray(subAsset.receiptPaths) && subAsset.receiptPaths.length > 0) {
+            subAsset.receiptPaths.forEach((receiptPath, index) => {
+                const receiptInfo = subAsset.receiptInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    receiptPreview, 
+                    'receipt', 
+                    this.formatFilePath(receiptPath),
+                    receiptPath,
+                    receiptInput, 
+                    this,
+                    receiptInfo.originalName || receiptPath.split('/').pop(),
+                    receiptInfo.size ? this.formatFileSize(receiptInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (subAsset.receiptPath) {
+            // Backward compatibility for single receipt
             const receiptInfo = subAsset.receiptInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 receiptPreview, 
                 'receipt', 
-                this.formatFilePath(subAsset.receiptPath), 
+                this.formatFilePath(subAsset.receiptPath),
+                subAsset.receiptPath,
                 receiptInput, 
-                { deleteSubReceipt: this.deleteSubReceipt }, 
-                'deleteSubReceipt',
+                this,
                 receiptInfo.originalName || subAsset.receiptPath.split('/').pop(),
-                receiptInfo.size ? this.formatFileSize(receiptInfo.size) : 'Unknown size'
+                receiptInfo.size ? this.formatFileSize(receiptInfo.size) : null
             );
             containsExistingFiles = true;
         }
         
-        if (subAsset.manualPath) {
+        // Handle multiple manuals
+        if (subAsset.manualPaths && Array.isArray(subAsset.manualPaths) && subAsset.manualPaths.length > 0) {
+            subAsset.manualPaths.forEach((manualPath, index) => {
+                const manualInfo = subAsset.manualInfo?.[index] || {};
+                this.setupExistingFilePreview(
+                    manualPreview, 
+                    'manual', 
+                    this.formatFilePath(manualPath),
+                    manualPath,
+                    manualInput, 
+                    this,
+                    manualInfo.originalName || manualPath.split('/').pop(),
+                    manualInfo.size ? this.formatFileSize(manualInfo.size) : null
+                );
+            });
+            containsExistingFiles = true;
+        } else if (subAsset.manualPath) {
+            // Backward compatibility for single manual
             const manualInfo = subAsset.manualInfo?.[0] || {};
-            this.setupFilePreview(
+            this.setupExistingFilePreview(
                 manualPreview, 
                 'manual', 
-                this.formatFilePath(subAsset.manualPath), 
+                this.formatFilePath(subAsset.manualPath),
+                subAsset.manualPath,
                 manualInput, 
-                { deleteSubManual: this.deleteSubManual }, 
-                'deleteSubManual',
+                this,
                 manualInfo.originalName || subAsset.manualPath.split('/').pop(),
-                manualInfo.size ? this.formatFileSize(manualInfo.size) : 'Unknown size'
+                manualInfo.size ? this.formatFileSize(manualInfo.size) : null
             );
             containsExistingFiles = true;
         }
@@ -593,65 +718,49 @@ export class ModalManager {
     setupAssetFormSubmission() {
         this.assetForm.onsubmit = (e) => {
             e.preventDefault();
-            // Set loading state for save button
             this.setButtonLoading(this.assetSaveBtn, true);
             
-            const formData = this.collectAssetFormData();
+            const newAssetData = this.collectAssetFormData();
             
-            // Handle file uploads then save
-            this.handleFileUploads(formData, this.isEditMode)
-                .then(updatedAsset => {
-                    // Update deletion flags on window object for compatibility
-                    window.deletePhoto = this.deletePhoto;
-                    window.deleteReceipt = this.deleteReceipt;
-                    window.deleteManual = this.deleteManual;
-                    
-                    return this.saveAsset(updatedAsset);
-                })
-                .finally(() => {
-                    // reset button loading state
-                    this.setButtonLoading(this.assetSaveBtn, false);
-                });
+            // Combine with existing asset data to preserve file lists
+            const assetToProcess = {
+                ...this.currentAsset,
+                ...newAssetData
+            };
+            
+            this.handleFileUploads(assetToProcess, this.isEditMode)
+                .then(updatedAsset => this.saveAsset(updatedAsset))
+                .finally(() => this.setButtonLoading(this.assetSaveBtn, false));
         };
     }
     
     setupSubAssetFormSubmission() {
         this.subAssetForm.onsubmit = (e) => {
             e.preventDefault();
-            // Set loading state for save button
             this.setButtonLoading(this.subAssetSaveBtn, true);
-            
-            const formData = this.collectSubAssetFormData();
-            
-            // Validate required fields
-            if (!formData.name || !formData.name.trim()) {
-                // alert('Name is required');
+
+            const newSubAssetData = this.collectSubAssetFormData();
+
+            if (!newSubAssetData.name || !newSubAssetData.name.trim()) {
                 globalThis.toaster.show('Name is required. Please try again.', 'error');
                 this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
-            
-            if (!formData.parentId || !formData.parentId.trim()) {
-                console.error('Missing parent ID!');
-                // alert('Parent ID is required. Please try again.');
+            if (!newSubAssetData.parentId || !newSubAssetData.parentId.trim()) {
                 globalThis.toaster.show('Parent ID is required. Please try again.', 'error');
                 this.setButtonLoading(this.subAssetSaveBtn, false);
                 return;
             }
             
-            // Handle file uploads then save
-            this.handleFileUploads(formData, this.isEditMode, true)
-                .then(updatedSubAsset => {
-                    // Update deletion flags on window object for compatibility
-                    window.deleteSubPhoto = this.deleteSubPhoto;
-                    window.deleteSubReceipt = this.deleteSubReceipt;
-                    window.deleteSubManual = this.deleteSubManual;
-                    
-                    return this.saveSubAsset(updatedSubAsset);
-                })
-                .finally(() => {
-                    this.setButtonLoading(this.subAssetSaveBtn, false);
-                });
+            // Combine with existing sub-asset data to preserve file lists
+            const subAssetToProcess = {
+                ...this.currentSubAsset,
+                ...newSubAssetData
+            };
+            
+            this.handleFileUploads(subAssetToProcess, this.isEditMode, true)
+                .then(updatedSubAsset => this.saveSubAsset(updatedSubAsset))
+                .finally(() => this.setButtonLoading(this.subAssetSaveBtn, false));
         };
     }
     
@@ -669,6 +778,7 @@ export class ModalManager {
             serialNumber: document.getElementById('assetSerial')?.value || '',
             purchaseDate: document.getElementById('assetPurchaseDate')?.value || '',
             price: parseFloat(document.getElementById('assetPrice')?.value) || null,
+            quantity: parseInt(document.getElementById('assetQuantity')?.value) || 1,
             warranty: {
                 scope: document.getElementById('assetWarrantyScope')?.value || '',
                 expirationDate: document.getElementById('assetWarrantyLifetime')?.checked ? null : (document.getElementById('assetWarrantyExpiration')?.value || ''),
@@ -678,7 +788,8 @@ export class ModalManager {
             description: document.getElementById('assetNotes')?.value || '',
             tags: assetTags,
             updatedAt: new Date().toISOString(),
-            maintenanceEvents: this.maintenanceManager.getMaintenanceEvents('asset')
+            maintenanceEvents: this.maintenanceManager.getMaintenanceEvents('asset'),
+            filesToDelete: this.filesToDelete || []
         };
         
         // Add secondary warranty if fields are visible and filled
@@ -699,9 +810,16 @@ export class ModalManager {
         // Add ID and file paths
         if (this.isEditMode && this.currentAsset) {
             newAsset.id = this.currentAsset.id;
+            // Copy both single and multiple file paths for backward compatibility
             newAsset.photoPath = this.currentAsset.photoPath;
             newAsset.receiptPath = this.currentAsset.receiptPath;
             newAsset.manualPath = this.currentAsset.manualPath;
+            newAsset.photoPaths = this.currentAsset.photoPaths || [];
+            newAsset.receiptPaths = this.currentAsset.receiptPaths || [];
+            newAsset.manualPaths = this.currentAsset.manualPaths || [];
+            newAsset.photoInfo = this.currentAsset.photoInfo || [];
+            newAsset.receiptInfo = this.currentAsset.receiptInfo || [];
+            newAsset.manualInfo = this.currentAsset.manualInfo || [];
             newAsset.createdAt = this.currentAsset.createdAt;
         } else {
             newAsset.id = this.generateId();
@@ -728,6 +846,7 @@ export class ModalManager {
             serialNumber: document.getElementById('subAssetSerial')?.value || '',
             purchaseDate: document.getElementById('subAssetPurchaseDate')?.value || '',
             purchasePrice: parseFloat(document.getElementById('subAssetPurchasePrice')?.value) || null,
+            quantity: parseInt(document.getElementById('subAssetQuantity')?.value) || 1,
             parentId: document.getElementById('parentAssetId')?.value || '',
             parentSubId: document.getElementById('parentSubAssetId')?.value || '',
             link: document.getElementById('subAssetLink')?.value || '',
@@ -739,22 +858,27 @@ export class ModalManager {
                 isLifetime: document.getElementById('subAssetWarrantyLifetime')?.checked || false
             },
             updatedAt: new Date().toISOString(),
-            maintenanceEvents: this.maintenanceManager.getMaintenanceEvents('subAsset')
+            maintenanceEvents: this.maintenanceManager.getMaintenanceEvents('subAsset'),
+            filesToDelete: this.filesToDelete || []
         };
         
         // Add ID and file paths
         if (this.isEditMode && this.currentSubAsset) {
             console.log('ModalManager: Edit mode - using existing sub-asset ID:', this.currentSubAsset.id);
             newSubAsset.id = this.currentSubAsset.id;
+            // Copy both single and multiple file paths for backward compatibility
             newSubAsset.photoPath = this.currentSubAsset.photoPath;
             newSubAsset.receiptPath = this.currentSubAsset.receiptPath;
             newSubAsset.manualPath = this.currentSubAsset.manualPath;
+            newSubAsset.photoPaths = this.currentSubAsset.photoPaths || [];
+            newSubAsset.receiptPaths = this.currentSubAsset.receiptPaths || [];
+            newSubAsset.manualPaths = this.currentSubAsset.manualPaths || [];
+            newSubAsset.photoInfo = this.currentSubAsset.photoInfo || [];
+            newSubAsset.receiptInfo = this.currentSubAsset.receiptInfo || [];
+            newSubAsset.manualInfo = this.currentSubAsset.manualInfo || [];
             newSubAsset.createdAt = this.currentSubAsset.createdAt;
             
-            // Handle file deletions
-            if (this.deleteSubPhoto) newSubAsset.photoPath = null;
-            if (this.deleteSubReceipt) newSubAsset.receiptPath = null;
-            if (this.deleteSubManual) newSubAsset.manualPath = null;
+            // Handle file deletions - This is now handled by filesToDelete array
         } else {
             const generatedId = this.generateId();
             console.log('ModalManager: Create mode - generating new ID:', generatedId);

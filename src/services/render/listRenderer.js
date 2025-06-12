@@ -7,6 +7,8 @@
 let updateSelectedIds;
 let renderAssetDetails;
 let handleSidebarNav;
+let formatDate;
+let formatCurrency;
 
 // Global state references - will be passed from main script
 let assets = [];
@@ -29,6 +31,8 @@ function initListRenderer(config) {
     updateSelectedIds = config.updateSelectedIds;
     renderAssetDetails = config.renderAssetDetails;
     handleSidebarNav = config.handleSidebarNav;
+    formatDate = config.formatDate;
+    formatCurrency = config.formatCurrency;
     
     // Store references to global state
     assets = config.assets;
@@ -97,7 +101,7 @@ function getWarrantyDotType(asset) {
         // Skip lifetime warranties
         if (warranty.isLifetime) return;
         
-        const expDate = new Date(warranty.exp);
+        const expDate = new Date(formatDate(warranty.exp));
         if (isNaN(expDate)) return;
         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
         if (diff < 0) {
@@ -133,12 +137,50 @@ function renderAssetList(searchQuery = '') {
     }
 
     let filteredAssets = searchQuery
-        ? assets.filter(asset => 
-            asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            asset.modelNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            asset.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            asset.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            asset.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+        ? assets.filter(asset => {
+            // Check if the asset itself matches the search query
+            const assetMatches = asset.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.tags?.some(tag => tag.toString().toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+                asset.manufacturer?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.modelNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.serialNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.location?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.notes?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.description?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.link?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.warranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                asset.secondaryWarranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                formatCurrency(asset.price, true).toLowerCase().includes(formatCurrency(searchQuery, true)) ||
+                formatDate(asset.warranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                formatDate(asset.secondaryWarranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                formatDate(asset.purchaseDate, true).includes(searchQuery.toLowerCase());
+            
+            // If asset matches, return true
+            if (assetMatches) return true;
+            
+            // Check if any of its sub-assets match the search query
+            const hasMatchingSubAsset = subAssets.some(subAsset => {
+                if (subAsset.parentId !== asset.id) return false;
+                
+                return subAsset.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.tags?.some(tag => tag.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    subAsset.manufacturer?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.modelNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.serialNumber?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.location?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.notes?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.description?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.link?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.warranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    subAsset.secondaryWarranty?.scope?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    formatCurrency(subAsset.purchasePrice, true).toLowerCase().includes(formatCurrency(searchQuery, true)) ||
+                    formatDate(subAsset.warranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    formatDate(subAsset.secondaryWarranty?.expirationDate, true).includes(searchQuery.toLowerCase()) ||
+                    formatDate(subAsset.purchaseDate, true).includes(searchQuery.toLowerCase());
+            });
+            
+            return hasMatchingSubAsset;
+        })
         : assets;
 
     // Apply dashboard filter
@@ -160,7 +202,7 @@ function renderAssetList(searchQuery = '') {
             filteredAssets = filteredAssets.filter(a => {
                 const exp = a.warranty?.expirationDate;
                 if (!exp) return false;
-                return new Date(exp) < now;
+                return new Date(formatDate(exp)) < now;
             });
             
             // Also include assets with sub-assets that have expired warranties
@@ -170,7 +212,7 @@ function renderAssetList(searchQuery = '') {
                     if (sa.parentId !== a.id) return false;
                     const exp = sa.warranty?.expirationDate;
                     if (!exp) return false;
-                    return new Date(exp) < now;
+                    return new Date(formatDate(exp)) < now;
                 })
             );
             
@@ -180,7 +222,7 @@ function renderAssetList(searchQuery = '') {
             filteredAssets = filteredAssets.filter(a => {
                 const exp = a.warranty?.expirationDate;
                 if (!exp) return false;
-                const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                 return diff >= 0 && diff <= 30;
             });
             
@@ -191,7 +233,7 @@ function renderAssetList(searchQuery = '') {
                     if (sa.parentId !== a.id) return false;
                     const exp = sa.warranty?.expirationDate;
                     if (!exp) return false;
-                    const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                    const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                     return diff >= 0 && diff <= 30;
                 })
             );
@@ -202,7 +244,7 @@ function renderAssetList(searchQuery = '') {
             filteredAssets = filteredAssets.filter(a => {
                 const exp = a.warranty?.expirationDate;
                 if (!exp) return false;
-                const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                 return diff > 30 && diff <= 60;
             });
             
@@ -213,7 +255,7 @@ function renderAssetList(searchQuery = '') {
                     if (sa.parentId !== a.id) return false;
                     const exp = sa.warranty?.expirationDate;
                     if (!exp) return false;
-                    const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                    const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                     return diff > 30 && diff <= 60;
                 })
             );
@@ -226,7 +268,7 @@ function renderAssetList(searchQuery = '') {
                 const isLifetime = a.warranty?.isLifetime;
                 if (!exp && !isLifetime) return false;
                 if (isLifetime) return true;
-                const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                 return diff > 60;
             });
             
@@ -239,7 +281,7 @@ function renderAssetList(searchQuery = '') {
                     const isLifetime = sa.warranty?.isLifetime;
                     if (!exp && !isLifetime) return false;
                     if (isLifetime) return true;
-                    const diff = (new Date(exp) - now) / (1000 * 60 * 60 * 24);
+                    const diff = (new Date(formatDate(exp)) - now) / (1000 * 60 * 60 * 24);
                     return diff > 60;
                 })
             );
@@ -386,8 +428,8 @@ function sortAssets(assets, field, direction) {
         } 
         else if (field === 'warranty') {
             // Handle warranty expiration dates
-            const dateA = a.warranty?.expirationDate ? new Date(a.warranty.expirationDate) : null;
-            const dateB = b.warranty?.expirationDate ? new Date(b.warranty.expirationDate) : null;
+            const dateA = a.warranty?.expirationDate ? new Date(formatDate(a.warranty.expirationDate)) : null;
+            const dateB = b.warranty?.expirationDate ? new Date(formatDate(b.warranty.expirationDate)) : null;
             
             // Handle cases with null dates (always put null dates at the end)
             if (!dateA && !dateB) return 0;
@@ -401,8 +443,8 @@ function sortAssets(assets, field, direction) {
         }
         else if (field === 'updatedAt') {
             // Handle updatedAt dates
-            const dateA = a.updatedAt ? new Date(a.updatedAt) : null;
-            const dateB = b.updatedAt ? new Date(b.updatedAt) : null;
+            const dateA = a.updatedAt ? new Date(formatDate(a.updatedAt)) : null;
+            const dateB = b.updatedAt ? new Date(formatDate(b.updatedAt)) : null;
             
             // Handle cases with null dates (always put null dates at the end)
             if (!dateA && !dateB) return 0;

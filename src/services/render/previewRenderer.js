@@ -23,20 +23,18 @@ export function createPhotoPreview(filePath, onDeleteCallback, fileName = null, 
         <div class="file-preview">
             <div class="preview-content">
                 <img src="${filePath}" alt="Photo Preview">
-                <div class="file-info">
-                    <span class="file-type">Photo</span>
-                    <span class="file-name">${fileName}</span>
-                    ${fileSize ? `<span class="file-size">(${fileSize})</span>` : ''}
-                </div>
             </div>
-            <button type="button" class="delete-preview-btn" title="Delete Image">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                    <line x1="10" y1="11" x2="10" y2="17"/>
-                    <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-            </button>
+        </div>
+        <button type="button" class="delete-preview-btn" title="Delete Image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+        </button>
+        <div class="file-info-pill">
+            <span class="file-name">${fileName}</span>
         </div>
     `;
     
@@ -99,20 +97,18 @@ export function createDocumentPreview(type, filePath, onDeleteCallback, fileName
         <div class="file-preview">
             <div class="preview-content">
                 ${fileIcon}
-                <div class="file-info">
-                    <span class="file-type">${typeLabel}</span>
-                    <span class="file-name">${fileName || 'Document'}</span>
-                    ${fileSize ? `<span class="file-size">(${fileSize})</span>` : ''}
-                </div>
             </div>
-            <button type="button" class="delete-preview-btn" title="${title}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-                    <line x1="10" y1="11" x2="10" y2="17"/>
-                    <line x1="14" y1="11" x2="14" y2="17"/>
-                </svg>
-            </button>
+        </div>
+        <button type="button" class="delete-preview-btn" title="${title}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+            </svg>
+        </button>
+        <div class="file-info-pill">
+            <span class="file-name">${fileName || 'Document'}</span>
         </div>
     `;
     
@@ -125,33 +121,28 @@ export function createDocumentPreview(type, filePath, onDeleteCallback, fileName
 }
 
 /**
- * Clear the preview container and set up a new preview
+ * Add a new preview to the container (for multiple files)
  * 
- * @param {Element} container - The container element to clear and add preview to
+ * @param {Element} container - The container element to add preview to
  * @param {string} type - Type of preview ('photo', 'receipt', or 'manual')
- * @param {string} filePath - Path to the file
+ * @param {string} displayPath - Path to the file for display (e.g., with base URL)
+ * @param {string} originalPath - Original path of the file as stored on the server
  * @param {Element} fileInput - The file input element to clear on delete
- * @param {Object} flags - Object containing delete flags
- * @param {string} flagName - Name of the flag to set when item is deleted
+ * @param {Object} modalManager - The instance of the modal manager to update delete flags
+ * @param {string} fileName - The name of the file
+ * @param {string} fileSize - The size of the file
  */
-export function setupFilePreview(container, type, filePath, fileInput, flags, flagName, fileName = null, fileSize = null) {
-    if (!container || !filePath) return;
+export function setupFilePreview(container, type, displayPath, originalPath, fileInput, modalManager, fileName = null, fileSize = null) {
+    if (!container || !displayPath) return;
 
-    // Clear existing content
-    container.innerHTML = '';
-    
     const confirmMessage = `Are you sure you want to delete this ${type}?`;
     
     const onDelete = () => {
         if (confirm(confirmMessage)) {
-            container.innerHTML = '';
-            if (fileInput) fileInput.value = '';
-            if (flags && flagName) {
-                flags[flagName] = true;
-                // Also set window flag if it exists
-                if (window[flagName] !== undefined) {
-                    window[flagName] = true;
-                }
+            // Remove only this specific preview element
+            previewElement.remove();
+            if (modalManager && modalManager.filesToDelete) {
+                modalManager.filesToDelete.push(originalPath);
             }
         }
     };
@@ -159,21 +150,109 @@ export function setupFilePreview(container, type, filePath, fileInput, flags, fl
     let previewElement;
     
     // Extract file name from path if not provided
-    if (!fileName && typeof filePath === 'string') {
-        fileName = filePath.split('/').pop();
+    if (!fileName && typeof displayPath === 'string') {
+        fileName = displayPath.split('/').pop();
     }
     
     if (type === 'photo') {
-        previewElement = createPhotoPreview(filePath, onDelete, fileName, fileSize);
+        previewElement = createPhotoPreview(displayPath, onDelete, fileName, fileSize);
     } else {
-        previewElement = createDocumentPreview(type, filePath, onDelete, fileName, fileSize);
+        previewElement = createDocumentPreview(type, displayPath, onDelete, fileName, fileSize);
     }
     
     container.appendChild(previewElement);
 }
 
+/**
+ * Add existing file preview using the new file upload helpers (prevents re-upload duplication)
+ * 
+ * @param {Element} container - The container element to add preview to
+ * @param {string} type - Type of preview ('photo', 'receipt', or 'manual')
+ * @param {string} displayPath - Path to the file for display (e.g., with base URL)
+ * @param {string} originalPath - Original path of the file as stored on the server
+ * @param {Element} fileInput - The file input element
+ * @param {Object} modalManager - The instance of the modal manager to update delete flags
+ * @param {string} fileName - The name of the file
+ * @param {string} fileSize - The size of the file (in bytes)
+ */
+export function setupExistingFilePreview(container, type, displayPath, originalPath, fileInput, modalManager, fileName = null, fileSize = null) {
+    if (!container || !displayPath || !fileInput) return;
+
+    // Extract file name from path if not provided
+    if (!fileName && typeof displayPath === 'string') {
+        fileName = displayPath.split('/').pop();
+    }
+
+    // Create the delete handler that integrates with the modal manager's filesToDelete system
+    const confirmMessage = `Are you sure you want to delete this ${type}?`;
+    const onDelete = () => {
+        if (confirm(confirmMessage)) {
+            // Remove the preview element
+            previewElement.remove();
+            
+            // Add to the modal manager's filesToDelete array for server-side deletion
+            if (modalManager && modalManager.filesToDelete) {
+                modalManager.filesToDelete.push(originalPath);
+            }
+            
+            // If file upload helpers are available, we need to track this differently
+            // We'll create a special marker to represent the deleted existing file
+            if (fileInput._fileUploadHelpers) {
+                // Create a unique marker for this deleted file
+                const deletedFileMarker = new File(['DELETED_EXISTING_FILE'], `DELETED:${fileName}`, {
+                    type: 'application/x-deleted-marker',
+                    lastModified: Date.now()
+                });
+                
+                // Store the original path on the file object for reference
+                deletedFileMarker._originalPath = originalPath;
+                deletedFileMarker._isDeletedExisting = true;
+                
+                // Add this marker so the upload system knows about the deletion
+                fileInput._fileUploadHelpers.addFile(deletedFileMarker, false);
+            }
+        }
+    };
+
+    let previewElement;
+    
+    // Create the preview element directly with the server path (not mock file)
+    if (type === 'photo') {
+        previewElement = createPhotoPreview(displayPath, onDelete, fileName, fileSize);
+    } else {
+        previewElement = createDocumentPreview(type, displayPath, onDelete, fileName, fileSize);
+    }
+    
+    // Add the preview to the container
+    container.appendChild(previewElement);
+    
+    // If file upload helpers are available, create a representation of the existing file
+    // This ensures the file system knows about the existing file but won't upload it
+    if (fileInput._fileUploadHelpers) {
+        try {
+            // Create a marker file that represents the existing file
+            const existingFileMarker = new File(['EXISTING_FILE'], fileName, {
+                type: type === 'photo' ? 'image/jpeg' : 'application/pdf',
+                lastModified: Date.now() - Math.random() * 1000000000 // Unique timestamp
+            });
+            
+            // Mark this as an existing file with metadata
+            existingFileMarker._originalPath = originalPath;
+            existingFileMarker._displayPath = displayPath;
+            existingFileMarker._isExisting = true;
+            existingFileMarker._previewElement = previewElement;
+            
+            // Add as existing file (won't be uploaded)
+            fileInput._fileUploadHelpers.addExistingFile(existingFileMarker);
+        } catch (error) {
+            console.warn('Could not create file marker for existing file:', error);
+        }
+    }
+}
+
 export default {
     createPhotoPreview,
     createDocumentPreview,
-    setupFilePreview
+    setupFilePreview,
+    setupExistingFilePreview
 };

@@ -28,7 +28,8 @@ import {
     renderAssetList,
     sortAssets,
     // Import file preview renderer
-    setupFilePreview
+    setupFilePreview,
+    setupExistingFilePreview
 } from '/src/services/render/index.js';
 import { ChartManager } from '/managers/charts.js';
 import { registerServiceWorker } from './helpers/serviceWorkerHelper.js';
@@ -113,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let settingsManager;
     let modalManager;
     let dashboardManager;
-    const chartManager = new ChartManager();
+    const chartManager = new ChartManager({formatDate});
 
     // Acts as constructor for the app
     // will be called at the very end of the file
@@ -128,6 +129,42 @@ document.addEventListener('DOMContentLoaded', () => {
         setupPageTitle();
         // Load initial data
         loadAllData().then(() => {
+            // Initialize dashboard manager first
+            dashboardManager = new DashboardManager({
+                // DOM elements
+                assetDetails,
+                subAssetContainer,
+                searchInput,
+                clearFiltersBtn,
+
+                // Utility functions
+                formatDate,
+                formatCurrency,
+                
+                // Managers
+                chartManager,
+                settingsManager,
+                
+                // UI functions
+                updateDashboardFilter,
+                updateSort,
+                updateSelectedIds,
+                renderAssetDetails,
+                renderAssetList,
+                handleSidebarNav,
+                setButtonLoading,
+                
+                // Global state getters
+                getAssets: () => assets,
+                getSubAssets: () => subAssets,
+                getDashboardFilter: () => dashboardFilter,
+                getCurrentSort: () => currentSort,
+                getSelectedAssetId: () => selectedAssetId
+            });
+            
+            // Expose dashboardManager to global scope for chart access
+            window.dashboardManager = dashboardManager;
+            
             // After data is loaded, check for URL parameters
             if (!handleUrlParameters()) {
                 // No URL parameters, show empty state as normal
@@ -176,6 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSelectedIds,
             renderAssetDetails,
             handleSidebarNav,
+            formatDate,
+            formatCurrency,
             
             // Global state
             assets,
@@ -209,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // File handling
             handleFileUploads,
             setupFilePreview,
+            setupExistingFilePreview,
             formatFilePath,
             
             // UI functions
@@ -244,38 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderDashboard: (animate = true) => dashboardManager.renderDashboard(animate),
             });
         }
-        
-        dashboardManager = new DashboardManager({
-            // DOM elements
-            assetDetails,
-            subAssetContainer,
-            searchInput,
-            clearFiltersBtn,
-
-            // Utility functions
-            formatDate,
-            formatCurrency,
-            
-            // Managers
-            chartManager,
-            settingsManager,
-            
-            // UI functions
-            updateDashboardFilter,
-            updateSort,
-            updateSelectedIds,
-            renderAssetDetails,
-            renderAssetList,
-            handleSidebarNav,
-            setButtonLoading,
-            
-            // Global state getters
-            getAssets: () => assets,
-            getSubAssets: () => subAssets,
-            getDashboardFilter: () => dashboardFilter,
-            getCurrentSort: () => currentSort,
-            getSelectedAssetId: () => selectedAssetId
-        });
 
         if (importModal && importBtn && importFile && startImportBtn) {
             const importManager = new ImportManager({
@@ -384,10 +392,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load both assets and sub-assets, then render the dashboard
+    // Load both assets and sub-assets
     async function loadAllData() {
         await Promise.all([loadAssets(), loadSubAssets()]);
-        dashboardManager.renderDashboard();
     }
 
     // Also add a dedicated refresh function to reload data without resetting the UI
@@ -431,7 +438,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Make the API call to save the asset
-            const response = await fetch(`${apiBaseUrl}/api/asset`, {
+            const url = isEditMode ? `${apiBaseUrl}/api/assets/${assetToSave.id}` : `${apiBaseUrl}/api/asset`;
+            const response = await fetch(url, {
                 method: isEditMode ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -520,7 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Missing required fields for sub-asset. Check the console for details.');
             }
             
-            const response = await fetch(`${apiBaseUrl}/api/subasset`, {
+            const url = isEditMode ? `${apiBaseUrl}/api/subassets/${subAsset.id}` : `${apiBaseUrl}/api/subasset`;
+            const response = await fetch(url, {
                 method: isEditMode ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -758,7 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check warranty expiration
         let warrantyDot = '';
         if (subAsset.warranty && subAsset.warranty.expirationDate) {
-            const expDate = new Date(subAsset.warranty.expirationDate);
+            const expDate = new Date(formatDate(subAsset.warranty.expirationDate));
             const now = new Date();
             const diff = (expDate - now) / (1000 * 60 * 60 * 24); // difference in days
             
@@ -927,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Check warranty expiration for child
                     let childWarrantyDot = '';
                     if (child.warranty && child.warranty.expirationDate) {
-                        const expDate = new Date(child.warranty.expirationDate);
+                        const expDate = new Date(formatDate(child.warranty.expirationDate));
                         const now = new Date();
                         const diff = (expDate - now) / (1000 * 60 * 60 * 24);
                         
@@ -1323,8 +1332,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const assetId = urlParams.get('ass');
         const subAssetId = urlParams.get('sub');
         
+        console.log('handleUrlParameters called - URL:', window.location.href);
+        console.log('Parsed parameters - assetId:', assetId, 'subAssetId:', subAssetId);
+        
         if (assetId) {
             console.log('URL parameter detected - navigating to asset:', assetId, subAssetId ? `sub-asset: ${subAssetId}` : '');
+            
+            // Check if the asset exists
+            const targetAsset = assets.find(a => a.id === assetId);
+            const targetSubAsset = subAssetId ? subAssets.find(sa => sa.id === subAssetId) : null;
+            
+            console.log('Found asset:', targetAsset ? targetAsset.name : 'NOT FOUND');
+            if (subAssetId) {
+                console.log('Found sub-asset:', targetSubAsset ? targetSubAsset.name : 'NOT FOUND');
+            }
+            
+            if (!targetAsset) {
+                console.error('Asset not found for ID:', assetId);
+                globalThis.toaster?.show('Asset not found', 'error');
+                return false;
+            }
+            
+            if (subAssetId && !targetSubAsset) {
+                console.error('Sub-asset not found for ID:', subAssetId);
+                globalThis.toaster?.show('Component not found', 'error');
+                return false;
+            }
             
             // Clear URL parameters from browser history without page reload
             if (window.history && window.history.replaceState) {
@@ -1335,10 +1368,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Navigate to the asset/sub-asset
             if (subAssetId) {
                 // Navigate to sub-asset
+                console.log('Navigating to sub-asset:', subAssetId);
                 updateSelectedIds(assetId, subAssetId);
                 renderAssetDetails(subAssetId, true);
             } else {
                 // Navigate to main asset
+                console.log('Navigating to main asset:', assetId);
                 updateSelectedIds(assetId, null);
                 renderAssetDetails(assetId, false);
             }
@@ -1349,6 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true; // Indicates we handled URL parameters
         }
         
+        console.log('No URL parameters found');
         return false; // No URL parameters to handle
     }
     
@@ -1380,17 +1416,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         // Add click-off-to-close for all modals on overlay click
-        [assetModal, subAssetModal, importModal, settingsModal].forEach(modal => {
+        [importModal, settingsModal].forEach(modal => {
             if (modal) {
                 modal.addEventListener('mousedown', function(e) {
                     if (e.target !== modal) return;
-                    if (modal === assetModal) {
-                        modalManager.closeAssetModal();
-                    }
-                    else if (modal === subAssetModal) {
-                        modalManager.closeSubAssetModal();
-                    }
-                    else if (modal === settingsModal) {
+                    if (modal === settingsModal) {
                         settingsManager.closeSettingsModal();
                     }
                     else {
