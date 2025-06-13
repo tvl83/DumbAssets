@@ -21,13 +21,6 @@ function getVersionFromURL() {
     return null;
 }
 
-// Check URL for version parameter during initialization
-const urlVersion = getVersionFromURL();
-if (urlVersion) {
-    APP_VERSION = urlVersion;
-    CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
-}
-
 // Log the version we're using on initialization
 console.log(`Service worker initializing with version: ${APP_VERSION}`);
 
@@ -143,6 +136,9 @@ async function installCache() {
     const cache = await caches.open(CACHE_NAME);
     
     try {
+        // Clear old caches
+        await cleanOldCaches();
+
         console.log("Fetching asset manifest...");
         const response = await fetch(getAssetPath("assets/asset-manifest.json"));
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,8 +153,6 @@ async function installCache() {
         await cache.addAll(ASSETS_TO_CACHE);
         console.log("Assets cached successfully");
         
-        // Clear old caches after successful installation
-        await cleanOldCaches();
 
         // Notify clients of successful update
         self.clients.matchAll().then(clients => {
@@ -189,17 +183,9 @@ async function installCache() {
 self.addEventListener("install", (event) => {
     console.log(`Service Worker installing with version ${APP_VERSION}...`);
     
-    // Double check if we can get version from URL
-    const urlVersion = getVersionFromURL();
-    if (urlVersion && urlVersion !== APP_VERSION) {
-        console.log(`Updating version from URL: ${urlVersion} (was: ${APP_VERSION})`);
-        APP_VERSION = urlVersion;
-        CACHE_NAME = `DUMBASSETS_CACHE_V${APP_VERSION}`;
-    }
-    
     event.waitUntil(
         Promise.all([
-            preload(),
+            preload(), // Preload assets and install cache
             self.skipWaiting() // Skip waiting to allow new service worker to activate immediately
         ])
     );
@@ -304,25 +290,13 @@ self.addEventListener('message', async (event) => {
     }
     // Handle PERFORM_UPDATE message type
     else if (event.data && event.data.type === 'PERFORM_UPDATE') {
+        // DEPRECATED: This is no longer needed as we clear old caches and install new cache on installCache() call
         // If version was provided with the update message, use it
-        if (event.data.version) {
-            updateCacheName(event.data.version);
-        }
-        
-        // First check and clean up any old caches
-        await cleanOldCaches();
+        // if (event.data.version)
+        //     updateCacheName(event.data.version);
         
         // User has confirmed they want to update
-        await installCache();
-        // Notify clients that update is complete
-        self.clients.matchAll().then(clients => {
-            clients.forEach(client => {
-                client.postMessage({
-                    type: 'UPDATE_COMPLETE',
-                    version: APP_VERSION
-                });
-            });
-        });
+        await installCache(); // Notify clients of the update completion is done inside installCache
     } 
     // Handle LIST_CACHED_URLS message type
     else if (event.data && event.data.type === 'LIST_CACHED_URLS') {
